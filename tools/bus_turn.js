@@ -7,14 +7,14 @@
 //   GAME_TIME=10:00 xvfb-run -a node tools/bus_turn.js tokyo [turns=6]
 const { chromium } = require('playwright');
 const { pinClock } = require('./pin_clock');
-const [,, city = 'tokyo', want = '6'] = process.argv;
+const [,, city = 'shibuya', want = '6'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: !process.env.DISPLAY, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
   const p = await b.newPage({ viewport: { width: 900, height: 600 } });
   p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 300)));
   await pinClock(p, city);
   await p.addInitScript(seed => { let x = seed >>> 0 || 1; Math.random = () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); }, +(process.env.SEED || 1));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.cars', null, { timeout: 400000 });
   const r = await p.evaluate(async ([want, detail]) => {
     const g = window.__game, C = g.cars.C, turns = [], track = new Map();

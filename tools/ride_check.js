@@ -17,7 +17,7 @@
 // 1), so that a run is the same each time.
 const { chromium } = require('playwright');
 const { pinClock } = require('./pin_clock');
-const [,, city = 'hong-kong', trials = '10', only = ''] = process.argv;
+const [,, city = 'shibuya', trials = '10', only = ''] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
@@ -26,7 +26,7 @@ const [,, city = 'hong-kong', trials = '10', only = ''] = process.argv;
   p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 400)));
   await pinClock(p, city);
   await p.addInitScript(seed => { let x = seed >>> 0 || 1; Math.random = () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); }, +(process.env.SEED || 1));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; });

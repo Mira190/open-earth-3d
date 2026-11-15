@@ -11,7 +11,7 @@ const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
-const [,, city = 'sydney', outDir = '.', pairsArg = '40'] = process.argv;
+const [,, city = 'shibuya', outDir = '.', pairsArg = '40'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
@@ -31,7 +31,7 @@ const [,, city = 'sydney', outDir = '.', pairsArg = '40'] = process.argv;
     const png = await p.evaluate(() => document.getElementById('game-gl').toDataURL('image/png'));
     fs.writeFileSync(path.join(outDir, `${city}-route-${name}.png`), Buffer.from(png.split(',')[1], 'base64'));
   };
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
   const t0 = Date.now();

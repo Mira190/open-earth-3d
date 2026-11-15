@@ -6,13 +6,9 @@ numpy>=1.26
 scipy>=1.11
 pillow>=10.0
 requests>=2.31
-# the woods' canopy height model (pipeline/woods.py)
+# rasters: the woods' canopy height model (pipeline/woods.py), the land past the frame, the visibility raster
 rasterio>=1.3
-# PLATEAU (Japanese cities): mapbox-vector-tile for the vector tiles, DracoPy for 3D Tiles
+# PLATEAU: mapbox-vector-tile for the vector tiles, DracoPy for 3D Tiles
 mapbox-vector-tile>=2.0
 DracoPy>=1.4
-# Tokyo's airborne LiDAR sheets (cities/tokyo/shuto_lidar.py, shuto_moat_layers.py)
-laspy>=2.5
-# woods.py: the canopy height model (GeoTIFF)
-rasterio>=1.3
 # optional, for blender/build_scene.py (needs Python 3.13): pip install bpy==5.2.3

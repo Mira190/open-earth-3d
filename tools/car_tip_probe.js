@@ -13,7 +13,7 @@ const [,, city = 'shibuya', secs = '4', LEDGE] = process.argv;
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
   p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 300)));
   await p.addInitScript(() => { try { localStorage.setItem('oe3d-quality', 'low'); } catch (e) { /* storage blocked */ } });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
   await startPlay(p);
   await p.evaluate(() => { const g = window.__game; if (g.cine.active) g.cine.skip(); return g.lateReady && g.lateReady(); });

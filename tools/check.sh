@@ -1,461 +1,213 @@
 #!/usr/bin/env bash
-# The checks to pass before work lands on main, in one command. It serves web/ on its own port
-# and, for what the branch changed against origin/main (or for the targets named):
-#   - plays each city's game headless (tools/game_check.js: walk, talk, helicopter, ferries,
-#     your car, a taxi and a ride),
-#   - plays each city's game on a phone's low tier (an iPhone emulated) and fails it over a memory budget
-#     (tools/mem_check.js: the peak GPU memory and the settled JS heap, so an iPhone's tab is not killed),
-#     three cities at a time, under xvfb-run (llvmpipe) when it is installed; and then measures
-#     what passes through what there (tools/clip_check.js: street furniture in the roads, cars
-#     inside each other and inside posts, people inside cars and walls, ferries, seated heads);
-#   - plays each city's guided tour in the model viewer (tools/tour_check.js: every stop in order,
-#     an end card instead of a loop, no NaN or runaway highlight, no flat or flickering frame);
-#   - checks that every city's buildings.bin, and each live city's other packs (landmarks, game, terrain, places, scene), is packed
-#     from its JSON as it is now and decodes to the same values (pipeline/pack.py --check, tools/pack_check.js);
-#   - checks the visibility sweep against exact rays in every live city (tools/vis_unit.js), and that each one's
-#     occluder raster (vis.bin, pipeline/visibility.py) is made from its buildings as they are (with the packs);
-#   - checks that every live city's building solids are valid polygons on their decimetre grid (pipeline/solid_rings.py --check);
-#   - checks that every shared model in web/assets is meshopt-compressed (pipeline/meshopt_glb.mjs --check);
-#   - checks each fishing water's data against its city.json and plays its fights for balance
-#     (pipeline/fishing.py --check, tools/fishing_sim.js; the game check fishes each spot);
-#   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
-#   - checks each map's daily life (pipeline/life.py --check: people, ranks, places, sourced events, built);
-#   - prices rides by each map's fares (tools/fares_check.js: the rules, and every live table stop to stop);
-#   - plays each live map's lines and quests to the last stamp without a browser (tools/goals_check.js: the rules of
-#     web/game/goals.js, the data sound, a save kept and loaded, and which steps a phone cannot reach);
-#   - reads every line the games' characters say, in every city and reef site, for talk about the
-#     data or how the map was built (tools/voice_check.py: open data, PLATEAU, LiDAR, "rebuilt from"...);
-#   - runs each reef site's scripted test (reef/index.html?gametest=1);
-#   - runs the title screen on a tablet, a phone and a desktop and with WebGL faults injected
-#     (tools/title_check.js), and fails a frame that ends black or a page that throws;
-#   - checks the title's postcards (tools/postcards_check.js): the journey, every still and line, a menu
-#     without them, and a postcard's link into the game;
-#   - opens Sydney's game and model and checks the hand-over from the loading screen
-#     (tools/load_check.js): the 3D view must be drawn, not black, when the loader starts to fade.
-# Prints one line per check and exits 1 if any failed. Logs and screenshots go to $CHECK_OUT.
-# The games play at a pinned local date and hour (GAME_TIME, default 2026-11-02T10:00 in each city's own time
-# zone, tools/pin_clock.js), so that a run does not depend on the day or the hour it is started at:
-#   GAME_TIME=22:40 tools/check.sh osaka    # at another hour; GAME_TIME=live: the real clock
-#   tools/check.sh                      # what this branch changed (committed or not); after a
-#                                       # pass, only what changed since it (CHECK_FULL=1: all of it)
-#   tools/check.sh sydney hardy-reef    # these cities and reef sites
-#   tools/check.sh title                # the title screen only
-#   tools/check.sh voice                # what the characters say only (it runs with every target)
-#   tools/check.sh loader               # the loading screen's hand-over only
-#   tools/check.sh telemetry            # the visitor and SLO events, and the game's save, only
-#   tools/check.sh astc                 # the device-side ASTC encoder against a real decoder, only
-#   tools/check.sh touch                # the game played by touch on a phone's page (tools/touch_check.js), only
-#   tools/check.sh story                # each live map's first story episode played through (tools/story_shot.js)
-#   tools/check.sh gl                   # the map opened as a device with its extras shed opens it: no refused WebGL call
-#   tools/check.sh all                  # every city, every reef site and the title
-#   tools/check.sh static               # the checks that open no browser only (packs, voice, life, rings...)
-#   tools/check.sh sydney:game          # one kind of a city's checks (game, clip, mem, tour; sydney:clip,mem)
+# The checks to pass before work lands on main, in one command (docs/CHECKS.md). The project is one story on
+# one map (Blue Hour, at the Shibuya Scramble), so there is one page to check. For what the branch changed
+# against origin/main (or for the targets named) it runs:
+#   static  the checks that open no browser, a minute or two together:
+#           - what the characters and the story say (tools/voice_check.py: locals, not the map's credits);
+#           - the map's lines and quests played to the last stamp without a browser (tools/goals_check.js);
+#           - the packs (buildings, landmarks, game, terrain, places, scene .bin, vis.bin, skyvis.webp and the phone's
+#             district d/) made from their JSON as it is now and decoded to the same values
+#             (pipeline/pack.py --check, tools/pack_check.js);
+#           - the visibility sweep against exact rays (tools/vis_unit.js);
+#           - the frame-time governor on modelled devices (tools/governor_unit.js);
+#           - the building solids valid polygons on their decimetre grid (pipeline/solid_rings.py --check);
+#           - no landmark hanging in the air (tools/float_check.py), no sign or screen behind another landmark
+#             (tools/sign_clear.py), no sign reading mirrored (tools/sign_check.py);
+#           - the far crowd's copy of the cast (pipeline/crowd_cast.py --check);
+#           - every shared model meshopt-compressed and its parts up to date (pipeline/meshopt_glb.mjs, meshopt.py split);
+#   story   the episode played frame by frame to its last card in a browser (tools/story_play.js): the street runs, the Stop
+#           comes, the afterimage speaks, the photograph is taken, the world runs on, the last card;
+#   mem     the page as an iPhone on the low tier, inside the memory budget (tools/mem_check.js);
+#   clip    what passes through what in the free game, ?walk=1 (tools/clip_check.js);
+#   gl      the map as an ordinary device opens it: no WebGL call refused, and every material drawn on a GPU with
+#           sixteen texture units (tools/gl_error_probe.js, tools/sampler_probe.js);
+#   touch   the free game played by touch on a phone's page (tools/touch_check.js);
+#   astc    the device-side ASTC encoder against a real decoder (tools/astc_check.js);
+#   game    the free game's long scenario (tools/game_check.js: walk, talk, helicopter, car, taxi, trains). It was
+#           written for the game before the story and has not been run since the cut-back, so it runs by name only.
+# Prints one line per check and exits 1 if any failed. Logs and stills go to $CHECK_OUT.
+#   tools/check.sh                      # the fast tier: static, and story and mem when the page or the map changed;
+#                                       # after a pass, only what changed since it (CHECK_FULL=1: the whole branch)
+#   tools/check.sh static               # the checks that open no browser only
+#   tools/check.sh story                # the story only (story mem, shibuya:clip,mem ...: several)
+#   tools/check.sh all                  # static story mem clip gl touch astc
 #   tools/check.sh --plan               # print the targets a run would check, one a line, and stop
-# Two tiers (docs/CHECKS.md). Before landing, the fast tier: a change to the shared code (the game, the
-# renderer, the shared assets) plays the smoke cities ($CHECK_SMOKE) instead of every live city, and a
-# change to a city's own files still checks that city in full. After landing, the full tier
-# (CHECK_TIER=full) runs on main in GitHub Actions (.github/workflows/checks.yml), one city and kind
-# a runner, and opens an issue labelled main-red when one fails:
-#   CHECK_TIER=full tools/check.sh      # every live city for a change to the shared code, as before
+#   CHECK_TIER=full tools/check.sh      # as main runs it after landing (.github/workflows/checks.yml): clip, gl and touch too
 #   CHECK_BASE=<commit> tools/check.sh  # what changed since that commit, not since origin/main
-#   CHECK_STATIC=0 tools/check.sh ...   # without the checks that open no browser (a runner's shard)
-# Parked cities (cities/index.json "parked", tools/live_cities.sh) are left out of every run, even
-# when they changed or the shared code did; name one to check it anyway: tools/check.sh amsterdam
+#   CHECK_STATIC=0 tools/check.sh ...   # without the static checks (a runner's shard)
+#   GAME_TIME=22:40 tools/check.sh clip # the free game's clock pinned to another hour (tools/pin_clock.js; live: the real clock)
 set -u
 cd "$(dirname "$0")/.."
+MAP=shibuya
 PORT=${PORT:-8870}
 OUT=${CHECK_OUT:-/tmp/oe-check}
-JOBS=${CHECK_JOBS:-3}
 TIER=${CHECK_TIER:-fast}
-KINDS="game clip mem tour"              # a city's checks, in the order they run
-# the fast tier's cities for a change to the shared code, and what is played in each: of the live maps (AGENTS.md,
-# "Tokyo and Sydney first"), Sydney's game and its tour in the viewer, and Shibuya, the heaviest one on a phone, for its
-# memory; Shibuya's and Tokyo's games, half an hour each, play on main after landing
-SMOKE=${CHECK_SMOKE:-sydney:game,tour shibuya:mem}
+KINDS="story mem clip gl touch astc game"   # the browser checks, in the order they run
+ALL="story mem clip gl touch astc"          # "all", and the most the full tier selects: not the game check (see above)
 plan=0; [ "${1:-}" = --plan ] && { plan=1; shift; }
 mkdir -p "$OUT"
 export NODE_PATH=${NODE_PATH:-$(npm root -g 2>/dev/null)}
+# (macOS has no timeout: there a check runs for as long as it takes)
+command -v timeout >/dev/null || timeout() { shift; "$@"; }
 
 STAMP="$(git rev-parse --git-dir)/oe-check-pass$([ "$TIER" = full ] && echo -full)"   # the commit of this tier's last pass, in this clone only
 stamp() { [ $# -eq 0 ] && [ -z "${CHECK_BASE:-}" ] && [ -z "$(git status --porcelain)" ] && git rev-parse HEAD >"$STAMP"; return 0; }
-CITIES=$(tools/live_cities.sh)
-PARKED=$(tools/live_cities.sh --parked)
-REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || [ ! -f "web/data/$d/scene.json" ] || echo "$d"; done)   # a reef site: its scene built, no city game
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
 
-cities=() reefs=() title=0 loader=0 voice=0 telemetry=0 gl=0 shared= fish=0 story=0 astc=0 touch=0
-declare -A want=()   # the kinds to run for each city
-add_city() {   # a city, and the kinds of its checks to run (all of them when none is named)
-  local c=$1 k
-  is_in "$c" "${cities[*]:-}" || cities+=("$c")
-  for k in ${2:-$KINDS}; do is_in "$k" "${want[$c]:-}" || want[$c]="${want[$c]:-} $k"; done
-}
-add_kinds() {   # city:kind,kind
-  local c=${1%%:*} k
-  for k in $(echo "${1#*:}" | tr ',' ' '); do is_in "$k" "$KINDS" || { echo "unknown kind: $k (kinds: $KINDS)"; exit 2; }; done
-  is_in "$c" "$CITIES" || is_in "$c" "$PARKED" || { echo "unknown city: $c"; exit 2; }
-  add_city "$c" "$(echo "${1#*:}" | tr ',' ' ')"
-}
-# a change to the shared code, and the kinds of checks it can break (all of them when none is named): every live
-# city's in the full tier, the smoke cities' in the fast one (added after the loop)
-shared_change() {
-  local c k
-  if [ "$TIER" = full ]; then for c in $CITIES; do add_city "$c" "${1:-}"; done
-  else for k in ${1:-$KINDS}; do is_in "$k" "$shared" || shared="$shared $k"; done; fi
-}
-add_reef() { is_in "$1" "${reefs[*]:-}" || reefs+=("$1"); }
-all_cities() { for c in $CITIES; do add_city "$c"; done; }
-all_reefs() { for r in $REEFS; do add_reef "$r"; done; }
+static=0 want=
+add() { local k; for k in "$@"; do is_in "$k" "$KINDS" || { echo "unknown target: $k (targets: static $KINDS all)"; exit 2; }; is_in "$k" "$want" || want="$want $k"; done; }
 
 if [ $# -gt 0 ]; then
   for t in "$@"; do
     case "$t" in
-      all) all_cities; all_reefs; title=1; loader=1; telemetry=1; gl=1; astc=1; touch=1 ;;
-      voice|static) voice=1 ;;
-      *:*) add_kinds "$t" ;;
-      title) title=1 ;;
-      loader) loader=1 ;;
-      telemetry) telemetry=1 ;;
-      astc) astc=1 ;;
-      touch) touch=1 ;;
-      gl) gl=1 ;;
-      story) story=1 ;;
-      *) if is_in "$t" "$CITIES" || is_in "$t" "$PARKED"; then add_city "$t"
-         elif is_in "$t" "$REEFS"; then add_reef "$t"
-         else echo "unknown target: $t (cities: $(echo $CITIES); reef sites: $(echo $REEFS))"; exit 2; fi ;;
+      all) static=1; add $ALL ;;
+      static|voice) static=1 ;;
+      "$MAP") add story mem clip ;;
+      "$MAP":*) add $(echo "${t#*:}" | tr ',' ' ') ;;   # (the map's name before a kind, as the shards were named: shibuya:clip,mem)
+      *) add $(echo "$t" | tr ',' ' ') ;;
     esac
   done
 else
   if [ -n "${CHECK_BASE:-}" ]; then base=$(git rev-parse --verify -q "$CHECK_BASE^{commit}") || { echo "CHECK_BASE=$CHECK_BASE is not a commit here"; exit 2; }
   else base=$(git merge-base origin/main HEAD 2>/dev/null) || { echo "no origin/main to compare with: git fetch origin main"; exit 2; }; fi
-  # After a pass, only what changed since then. A run with no targets that passes on a clean tree
-  # stamps HEAD in $STAMP. When main moves on and is merged in again, the commit checked last is
-  # still an ancestor of HEAD, and everything not yet checked (main's new commits, conflict fixes,
-  # later work of the branch) is in the diff from it: a merge of main that only brought other
-  # cities checks those cities, not all twenty. CHECK_FULL=1 compares with main as before.
+  # After a pass, only what changed since then. A run with no targets that passes on a clean tree stamps HEAD in
+  # $STAMP; when main moves on and is merged in again, everything not yet checked is in the diff from that commit.
   last=$(cat "$STAMP" 2>/dev/null)
   if [ -z "${CHECK_FULL:-}" ] && [ -z "${CHECK_BASE:-}" ] && [ -n "$last" ] && git merge-base --is-ancestor "$last" HEAD 2>/dev/null \
      && ! git merge-base --is-ancestor "$last" "$base"; then
-    echo "checking what changed since the last pass, $(git log -1 --format='%h %s' "$last" | cut -c1-70) (CHECK_FULL=1 for the whole branch)"
+    echo "checking what changed since the last pass, $(git log -1 --format='%h %s' "$last" | cut -c1-70) (CHECK_FULL=1 for the whole branch)" >&2
     base=$last
   fi
-  changed=$( { git diff --name-only "$base"; git ls-files --others --exclude-standard; } | sort -u)
-  for f in $changed; do
+  page() { add story mem; [ "$TIER" = full ] && add clip gl touch; return 0; }   # the page or the map changed
+  for f in $( { git diff --name-only "$base"; git ls-files --others --exclude-standard; } | sort -u); do
     case "$f" in
-      cities/index.json|web/data/cities.json) title=1 ;;   # the globe's list of cities
-      cities/*/postcards.json|web/data/*/postcards/*|web/data/postcards.json|web/postcards.js|tools/postcards_*|tools/postcards.sh|pipeline/postcards.py) title=1 ;;   # the title's postcards (tools/postcards_check.js), not the cities' games
-      web/data/*/d/*)   # a phone's district of a map (pipeline/district.py): what a phone loads, so its memory check
-        id=${f#web/data/}; id=${id%%/*}; is_in "$id" "$CITIES" && add_city "$id" mem ;;
-      pipeline/district.py) shared_change mem ;;
-      web/astc.js|web/astc-worker.js|tools/astc_check.js) astc=1 ;;   # the device-side ASTC encoder, against a real decoder
-      cities/*/*|web/data/*/*)
-        id=${f#web/data/}; id=${id#cities/}; id=${id%%/*}   # the city or reef site: cities/<id>/..., web/data/<id>/...
-        if is_in "$id" "$CITIES"; then add_city "$id"; elif is_in "$id" "$REEFS"; then add_reef "$id"; fi ;;
-      web/reef/*) all_reefs ;;
-      web/title.js|web/earth.js) title=1; telemetry=1 ;;   # (the title screen's load stages: tools/telemetry_check.js)
-      web/title.*|tools/title_*|web/score.js|web/film.*|web/fonts.css) title=1 ;;
-      web/telemetry.js|tools/telemetry_*|tools/slo_*) title=1; telemetry=1 ;;   # watches every page, sends nothing
-      web/index.html|web/quality.js) shared_change; title=1; loader=1; telemetry=1; gl=1; touch=1 ;;
-      web/plate.js|web/city.js|tools/load_check.js) shared_change; loader=1; telemetry=1 ;;
-      web/game/game.js) shared_change; loader=1; telemetry=1; gl=1; touch=1 ;;
-      web/game/hud.js) shared_change; touch=1 ;;
-      tools/touch_check.js) touch=1 ;;   # the game by touch, on a phone's page
-      tools/governor_unit.js) voice=1 ;;   # the governor's modelled devices, in the static checks
-      web/world.js|web/glcare.js|web/mirror.js|web/water.js|web/surface.js|web/lens.js|web/game/atmosphere.js|web/game/ao.js|web/game/weather.js) shared_change; gl=1 ;;   # what draws into a target of its own: the passes a device's governor turns on and off
-      tools/gl_error_probe.js|tools/sampler_probe.js) gl=1 ;;
-      web/game/story.js|tools/story_shot.js) shared_change; story=1 ;;   # a map's story and the Stop (tools/story_shot.js plays the first episode)
-      web/night.js|web/neon.js) shared_change; gl=1 ;;   # what adds a texture to the shared shaders (the units check)
-      web/game/fishing.js|tools/fishing_*|pipeline/fishing.py)   # the cities with fishing spots only (docs/FISHING.md)
-        if [ "$TIER" = full ]; then for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && add_city "$id"; done; else fish=1; fi ;;
-      tools/game_check.js|tools/*_step.js|tools/*_walk.js|tools/npc_night.js|tools/ride_queue.js) shared_change game ;;   # a check's own script: that kind of check
-      tools/clip_check.js) shared_change clip ;;
-      tools/mem_check.js) shared_change mem ;;
-      tools/tour_check.js) shared_change tour ;;
-      tools/pin_clock.js) shared_change "game clip" ;;
-      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) shared_change ;;
-      tools/check.sh|tools/live_cities.sh|.github/workflows/checks.yml) voice=1 ;;   # the checks' own plumbing: the static ones, and the run itself
-      tools/voice_check.py|pipeline/game_text.py) voice=1 ;;   # the voice check alone (it runs with any target)
+      web/astc.js|web/astc-worker.js|tools/astc_check.js) static=1; add astc ;;
+      web/data/$MAP/d/*|pipeline/district.py|tools/mem_check.js) static=1; add mem ;;   # what a phone loads
+      tools/story_play.js|tools/story_play.js|tools/start_play.js) static=1; add story ;;
+      tools/clip_check.js|tools/pin_clock.js) static=1; add clip ;;
+      tools/touch_check.js) static=1; add touch ;;
+      tools/gl_error_probe.js|tools/sampler_probe.js) static=1; add gl ;;
+      web/*|cities/*) static=1; page ;;
+      tools/*|pipeline/*|blender/*|.github/*|requirements.txt) static=1 ;;   # the checks' own plumbing and the build: the static ones
     esac
   done
-  if [ -n "$shared" ]; then   # of the smoke cities' kinds, those the change can break
-    for t in $SMOKE; do
-      k=$(for k in $(echo "${t#*:}" | tr ',' ' '); do is_in "$k" "$shared" && echo "$k"; done | paste -sd, -)
-      [ -n "$k" ] && { add_kinds "${t%%:*}:$k"; smoked=1; }
-    done
-    # (when the smoke cities play none of the kinds changed, the first of them plays those)
-    [ -n "${smoked:-}" ] || add_city "${SMOKE%%:*}" "$shared"
-    echo "fast tier: the shared code changed, so the smoke cities play ($SMOKE); every live city plays on main after landing (CHECK_TIER=full for all of them here)" >&2
-  fi
-  if [ $fish -eq 1 ]; then   # the fast tier fishes one water
-    for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && { add_city "$id" game; break; }; done
-  fi
 fi
 
 if [ $plan -eq 1 ]; then   # the targets of this run, each one an argument to this script: a runner's shard
-  [ "${CHECK_STATIC:-1}" != 0 ] && echo static
-  for c in "${cities[@]}"; do
-    rest=$(for k in $KINDS; do [ "$k" != game ] && is_in "$k" "${want[$c]}" && echo "$k"; done | paste -sd, -)
-    is_in game "${want[$c]}" && echo "$c:game"
-    [ -n "$rest" ] && echo "$c:$rest"
-  done
-  for r in "${reefs[@]}"; do echo "$r"; done
-  [ $title -eq 1 ] && echo title; [ $loader -eq 1 ] && echo loader; [ $telemetry -eq 1 ] && echo telemetry; [ $gl -eq 1 ] && echo gl; [ $story -eq 1 ] && echo story; [ $astc -eq 1 ] && echo astc; [ $touch -eq 1 ] && echo touch
+  [ $static -eq 1 ] && [ "${CHECK_STATIC:-1}" != 0 ] && echo static
+  for k in $want; do echo "$k"; done
   exit 0
 fi
 
-if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ] && [ $telemetry -eq 0 ] && [ $gl -eq 0 ] && [ $story -eq 0 ] && [ $astc -eq 0 ] && [ $touch -eq 0 ]; then
-  echo "nothing to check: no change to a city, a reef site, the game, the renderer or the title"
+if [ $static -eq 0 ] && [ -z "$want" ]; then
+  echo "nothing to check: no change to the page, the map, the build or the checks"
   stamp "$@"
   exit 0
 fi
 
 started=
-if ! curl -s -o /dev/null "http://localhost:$PORT/index.html"; then
+if [ -n "$want" ] && ! curl -s -o /dev/null "http://localhost:$PORT/index.html"; then
   python3 -m http.server "$PORT" --directory web >"$OUT/server.log" 2>&1 &
   started=$!
   for _ in $(seq 50); do curl -s -o /dev/null "http://localhost:$PORT/index.html" && break; sleep 0.2; done
 fi
 trap '[ -n "$started" ] && kill $started 2>/dev/null' EXIT
 export PORT
-# the game's clock pinned to a date and an hour, not only an hour: the weather (weather.js, a hash of the date), the
-# day's life and the traffic's trips all follow the date, so a pinned hour alone played another game each day (#420)
+# the free game's clock pinned to a date and an hour (tools/pin_clock.js): the weather is a hash of the date and the
+# traffic follows the hour, so a run does not depend on when it is started
 export GAME_TIME=${GAME_TIME:-2026-11-02T10:00}
 X=; command -v xvfb-run >/dev/null && X="xvfb-run -a"
 
-# The game's and the clip check's timing and traffic steps can miss under three cities' load at once
-# on a software renderer (a taxi's drive-off, a ride's ETA, the brightness after a lost context, a car
-# into a post), and pass when run alone (issue 84). Run in parallel (pass=load), a failure is put off
-# to a rerun alone after the others (pass=alone), and only a failure alone fails; the run under load
-# keeps its log as <city>-load.log
-# A step that fails in one run and another step in the next is the check's own unsteadiness, not the change's: a
-# change that breaks something breaks the same step both times. So a run fails on a step that failed twice (or on a
-# run that ended without naming one: a crash, a timeout), and two runs with no failed step in common print FLAKY,
-# pass, and are listed in $OUT/flaky.txt (on main, .github/workflows/checks.yml adds them to the issue labelled check-flaky)
-RETRY="$OUT/retry.txt"
-: >"$RETRY"
+# A change that breaks something breaks the same step every time. So when the clip or the game check fails it is run
+# a second time, and the run fails only on a step that failed both times (or on a run that named none: a crash, a
+# timeout). Two runs with no failed step in common print FLAKY, pass, and are listed in $OUT/flaky.txt (on main,
+# .github/workflows/checks.yml adds them to the issue labelled check-flaky)
 : >"$OUT/flaky.txt"
 fails_of() { grep '^FAIL' "$1" 2>/dev/null | cut -c6- | sed 's/ *[(:].*//' | sort -u; }   # the failed steps' names, without their numbers
-twice() {   # <kind> <city> <log under load> <log alone>: the verdict of the second run
+twice() {   # <kind> <first log> <second log>: the verdict of the second run
   local same one two
-  one=$(fails_of "$3"); two=$(fails_of "$4")
+  one=$(fails_of "$2"); two=$(fails_of "$3")
   same=$(comm -12 <(echo "$one") <(echo "$two") | grep . | head -3 | cut -c1-110 | paste -sd ';' -)
   if [ -n "$one" ] && [ -n "$two" ] && [ -z "$same" ]; then
-    echo "FLAKY $1   $2   (no step failed twice; first: $(echo "$one" | head -2 | cut -c1-90 | paste -sd ';' -); then: $(echo "$two" | head -2 | cut -c1-90 | paste -sd ';' -))" | tee -a "$OUT/flaky.txt"
-  else echo "FAIL $1   $2   (${same:-$(echo "$two" | head -2 | cut -c1-110 | paste -sd ';' -)}; see $4; the first run $3)"; fi
+    echo "FLAKY $1   (no step failed twice; first: $(echo "$one" | head -2 | cut -c1-90 | paste -sd ';' -); then: $(echo "$two" | head -2 | cut -c1-90 | paste -sd ';' -))" | tee -a "$OUT/flaky.txt"
+  else echo "FAIL $1   (${same:-$(echo "$two" | head -2 | cut -c1-110 | paste -sd ';' -)}; see $3; the first run $2)"; fi
 }
-game_step() {
-  local c=$1 pass=$2 rc
-  # (a big city's game, every step, takes up to about 35 minutes alone on a software renderer: Shibuya)
-  timeout 2700 $X node tools/game_check.js "$c" "$OUT/$c" >"$OUT/$c.log" 2>&1; rc=$?
-  if [ $rc -eq 0 ]; then
-    echo "ok   game   $c$([ "$pass" = alone ] && echo "   (alone, after failing under load: see $OUT/$c-load.log)")"
-  elif [ "$pass" = load ]; then cp "$OUT/$c.log" "$OUT/$c-load.log"; echo "game $c" >>"$RETRY"
-  elif [ $rc -eq 124 ]; then echo "FAIL game   $c   (timed out after 2700 s alone; see $OUT/$c.log)"
-  else twice game "$c" "$OUT/$c-load.log" "$OUT/$c.log"; fi
+run_story() {   # on a small page: a software renderer draws the stopped world's grade slowly
+  if LIMIT=3000 timeout 3600 $X node tools/story_play.js "$OUT/story" 800x500 >"$OUT/story.log" 2>&1; then echo "ok   story  the episode plays through its seven frames to the last card"
+  else echo "FAIL story  $(grep '^FAIL\|pageerror' "$OUT/story.log" | head -2 | cut -c1-160 | paste -sd ';' -)   (see $OUT/story.log)"; fi
 }
-clip_step() {
-  local c=$1 pass=$2
-  if timeout 1800 $X node tools/clip_check.js "$c" 40 "$OUT/$c-clip.json" >"$OUT/$c-clip.log" 2>&1; then
-    echo "ok   clip   $c   ($(grep -c '^ok' "$OUT/$c-clip.log") measures within tolerance$([ "$pass" = alone ] && echo "; alone, after failing under load: see $OUT/$c-clip-load.log"))"
-  elif [ "$pass" = load ]; then cp "$OUT/$c-clip.log" "$OUT/$c-clip-load.log"; echo "clip $c" >>"$RETRY"
-  else twice clip "$c" "$OUT/$c-clip-load.log" "$OUT/$c-clip.log"; fi
+# the page on a phone's low tier (an iPhone emulated, quality.js lean) must stay inside the memory budget, so that
+# an iPhone's tab is not killed (docs/PERFORMANCE.md, "On a phone")
+run_mem() {
+  if timeout 1800 $X node tools/mem_check.js "$MAP" >"$OUT/mem.log" 2>&1; then
+    echo "ok   mem    $(grep -o 'GPU peak [0-9]* MB' "$OUT/mem.log" | head -1), $(grep -o '[0-9]* at the end after a collection' "$OUT/mem.log" | head -1) heap"
+  else echo "FAIL mem    $(grep -o 'over [0-9]*' "$OUT/mem.log" | paste -sd ';' - | head -c120)   (see $OUT/mem.log)"; fi
 }
-# the game on a phone's low tier (an iPhone emulated, quality.js lean) must stay inside the memory budget, so an
-# iPhone's tab is not killed (issue: Shibuya's "A problem repeatedly occurred", docs/PERFORMANCE.md "On a phone").
-# tools/mem_check.js opens #play-<city> as an iPhone, plays, and reads the peak GPU memory and the settled JS heap
-mem_step() {
-  local c=$1
-  if timeout 1800 $X node tools/mem_check.js "$c" >"$OUT/$c-mem.log" 2>&1; then
-    echo "ok   mem    $c   ($(grep -o 'GPU peak [0-9]* MB' "$OUT/$c-mem.log" | head -1), $(grep -o '[0-9]* at the end after a collection' "$OUT/$c-mem.log" | head -1) heap)"
-  else echo "FAIL mem    $c   ($(grep -o 'over [0-9]*' "$OUT/$c-mem.log" | paste -sd ';' - | head -c120); see $OUT/$c-mem.log)"; fi
+run_clip() {
+  if timeout 1800 $X node tools/clip_check.js "$MAP" 40 "$OUT/clip.json" >"$OUT/clip.log" 2>&1; then echo "ok   clip   $(grep -c '^ok' "$OUT/clip.log") measures within tolerance"; return; fi
+  cp "$OUT/clip.log" "$OUT/clip-first.log"
+  if timeout 1800 $X node tools/clip_check.js "$MAP" 40 "$OUT/clip.json" >"$OUT/clip.log" 2>&1; then echo "ok   clip   $(grep -c '^ok' "$OUT/clip.log") measures within tolerance   (the second run; the first: $OUT/clip-first.log)"
+  else twice clip "$OUT/clip-first.log" "$OUT/clip.log"; fi
 }
-tour_step() {
-  local c=$1 rc
-  # a big model's tour under a software renderer, three cities at a time, can take 20 minutes (Paris)
-  timeout 1800 $X node tools/tour_check.js "$c" "$OUT/tour-$c" >"$OUT/tour-$c.log" 2>&1; rc=$?
-  if [ $rc -eq 0 ]; then echo "ok   tour   $c: $(tail -1 "$OUT/tour-$c.log" | sed 's/^[^:]*: //')"
-  elif [ $rc -eq 124 ]; then echo "FAIL tour   $c   (timed out after 1800 s; see $OUT/tour-$c.log)"
-  else echo "FAIL tour   $c   ($(grep -m1 '^FAIL' "$OUT/tour-$c.log" || tail -1 "$OUT/tour-$c.log"); see $OUT/tour-$c.log)"; fi
+run_game() {   # (every step takes about half an hour on a software renderer)
+  if timeout 2700 $X node tools/game_check.js "$MAP" "$OUT/game" >"$OUT/game.log" 2>&1; then echo "ok   game   $(grep -c '^ok' "$OUT/game.log") steps of the free game"; return; fi
+  cp "$OUT/game.log" "$OUT/game-first.log"
+  if timeout 2700 $X node tools/game_check.js "$MAP" "$OUT/game" >"$OUT/game.log" 2>&1; then echo "ok   game   $(grep -c '^ok' "$OUT/game.log") steps of the free game   (the second run; the first: $OUT/game-first.log)"
+  else twice game "$OUT/game-first.log" "$OUT/game.log"; fi
 }
-run_city() {   # the kinds wanted of this city's checks, one after the other
-  local c=$1 k
-  for k in $KINDS; do
-    is_in "$k" "${want[$c]}" || continue
-    case $k in game) game_step "$c" load ;; clip) clip_step "$c" load ;; mem) mem_step "$c" ;; tour) tour_step "$c" ;; esac
-  done
+run_gl() {   # the governor's extras shed from the first frame, the scene multisampled, the ladder walked, every WebGL call asked for its error
+  if START=0.8/0.5 Q=msaa=on WALK=1 timeout 1800 $X node tools/gl_error_probe.js "$MAP" >"$OUT/gl.log" 2>&1; then
+    echo "ok   gl     opened with the extras shed and multisampling on, the ladder walked: WebGL refused no call"
+  else echo "FAIL gl     $(grep -o '"call":"[^"]*"' "$OUT/gl.log" | head -2 | cut -c9-160 | paste -sd ';' -)   (see $OUT/gl.log)"; fi
+  # the same map as a GPU with sixteen texture units in a fragment shader (Apple's, most phones'; the software
+  # renderer has 32): every program that does not link there is compiled again with less until it does
+  if Q=units=16 timeout 1800 $X node tools/sampler_probe.js "$MAP" >"$OUT/units.log" 2>&1; then
+    echo "ok   gl     as a 16-unit GPU every material drawn$(grep -o 'goes without: .*' "$OUT/units.log" | sed 's/^/, /')"
+  else echo "FAIL gl     as a 16-unit GPU a material is left undrawn: $(tail -3 "$OUT/units.log" | head -1 | cut -c1-200)   (see $OUT/units.log)"; fi
 }
-run_reef() {
-  local r=$1 res
-  res=$(timeout 600 node tools/page_eval.js "reef/index.html?city=$r&still=1&gl=1&gametest=1&mute=1" \
-    "window.__gametest && [window.__gametest.pass, window.__gametest.fail]" 2>"$OUT/$r.log" | tail -1)
-  case "$res" in
-    \[*,0\]) echo "ok   reef   $r ${res}" ;;
-    *) echo "FAIL reef   $r ${res:-no result}   (see $OUT/$r.log)" ;;
-  esac
-}
-run_loader() {
-  local m
-  for m in play model; do
-    if timeout 1200 $X node tools/load_check.js sydney "$OUT/load-$m" $m 1440x900 400 >"$OUT/load-$m.log" 2>&1; then
-      echo "ok   loader $m: $(grep -o 'opened after [0-9.]* s' "$OUT/load-$m.log"), the view drawn as the loader fades"
-    else echo "FAIL loader $m   ($(grep '^FAIL' "$OUT/load-$m.log" | head -1); see $OUT/load-$m.log)"; fi
-  done
-}
-run_story() {   # a map's story (web/game/story.js, ?story=1): the first episode played beat by beat, on a small page (a software
-  # renderer draws the stopped world's grade slowly): the street runs, the Stop comes with the crossing full, the afterimage speaks
-  # as you reach her, and the world runs on
-  local c
-  for c in $CITIES; do
-    python3 -c "import json,sys; sys.exit(0 if json.load(open('web/data/$c/game.json', encoding='utf8')).get('story') else 1)" || continue
-    if timeout 3600 $X node tools/story_shot.js "$c" "$OUT/story-$c" 800x500 >"$OUT/story-$c.log" 2>&1; then echo "ok   story  $c: the first episode plays through its beats"
-    else echo "FAIL story  $c: $(grep '^FAIL\|pageerror' "$OUT/story-$c.log" | head -2 | cut -c1-160 | paste -sd ';' -)   (see $OUT/story-$c.log)"; fi
-  done
-}
-run_gl() {   # the map as an ordinary device opens it (issue 485; tools/gl_error_probe.js): the governor's extras shed from the
-  # first frame, the scene multisampled, the ladder walked in play, and every WebGL call asked for its error. Shibuya,
-  # the heaviest map, before landing; every live map in the full tier
-  local c list=shibuya
-  [ "$TIER" = full ] && list=$CITIES
-  for c in $list; do
-    if START=0.8/0.5 Q=msaa=on WALK=1 timeout 1800 $X node tools/gl_error_probe.js "$c" >"$OUT/gl-$c.log" 2>&1; then
-      echo "ok   gl     $c: opened with the extras shed and multisampling on, the ladder walked: WebGL refused no call"
-    else echo "FAIL gl     $c: $(grep -o '"call":"[^"]*"' "$OUT/gl-$c.log" | head -2 | cut -c9-160 | paste -sd ';' -)   (see $OUT/gl-$c.log)"; fi
-    # the same map as a GPU with sixteen texture units in a fragment shader (Apple's, most phones'; the software
-    # renderer has 32): every program that does not link there is compiled again with less until it does, and no
-    # material is left undrawn (tools/sampler_probe.js, glcare.js fit)
-    if Q=units=16 timeout 1800 $X node tools/sampler_probe.js "$c" >"$OUT/units-$c.log" 2>&1; then
-      echo "ok   gl     $c: as a 16-unit GPU every material drawn$(grep -o 'goes without: .*' "$OUT/units-$c.log" | sed 's/^/, /')"
-    else echo "FAIL gl     $c: as a 16-unit GPU a material is left undrawn: $(tail -3 "$OUT/units-$c.log" | head -1 | cut -c1-200)   (see $OUT/units-$c.log)"; fi
-  done
-}
-# the game played by touch (tools/touch_check.js): a phone's page of the lead map, where no key can be pressed
 run_touch() {
-  local c=${CHECK_TOUCH:-shibuya}
-  if PORT=$PORT timeout 1500 $X node tools/touch_check.js "$c" "$OUT/touch" >"$OUT/touch.log" 2>&1; then
-    echo "ok   touch  $c: $(grep -c '^ok' "$OUT/touch.log") steps on a phone's page: no key named, the kerb, a taxi ridden, the wheel and the zoom by touch"
-  else echo "FAIL touch  $c: $(grep '^FAIL' "$OUT/touch.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/touch.log)"; fi
+  if timeout 1500 $X node tools/touch_check.js "$MAP" "$OUT/touch" >"$OUT/touch.log" 2>&1; then
+    echo "ok   touch  $(grep -c '^ok' "$OUT/touch.log") steps on a phone's page"
+  else echo "FAIL touch  $(grep '^FAIL' "$OUT/touch.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/touch.log)"; fi
 }
-run_telemetry() {   # the visitor and SLO events end to end, and the game's save on leaving (tools/telemetry_check.js)
-  if TPORT=$((PORT + 21)) timeout 1500 $X node tools/telemetry_check.js sydney "$OUT/telemetry" >"$OUT/telemetry.log" 2>&1; then
-    echo "ok   telemetry  $(grep -c '^ok' "$OUT/telemetry.log") steps: views, loads, play time, frame rate, tour, spots, exit, crash, the SLO report, the save"
-  else echo "FAIL telemetry  $(grep '^FAIL' "$OUT/telemetry.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/telemetry.log)"; fi
-}
-# the device-side ASTC encoder (web/astc.js) against a real decoder: SwiftShader's, since Mesa's llvmpipe offers none
-run_astc() {
-  if PORT=$PORT env -u DISPLAY timeout 600 node tools/astc_check.js >"$OUT/astc.log" 2>&1; then
+run_astc() {   # SwiftShader decodes ASTC; Mesa's llvmpipe offers none, so without a display
+  if timeout 600 env -u DISPLAY node tools/astc_check.js >"$OUT/astc.log" 2>&1; then
     echo "ok   astc   $(grep -c '^ok' "$OUT/astc.log") pictures encoded on the page and decoded by the GPU, none under the floor"
   else echo "FAIL astc   $(grep '^FAIL' "$OUT/astc.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/astc.log)"; fi
 }
-run_title() {
-  timeout 1800 node tools/title_check.js "$OUT/title" >"$OUT/title.log" 2>&1
-  python3 -I - "$OUT/title.log" <<'EOF'
-import json, sys
-bad, seen = [], 0
-for line in open(sys.argv[1]):
-    name, _, rest = line.strip().partition(' ')
-    rest = rest.strip()
-    if not rest.startswith('{'): continue
-    seen += 1
-    res, _, errs = rest.partition('} errors:')
-    if errs: bad.append(f'{name}: page errors:{errs}'); res += '}'
-    for frame, m in json.loads(res).items():
-        if not m.get('still') and m.get('litPct', 0) < 5: bad.append(f'{name} {frame}: black frame ({m.get("litPct")}% lit)')
-if not seen: bad.append('no scenario ran')
-print('FAIL title   ' + '; '.join(bad) if bad else f'ok   title  {seen} devices and faults, none black')
-EOF
-  # a click opens a destination's card and a second goes in; Tokyo goes in only from its subway map
-  if timeout 900 $X node tools/title_pick_check.js >"$OUT/title-pick.log" 2>&1; then
-    echo "ok   title picks  $(grep -c ': ' "$OUT/title-pick.log") steps: card first, in on the second click, districts from the map"
-  else echo "FAIL title picks  $(grep -E 'FAIL|Error' "$OUT/title-pick.log" | head -2 | cut -c1-140 | paste -sd ';' -)   (see $OUT/title-pick.log)"; fi
-  # the postcards: the journey over six weeks, the stills and the index, then a menu without them and a card's link
-  if timeout 1500 $X node tools/postcards_check.js >"$OUT/postcards.log" 2>&1; then
-    echo "ok   postcards  $(grep -c ': ok' "$OUT/postcards.log") steps: the journey, the stills, none on the menu, a card's link into the game"
-  else echo "FAIL postcards  $(grep -E 'FAIL|Error' "$OUT/postcards.log" | head -2 | cut -c1-140 | paste -sd ';' -)   (see $OUT/postcards.log)"; fi
+# one static check: <name> <log> <what a pass says, or - for the log's last line> <the lines of a failure to show> <command...>
+st() {
+  local name=$1 log="$OUT/$2.log" ok=$3 pat=$4; shift 4
+  if "$@" >"$log" 2>&1; then [ "$ok" = - ] && tail -1 "$log" || printf 'ok   %-8s %s\n' "$name" "$ok"
+  else printf 'FAIL %-8s %s   (see %s)\n' "$name" "$(grep -E "$pat" "$log" | head -2 | cut -c1-150 | paste -sd ';' -)" "$log"; fi
+}
+parts() {   # the parts of the shared models loaded before playable and after, as their model splits now
+  local p dir
+  rm -rf "$OUT/parts"; mkdir -p "$OUT/parts"
+  python3 pipeline/meshopt.py split web/assets/vehicles/cars.glb web/assets/trees/trees.glb --out "$OUT/parts" || return 1
+  for p in "$OUT"/parts/*.glb; do
+    case $(basename "$p") in cars*) dir=vehicles ;; *) dir=trees ;; esac
+    cmp -s "$p" "web/assets/$dir/$(basename "$p")" || { echo "FAIL $(basename "$p") is not its model's part: python3 pipeline/meshopt.py split web/assets/$dir/<model>.glb"; return 1; }
+  done
 }
 
 {
-  if [ "${CHECK_STATIC:-1}" != 0 ]; then
-  # what the characters say, everywhere (tools/voice_check.py): locals, not the map's credits. A second or so.
-  if python3 tools/voice_check.py >"$OUT/voice.log" 2>&1; then tail -1 "$OUT/voice.log"
-  else echo "FAIL voice  $(grep '^FAIL' "$OUT/voice.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/voice.log)"; fi
-  # each live map's daily life (cities/<id>/life.json, pipeline/life.py): its people are the map's, five ranks each with a
-  # fact, its places inside the map, its events sourced, and web/data/<id>/life.json built from it as it is now
-  if python3 pipeline/life.py --check >"$OUT/life.log" 2>&1; then echo "ok   life   $(ls cities/*/life.json | wc -l) maps' daily life checked and built"
-  else echo "FAIL life   $(grep -v '^FAIL' "$OUT/life.log" | head -2 | cut -c1-140 | paste -sd ';' -)   (see $OUT/life.log)"; fi
-  # what a ride costs (web/game/fares.js): the rules on trips with known answers, and each live map's table priced
-  # between every pair of its stops. A second.
-  if node tools/fares_check.js >"$OUT/fares.log" 2>&1; then tail -1 "$OUT/fares.log"
-  else echo "FAIL fares  $(grep '^FAIL' "$OUT/fares.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/fares.log)"; fi
-  # each live map's goals (web/game/goals.js): the rules on a made-up map, and every map's lines and quests sound as
-  # data and played from the welcome to the last stamp with no browser. A second.
-  if node tools/goals_check.js >"$OUT/goals.log" 2>&1; then tail -1 "$OUT/goals.log"
-  else echo "FAIL goals  $(grep '^FAIL' "$OUT/goals.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/goals.log)"; fi
-  # each city's packed buildings (buildings.bin, pipeline/pack.py) against its buildings.json: up to date,
-  # and decoded by the browser's decoder (web/pack.js) to the same values. Ten seconds or so.
-  if python3 pipeline/pack.py --check >"$OUT/pack.log" 2>&1 && node tools/pack_check.js >>"$OUT/pack.log" 2>&1; then
-    echo "ok   pack   $(grep -c ' MB packed' "$OUT/pack.log") packs (buildings, landmarks, game, terrain, places, scene) up to date and decoded to their JSON"
-  else echo "FAIL pack   $(grep '^FAIL' "$OUT/pack.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/pack.log)"; fi
-  # fishing (docs/FISHING.md): each city's fishing.json and game.json pointer as pipeline/fishing.py writes them
-  # from city.json now, and the rules' balance (tools/fishing_sim.js: three players against every species). Seconds.
-  if python3 pipeline/fishing.py --check >"$OUT/fishing.log" 2>&1 && node tools/fishing_sim.js >>"$OUT/fishing.log" 2>&1; then
-    echo "ok   fishing  $(ls web/data/*/fishing.json | wc -l | tr -d ' ') waters' data up to date, and the fights balanced"
-  else echo "FAIL fishing  $(grep -E 'FAIL|stale' "$OUT/fishing.log" | head -2 | cut -c1-140 | paste -sd ';' -)   (see $OUT/fishing.log)"; fi
-  # the visibility sweep (web/visibility-sweep.js over each live city's vis.bin, issue 358) against exact rays:
-  # nothing a ray reaches may be reported hidden. Half a minute.
-  if EYES=12 node tools/vis_unit.js >"$OUT/vis.log" 2>&1; then echo "ok   vis    $(grep -c '^ok' "$OUT/vis.log") live cities: the sweep hides nothing an exact ray reaches"
-  else echo "FAIL vis    $(grep -E '^FAIL|Error' "$OUT/vis.log" | head -2 | cut -c6-160 | paste -sd ';' -)   (see $OUT/vis.log)"; fi
-  # the frame-time governor on modelled devices (tools/governor_unit.js, issue 485): it settles where a device's
-  # limit lies between two steps, still gives way to a heavier scene, and comes back. No browser; a second
-  if node tools/governor_unit.js >"$OUT/governor.log" 2>&1; then echo "ok   governor  $(grep -c '^ok' "$OUT/governor.log") cases: a device at its limit settles, gives way and comes back"
-  else echo "FAIL governor  $(grep '^FAIL' "$OUT/governor.log" | head -2 | cut -c6-170 | paste -sd ';' -)   (see $OUT/governor.log)"; fi
-  # every live city's solids valid on the decimetre grid they are stored on (pipeline/solid_rings.py): else the browser
-  # draws one shape and the collision tests another, and a walker or a helicopter stands inside a drawn block
-  if python3 pipeline/solid_rings.py --check $(bash tools/live_cities.sh) >"$OUT/rings.log" 2>&1; then
-    echo "ok   rings  $(grep -c '^ok' "$OUT/rings.log") live cities' solids valid on their grid"
-  else echo "FAIL rings  $(grep '^FAIL' "$OUT/rings.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/rings.log)"; fi
-  # no landmark hangs in the air in a live city (tools/float_check.py: a sign tower whose legs miss the roof, a
-  # screen stood at a penthouse's height over a lower roof)
-  if for c in $(tools/live_cities.sh); do python3 tools/float_check.py "$c" || exit 1; done >"$OUT/float.log" 2>&1; then
-    echo "ok   landmarks stand on something ($(grep -c 'floating$' "$OUT/float.log") cities)"
-  else echo "FAIL floating landmarks: $(grep '^FLOATS' "$OUT/float.log" | head -2 | cut -c8-120 | paste -sd ';' -)   (see $OUT/float.log)"; fi
-  # and no picture (a sign, a screen, a print) has another landmark standing in front of it (tools/sign_clear.py: a
-  # facade's fins across a screen, two generators' signs hung in one place)
-  if for c in $(tools/live_cities.sh); do python3 tools/sign_clear.py "$c" || exit 1; done >"$OUT/signclear.log" 2>&1; then
-    echo "ok   pictures clear ($(grep -c 'in front$' "$OUT/signclear.log") cities: no sign or screen behind another landmark)"
-  else echo "FAIL covered pictures: $(grep '^COVERED' "$OUT/signclear.log" | head -2 | cut -c9-130 | paste -sd ';' -)   (see $OUT/signclear.log)"; fi
-  # the far crowd's copy of every live city's cast (pipeline/crowd_cast.py, issue 475): a cast member without one is a doll far off
-  if python3 pipeline/crowd_cast.py --check >"$OUT/crowd_cast.log" 2>&1; then tail -1 "$OUT/crowd_cast.log"
-  else echo "$(grep '^FAIL' "$OUT/crowd_cast.log" | head -1 | cut -c1-160)   (see $OUT/crowd_cast.log)"; fi
-  # every shared model meshopt-compressed (pipeline/meshopt_glb.mjs, issue 148): a rebuilt one that missed the step
-  if node pipeline/meshopt_glb.mjs --check web/assets/*/*.glb >"$OUT/meshopt.log" 2>&1; then tail -1 "$OUT/meshopt.log"
-  else echo "FAIL meshopt $(grep '^FAIL' "$OUT/meshopt.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/meshopt.log)"; fi
-  # the parts of the shared models loaded before playable and after (pipeline/split_glb.mjs, issue 335): as their model
-  # splits now, so a rebuilt model can't leave the pages loading old parts of it
-  mkdir -p "$OUT/parts"
-  if python3 pipeline/meshopt.py split web/assets/vehicles/cars.glb web/assets/trees/trees.glb --out "$OUT/parts" >"$OUT/parts.log" 2>&1 \
-    && for p in "$OUT"/parts/*.glb; do cmp -s "$p" "web/assets/$(case $(basename "$p") in cars*) echo vehicles;; *) echo trees;; esac)/$(basename "$p")" || { echo "FAIL $(basename "$p") is not its model's part: python3 pipeline/meshopt.py split web/assets/*/<model>.glb" >>"$OUT/parts.log"; false; }; done; then
-    echo "ok   parts  $(ls "$OUT"/parts/*.glb | wc -l) parts of the shared models up to date"
-  else echo "FAIL parts  $(grep '^FAIL' "$OUT/parts.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/parts.log)"; fi
-  # signs that read mirrored, in the built landmarks of the cities checked (tools/sign_check.py): every live city's
-  # when no city is named (the static checks alone)
-  signs=("${cities[@]}"); [ ${#signs[@]} -eq 0 ] && signs=($CITIES)
-  if python3 tools/sign_check.py "${signs[@]}" >"$OUT/signs.log" 2>&1; then echo "ok   signs  ${#signs[@]} cities, every sign reads the right way round"
-  else echo "FAIL signs  $(grep -v '^ok' "$OUT/signs.log" | head -2 | paste -sd ';' -)   (see $OUT/signs.log)"; fi
+  if [ $static -eq 1 ] && [ "${CHECK_STATIC:-1}" != 0 ]; then
+    st voice voice - '^FAIL' python3 tools/voice_check.py
+    st goals goals - '^FAIL' node tools/goals_check.js
+    st pack pack "the packs up to date" '^FAIL' python3 pipeline/pack.py --check
+    st pack pack_decode "the packs decode to their JSON" '^FAIL|Error' node tools/pack_check.js
+    st vis vis "the sweep hides nothing an exact ray reaches" '^FAIL|Error' env EYES=12 node tools/vis_unit.js
+    st governor governor "a device at its limit settles, gives way and comes back" '^FAIL' node tools/governor_unit.js
+    st rings rings "the solids valid on their grid" '^FAIL|Error' python3 pipeline/solid_rings.py --check "$MAP"
+    st float float "every landmark stands on something" '^FLOATS|Error' python3 tools/float_check.py "$MAP"
+    st signs signclear "no sign or screen behind another landmark" '^COVERED|Error' python3 tools/sign_clear.py "$MAP"
+    st signs signs "every sign reads the right way round" '^[^o]' python3 tools/sign_check.py "$MAP"
+    st crowd crowd_cast - '^FAIL|Error' python3 pipeline/crowd_cast.py --check
+    st meshopt meshopt - '^FAIL|Error' node pipeline/meshopt_glb.mjs --check web/assets/*/*.glb
+    st parts parts "the parts of the shared models up to date" '^FAIL|Error' parts
   fi
-  for c in "${cities[@]}"; do
-    while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do wait -n; done
-    run_city "$c" &
-  done
-  wait
-  while read -r step c; do "${step}_step" "$c" alone; done <"$RETRY"
-  for r in "${reefs[@]}"; do run_reef "$r"; done
-  [ $loader -eq 1 ] && run_loader
-  [ $title -eq 1 ] && run_title
-  [ $telemetry -eq 1 ] && run_telemetry
-  [ $astc -eq 1 ] && run_astc
-  [ $touch -eq 1 ] && run_touch
-  [ $gl -eq 1 ] && run_gl
-  [ $story -eq 1 ] && run_story
+  for k in $KINDS; do is_in "$k" "$want" && "run_$k"; done
 } | tee "$OUT/summary.txt"
 grep -q '^FAIL' "$OUT/summary.txt" && exit 1
 stamp "$@"

@@ -4,10 +4,10 @@
 //   xvfb-run -a node tools/car_wall_probe.js amsterdam [seconds]
 const { chromium } = require('playwright');
 (async () => {
-  const city = process.argv[2] || 'amsterdam', secs = +(process.argv[3] || 60);
+  const city = process.argv[2] || 'shibuya', secs = +(process.argv[3] || 60);
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=gl', '--ignore-gpu-blocklist'] });
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction(() => window.__game && window.__game.cars && window.__game.roadNet, null, { timeout: 600000 });
   const out = await p.evaluate(secs => {
     const g = window.__game, C = g.cars.C, RL = g.roadNet.L, still = new Map(), seen = new Map();

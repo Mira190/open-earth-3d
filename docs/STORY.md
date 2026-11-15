@@ -1,13 +1,12 @@
 # Blue Hour: the story
 
-Seven evenings at the Shibuya Scramble, 10 to 16 October. One camera with seven frames left in it.
-One question that turns over every evening: **why did he not cross the street?**
+One evening at the Shibuya Scramble, 10 October, from the blue hour into the night. One camera with
+seven frames left in it. One question that turns over with every frame: **why did he not cross the street?**
 
 This is the story bible: the premise and its rules, what was learned from the works it stands on,
 the truth of what happened in 1964, the seven episodes beat by beat, the clues and where each is
 planted, and what the game has to be able to do to tell it. `cities/shibuya/city.json` `game.story`
-holds the episodes as data (`web/game/story.js` plays them); episode 1 is built, the rest are
-written here first.
+holds the episode as data (`web/game/story.js` plays it; `tools/story_play.js` plays it through).
 
 The people and the crime are invented. The place, the dates, the hours and the city's history are
 real, and the story is built so that the real things are the clues.
@@ -20,8 +19,8 @@ hour for sixty years for a man who never came. She gives you his camera. There a
 left on a roll he began in 1964, and the twenty-nine frames before them were never developed.
 
 Every photograph you take in the stopped world, from the right place, brings up the picture that
-was taken from that same place in 1964, laid over yours. Seven frames, seven evenings, seven
-pictures out of the past. The first one shows the woman herself, waiting at the corner, taken from
+was taken from that same place in 1964, laid over yours. Seven frames, seven
+pictures out of the past, one evening. The first one shows the woman herself, waiting at the corner, taken from
 across the street on the evening she says she stood alone.
 
 He came. He photographed her. He did not cross. The story is finding out why, and then doing
@@ -31,9 +30,9 @@ something about it with the last frame.
 
 A mystery is only fair if its impossible thing has rules, said early and never broken.
 
-1. **The Stop** comes once an evening, at sunset on the real sun's clock (17:14 on the 10th, a
-   minute or so earlier each evening after), and lasts nine minutes. It comes when the crossing is
-   full.
+1. **The Stop** first comes at sunset on the real sun's clock, 17:14, when the crossing is full.
+   After that the camera brings it on: near a place where one of its 1964 frames was taken, the
+   world stops again, for a few minutes.
 2. In the Stop the world has no time: people, traffic, trains, rain and screens hold. Whoever
    carries the camera moves.
 3. **An afterimage** also moves. An afterimage is not a ghost. It is what a person left behind at a
@@ -103,7 +102,7 @@ hold is cut from the plot, not bent.
 **The people of 1964.**
 
 - **Sumiko Hayase** 早瀬澄子, 22. Runs a lift at the Toyoko department store. The afterimage at the
-  Hachiko kerb.
+  north-west kerb of the crossing, across from Hachiko.
 - **Akira Mizuno** 水野晶, 26. Lecturer at the planetarium. He photographs the night sky over
   Shibuya from the dome's roof, month by month, to record the stars the city's lights are putting
   out. The camera is his. He is the man who is not in the photograph, because he took them all.
@@ -167,149 +166,77 @@ kerb in the opening shot of every episode. The girl of 22 is what she left there
 This is the first 10 October on which both of them have an afterimage at the crossing. That is why
 it stops.
 
-## 6. The seven episodes
+## 6. Episode one: the whole case, in one evening
 
-Each episode is one evening and one frame: a cold open (15 seconds), the street (a minute or two
-with the living), the Stop (nine minutes: go to the afterimage, hear them, find the standpoint,
-take the one photograph), the print, and a cut on the worst possible second. Ten to twelve minutes.
+**The shape.** The first build ended on a card after one photograph, three minutes in. That is a
+demonstration, not a story. A detective story is cut by its questions, not by a quota: the reader
+stays for as long as each answer opens a worse question, and is let go once, at the end. So the
+case of Sumiko and Akira is **one episode, played in one go**: one evening that runs in real time
+from the blue hour at 17:14 into the night, seven frames, about thirty-five to forty-five minutes,
+and one card at the end with the whole roll on it. The seven frames are not seven levels. They are
+the clock of the case: the counter in the corner goes down, and there is no eighth.
 
-Episodes 1, 2, 6 and 7 are played inside the hundred metres round the spawn. The story is written
-that way on purpose: the level that has to be finest is the one seen four times.
+It has the movements a classical mystery has, and two things taken straight from the best of them:
 
-### Weather, light and sound, by what the evening is for
+- **A false solution at the midpoint** (frame 3): the evidence points at Sumiko herself, the client.
+- **The challenge to the reader** (before frame 7): the living Sumiko asks three questions, and the
+  player answers them from the six prints already taken. Who was behind Kanbara? Why did Akira not
+  cross? What did he send across with the boy? A wrong answer costs a look and a hint at which
+  print to look at again. The player solves the case; nobody recites it to them.
 
-Weather is cast like a character: it is there because the episode needs it, never as a default.
-Six evenings are dry. Rain comes once.
+Later episodes are other cases at other hours, each a different promise left standing somewhere in
+Shibuya. The last card of this one loads the next roll.
 
-| Evening | Sky | Why |
+**Every frame is a place worth photographing.** The camera raised is the lens's own view, from the
+eye, with the wheel as the lens's ring (a long lens to a wide one). Each frame asks for a picture
+a visitor to Shibuya would want anyway, and the clue is in it.
+
+| # | Hour | Where, and the picture | The living | Who moves in the Stop | What turns over |
+|---|---|---|---|---|---|
+| 1 | 17:14 | Her kerb, north-west of the Scramble: **the stopped crossing under its screens** | (the old woman with the clear umbrella is at the kerb) | Sumiko, 22 | She gives you his camera. A name under the base plate: 水野 |
+| 2 | 17:19 | Under the **Center Gai arch**, looking back across the crossing to the station kerb | Shun at the vintage shop reads the camera: 29 frames taken, never developed | A shoeshine boy | He came. He stood across the street between two policemen |
+| 3 | 17:24 | **Hachiko**, with the station behind | (an old man by the statue is watching the camera) | The detective at the police box | He confessed within the hour. In the dead man's hand: a lift girl's glove. *Sumiko ran a lift.* |
+| 4 | 17:31 | **SHIBUYA SKY**, the compass at the top of the roof: down on to Hikarie, the city lit behind | Yuna at the lift: her grandmother's story of the girl who came down with one glove | Kanbara, the dead man | The second shadow at the parapet wears a site helmet. It was not her |
+| 5 | 17:39 | The foot of the tower, where the river went under: **the tower from the street up to its lights** | | Tatsuo, her brother | He did it, and let Akira carry it. Each lover believed the other guilty and kept silent |
+| 6 | 17:46 | **The Scramble from the station kerb**, where Akira stood: his own frame, taken again | Mr Tanaka by Hachiko: he was the boy; the sentence he never delivered; Akira lived fifteen minutes away for 48 years; who hired you | Akira, new this year | The message was in the camera all along: three men in a shop window, and two tickets held up |
+| 7 | 17:53, rain | **Both kerbs in one frame**: the corner of the crossing that sees them both | Sumiko, 82: *You came late.* Her three questions | The girl of 1964 and Akira, one on each kerb, silent | Every light goes green. They meet in the middle. The living Sumiko crosses |
+
+**How a frame plays** (four to six minutes): a line on screen says where to go and a light stands
+there; one of the living, if the frame has one, says their piece when you reach them; near the
+place the world stops; whoever still moves is found and heard; the camera comes up, the standpoint
+and the subject are found, and the picture is taken; a few lines on what the print shows; the
+world runs on, and the next line is already on screen. A Stop that runs out costs only the minute:
+the world runs, and stops again when you come back. A page closed mid-case opens at the same frame.
+
+**The opening** (twenty seconds): Shibuya from the air after sunset with every window and screen
+lit, the city that never sleeps; down to the kerb; the crossing from above as the title falls; the
+lights change.
+
+**In the world, not in menus.** The map's old instruments are gone from the story. People are
+solid: in the Stop nobody can make way, so the crowd on the crossing is something to thread, and
+the afterimage is the one figure in it that turns its head.
+
+### Weather, light and sound, by what the frame is for
+
+Weather is cast like a character: it is there because the story needs it, never as a default. Six
+frames are dry. Rain comes once.
+
+| Frames | Sky | Why |
 |---|---|---|
-| 1 | Clear, the blue hour at its cleanest | The first sight of the stopped world must be legible and quiet: a held breath, not weather. The hush when the street's sound drops out is the effect |
-| 2 | Clear | A puzzle of sight lines: nothing between the player and the far kerb |
-| 3 | Clear and cold, the longest view | From the roof the whole case is laid out below, and the first stars are out where he used to count them |
-| 4 | Overcast, mist in the lanes | The one evening away from the crossing, with a secret kept for sixty years: close, soft, no horizon |
-| 5 | Clear, low sun before the Stop | The sun is the evidence; it has to be seen and its shadows have to be sharp |
-| 6 | Clear, cloud building; the first drops on the cut | The weather turns as the case does |
-| 7 | Rain | Every umbrella is up, so the one clear umbrella can be followed across the whole crossing; and rain held still in the air is the picture of the Stop that the story has saved for last |
+| 1 to 3 | Clear, the blue hour at its cleanest | The first sight of the stopped world must be legible and quiet: a held breath, not weather. The hush when the street's sound drops out is the effect |
+| 4 | Clear, the first stars | From the roof the whole case is laid out below, where he used to count the stars the city was putting out |
+| 5, 6 | Clear, full night, the screens at their brightest | The case closes in as the sky does |
+| 7 | Rain, from the moment she says *you came late* | Every umbrella goes up, so the one clear umbrella can be followed across the whole crossing; and rain held still in the air is the picture of the Stop the story has saved for last |
 
 Sound follows the same rule. The street is the score: the crossing's signal, footsteps, a train on
 the viaduct. Rain, when it comes, is mixed under the voices as a soft, low wash, never a hiss, and
-the Stop cuts it to silence. An evening opens quietly enough to hear one person say one line.
+the Stop cuts it to silence. The evening opens quietly enough to hear one person say one line.
 
-### 1. You came late · 10 October, clear · the Scramble (built)
-
-- **Hook.** A clear evening, the sky still blue over the screens. The crossing fills, and stops. One
-  person turns to look at you.
-- **The Stop.** Sumiko at the Hachiko kerb: *You came late. Sixty years I have stood on this corner.
-  I was not waiting for you.* She gives you the camera and asks to be shown what the crossing has
-  become. You photograph the screens.
-- **The print.** Tonight's screens, and under them, faintly, the same corner in 1964 with a young
-  woman waiting at it: Sumiko herself. (To add to the built episode: the double exposure on the
-  last card, and the old woman with the clear umbrella at the kerb in the opening shot.)
-- **Reversal.** She said she stood alone. Somebody was across the street with a camera.
-- **Cut.** *Six frames left. Who took this?*
-
-### 2. The man who is not in the photograph · 11 October, clear · Center Gai and the far kerb
-
-- **Hook.** Shun at the vintage shop turns the camera over. A name is scratched under the base
-  plate: 水野. *There is a roll in it. Twenty-nine gone. Whatever is on it is still on it.*
-- **The task.** Find where the 1964 frame was taken from. The picture has Hachiko in it, and
-  Hachiko has moved since: the player has to line up what has not moved (the railway viaduct's
-  piers, the slope of Dogenzaka) and ends up on the kerb under the big screen.
-- **The Stop.** A boy of fourteen with a shoeshine box by the Center Gai arch. *A man gave me a
-  hundred yen to carry a camera across. He could have carried it himself. It was thirty steps.*
-  Press him with the print: *He had a policeman on each side of him.*
-- **The print.** The far kerb in 1964: a shop window, and in the glass three men, the middle one
-  with a camera raised. The man who is not in the photographs, in a photograph.
-- **Reversal.** He came. He was under arrest.
-- **Cut.** *What for?* The boy: *They said he had killed a man that afternoon. Up where the stars
-  are.*
-
-### 3. Where the stars are · 12 October, clear and cold · SHIBUYA SKY
-
-- **Hook.** Yuna at the lift: *Forty-five floors in under a minute. My grandmother ran a lift in the
-  old store. She said the job was the same: you take people up and you do not ask why.*
-- **The task.** The planetarium's roof is gone; Hikarie stands on it. The only place it can be seen
-  from now is above. On the roof at blue hour, with Taro's help on where to stand, photograph down
-  on to Hikarie.
-- **The Stop.** On the roof, a man in a good suit who does not know he is dead: Kanbara. *I had my
-  back to the stair. I was watching the rings, like every fool in Tokyo. All I know is whose glove
-  I was holding.*
-- **The print.** The dome, the parapet, two figures at it, and in the sky behind them five rings
-  half drawn: ten past three, to the minute.
-- **Reversal.** The glove is a lift girl's. The evidence points at Sumiko.
-- **Cut.** Back at the kerb, you ask her. *I told you I was not waiting for you. I was waiting for
-  him, or for the police. Whichever came first.*
-
-### 4. A hundred yen · 13 October, overcast, mist in the lanes · Sangenjaya
-
-- **Hook.** The bath-house at Sangenjaya. Mr Tanaka, seventy-four, sees the camera and sits down.
-  You met him two evenings ago. He was fourteen.
-- **What it proves.** The boy is alive. An afterimage is not the dead (rule 3).
-- **The living witness.** *He said: tell her to open it. I saw the policeman looking and I ran. One
-  sentence. I have had it in my mouth for sixty years.* And then: *He did not die in prison. He
-  came out in '76. He lived two lanes from here under another name. We shared this bath for forty
-  years and I never told him either. He went in March.*
-- **The task and the Stop.** In the triangle of lanes, find the standpoint of a frame taken at
-  night: Tatsuo Hayase in his site helmet, taking an envelope from Kanbara. Tatsuo's afterimage is
-  not here; the lane is empty and stopped. The photograph is the only witness.
-- **Reversal.** Tanaka hands you a letter: the order for your survey. It is from Mizuno's estate.
-  A dead man hired you.
-- **Cut.** *He stood at the far kerb every tenth of October. I think he is standing there now.*
-
-### 5. The river under the street · 14 October, clear, low sun · Shibuya Stream and the viaduct
-
-- **Hook.** The river comes out of its pipe at Shibuya Stream. A plaque gives the year it went
-  under. It does not give a name.
-- **The Stop.** Tatsuo at the culvert's mouth, helmet under his arm. His account: he was on the
-  site until four. He was nowhere near the roof.
-- **The task.** Break it with the sun. The roof frame from episode 3 has a second shadow in it,
-  falling towards the camera. At ten past three on 10 October the sun stands where the map says it
-  stands: the player takes the bearing at the Stream and sets it against the print. The shadow is
-  of a man in a site helmet. (For one breath it is the player's own silhouette: the surveyor's hard
-  hat. A red herring the player clears themselves.)
-- **The print.** The culvert works in September, at night, lamps and a covered shape on a
-  stretcher: what Kanbara wanted the film for.
-- **Reversal.** Tatsuo did it. Sumiko pushed a living man and ran; her brother came ten minutes
-  later. *Mizuno chose it himself. He thought she had done it. I let him think it.*
-- **Cut.** *She knows. I told her myself, in '89, the week I died. Ask her why she still stands
-  there.*
-
-### 6. The far kerb · 15 October, clear, cloud building · the Scramble
-
-- **Hook.** One frame for tonight, one for tomorrow. Sumiko, before you speak: *You have been to
-  see my brother.*
-- **The task.** Frame 29, the last one he took: the photograph of her from the far kerb, the one
-  the boy was sent across with. Stand where Akira stood. This is the frame episode 2 found the
-  place for; now it is taken at his minute, 17:14, facing as he faced.
-- **The print.** Sumiko at the corner, 1964, sharp this time. In the window beside the lens, Akira
-  between two officers, his free hand raised to her. Not waving. Holding up the planetarium's
-  ticket for the last show of the night: the train they were going to miss it for.
-- **Reversal one.** You carry the print across to her. The afterimage cannot see it (rule 4). A
-  hand comes past your shoulder and takes it: the old woman with the clear umbrella, who has been
-  at this kerb in every opening shot. *You came late*, she says, as she said to you on the first
-  evening, when you thought it was the girl. Sumiko Hayase, eighty-two.
-- **Reversal two.** She looked for him after 1989 and found no Mizuno. *He is over there, isn't he.
-  Every year I have felt the shutter. I have never once seen him.*
-- **Cut.** One frame. Two kerbs. The lights change, and the first drops fall.
-
-### 7. Scramble · 16 October, rain · the middle of the crossing
-
-- **Hook.** Rain, for the first time in the story. 17:06. Every umbrella in Shibuya is up; the
-  crossing fills from every side and stops, and the rain stops in the air with it.
-- **The Stop.** Two afterimages, one on each kerb: the girl of 1964 and, opposite, an old man in a
-  raincoat with his hands empty, new this year. Neither can see past their own kerb. In 1964 there
-  was no way to cross this junction corner to corner. There is now.
-- **The task.** Stand in the middle of the scramble, where the diagonals meet, and take the one
-  photograph that has both kerbs in it. Both of them, in one frame. The counter goes to 0.
-- **What happens.** The print is the first picture he has ever been in with her. The Stop does not
-  end on its clock: every pedestrian light goes green at once, and in the held world the two of
-  them step off their kerbs and walk the diagonal and meet where you are standing, and go out, like
-  a breath let go.
-- **The living.** The world runs. An old woman with a clear umbrella crosses the scramble corner to
-  corner, slowly, in the rain, through everyone, to the far kerb. She stands where he stood, and
-  looks back at where she stood.
-- **Last card.** The print, and under it the two dates. *Blue Hour.*
-- **After the card.** The counter, at 0, turns over to S. Somebody has loaded a new roll.
+**Built, and not yet.** Built and played through end to end: the seven frames, the living and the
+afterimages and all their lines, the questions, the lens view, the roll kept between visits, the
+last card with the contact sheet, the finale. Not yet: the 1964 plates (the double exposure is told
+in the lines after each photograph, not shown; section 8, item 1), the old woman's clear umbrella,
+a softer rain in the mix, and voices.
 
 ## 7. Fair play: every clue, and where it is first shown
 

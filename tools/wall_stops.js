@@ -10,7 +10,7 @@
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
-const [,, city = 'osaka', secs = '90', places = '4'] = process.argv;
+const [,, city = 'shibuya', secs = '90', places = '4'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
@@ -20,7 +20,7 @@ const [,, city = 'osaka', secs = '90', places = '4'] = process.argv;
     const p = await b.newPage({ viewport: { width: 800, height: 500 } });
     await pinClock(p, city);
     p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
-    await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 300000 });
     await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
     const r = await p.evaluate(([T, site]) => {

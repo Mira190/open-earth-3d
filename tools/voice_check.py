@@ -3,15 +3,14 @@
 Fails if a line a character says, or a quest, travel or area text the game shows, mentions where
 the map's data comes from or how it was built: open data, PLATEAU, LiDAR, Overture, OpenStreetMap,
 building counts, "rebuilt from", "the model", "surveyed" and the like. Where the data comes from
-belongs in the model viewer's tour and Sources panel and in docs/, not in a character's mouth.
+belongs in docs/, not in a character's mouth.
 
-What it reads, for every city with a game:
+What it reads, for the map:
   cities/<id>/city.json  game: title, greeting, blurb, smalltalk, npcs (name, role, idle),
                          lines (title, on_open), quests (title, stamp, talk, choices, steps' text),
                          areas, travel, spots, chatter, regulars, the funicular's note
+                         and every string of the story (game.story: the episodes' cards, lines and goals)
   web/data/<id>/game.json  the same, as the game loads it (with what city.py's game_extras adds)
-and for the reef sites, the strings the characters say in web/reef/game.js and web/reef/game/*.js
-(say, t, text and role values; a line's cited source shows under it and is not checked).
 
     python3 tools/voice_check.py            # prints one line per problem; exit 1 if any
 """
@@ -33,11 +32,8 @@ BANNED = [
     r'\{(buildings|share|acc|lidar)(:[^}]*)?\}', r'\bheight sources?\b', r'\bmachine[- ]learning\b',
     r'\bin this game\b', r'\bthe game engine\b',
 ]
-# a city's quests are walks, not surveys; at the reef, surveys are real (the fish ID survey, reef health
-# surveys, the Admiralty surveyor who named Whitehaven Beach)
-CITY_ONLY = [r'\bsurvey(s|ed|or|ors)?\b']
-RX = re.compile('|'.join(BANNED), re.I)
-RX_CITY = re.compile('|'.join(BANNED + CITY_ONLY), re.I)
+# the map's quests are walks, not surveys
+RX_CITY = re.compile('|'.join(BANNED + [r'\bsurvey(s|ed|or|ors)?\b']), re.I)
 
 
 def game_texts(g):
@@ -89,17 +85,12 @@ def game_texts(g):
 
 
 # a JS string literal: '...', "..." or `...` (template parts are checked as written)
-JS_STR = r"""('(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`)"""
-JS_SAID = re.compile(r'\b(say|t|text|role)\s*:\s*(?:G2?\s*=>\s*)?(?:\[\s*\{\s*t\s*:\s*)?' + JS_STR)
-
-
-def reef_texts(path):
-    src = open(path, encoding='utf8').read()
-    out = []
-    for m in JS_SAID.finditer(src):
-        line = src.count('\n', 0, m.start()) + 1
-        out.append((f'line {line} {m.group(1)}', m.group(2)[1:-1]))
-    return out
+def story_texts(v, where='story'):
+    """Every string of the story block that holds a space (a sentence, not an id or a key)."""
+    if isinstance(v, str):
+        return [(where, v)] if ' ' in v else []
+    items = v.items() if isinstance(v, dict) else enumerate(v) if isinstance(v, list) else []
+    return [t for k, x in items for t in story_texts(x, f'{where}.{k}')]
 
 
 def main():
@@ -112,18 +103,11 @@ def main():
         if os.path.exists(built):
             sources.append((f'web/data/{cid}/game.json', json.load(open(built, encoding='utf8'))))
         for name, gg in sources:
-            for where, text in game_texts(gg):
+            for where, text in list(game_texts(gg)) + story_texts(gg.get('story')):
                 seen += 1
                 m = RX_CITY.search(text)
                 if m:
                     bad.append(f'{name}: {where}: "{m.group(0)}" in: {text[:140]}')
-    reef = sorted(glob.glob(os.path.join(ROOT, 'web', 'reef', 'game', '*.js'))) + [os.path.join(ROOT, 'web', 'reef', 'game.js')]
-    for path in reef:
-        for where, text in reef_texts(path):
-            seen += 1
-            m = RX.search(text)
-            if m:
-                bad.append(f'{os.path.relpath(path, ROOT)}: {where}: "{m.group(0)}" in: {text[:140]}')
     for b in bad:
         print('FAIL', b)
     if bad:

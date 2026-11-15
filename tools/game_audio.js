@@ -39,7 +39,7 @@ const fs = require('fs');
     window.GainNode.prototype = GN.prototype;
   });
   p.on('pageerror', e => console.log('pageerror:', String(e).slice(0, 200)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || ''}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || '?walk=1'}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.flyover', null, { timeout: 600000 });
   await p.waitForTimeout(1500);
   // (Play, again until the title is gone: a first press may land while it is still settling)

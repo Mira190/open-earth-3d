@@ -23,7 +23,7 @@ const rss = () => { let s = 0; for (const d of fs.readdirSync('/proc')) { if (!/
   const workers = [];
   p.on('worker', w => { workers.push(w); w.on('close', () => workers.splice(workers.indexOf(w), 1)); });
   const t0 = Date.now();
-  p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || ''}#play-${city}`).catch(() => {});
+  p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || '?walk=1'}#play-${city}`).catch(() => {});
   let peak = 0, last = '';
   while (Date.now() - t0 < +secs * 1000) {
     await new Promise(r => setTimeout(r, 500));

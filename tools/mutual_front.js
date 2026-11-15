@@ -8,7 +8,7 @@
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
-const [,, city = 'sydney', secs = '300', places = '1'] = process.argv;
+const [,, city = 'shibuya', secs = '300', places = '1'] = process.argv;
 const MIN = Number(process.env.MIN || 10);
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -19,7 +19,7 @@ const MIN = Number(process.env.MIN || 10);
     const p = await b.newPage({ viewport: { width: 640, height: 400 } });
     await pinClock(p, city);
     p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 300)));
-    await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 300000 });
     await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
     const r = await p.evaluate(({ T, site, MIN, MORE }) => {

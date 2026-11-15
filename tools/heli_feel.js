@@ -9,14 +9,14 @@
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/heli_feel.js sydney
 const { chromium } = require('playwright');
-const [,, city = 'sydney'] = process.argv;
+const [,, city = 'shibuya'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 960, height: 600 } });
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); if (g.heli && g.heli.want) await g.heli.want(); g.advance(2); });
   const r = await p.evaluate(() => {

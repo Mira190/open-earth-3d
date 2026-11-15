@@ -13,7 +13,7 @@ const [,, city = 'shibuya', time = '12:30'] = process.argv;
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
   await p.addInitScript(() => { try { localStorage.setItem('oe3d-quality', 'high'); localStorage.setItem('oe3d-onboard', '1'); } catch (e) { /* storage blocked */ } });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await startPlay(p);
   const [h, m] = time.split(':').map(Number);
   await p.evaluate(min => { const g = window.__game; g.setClock(g.clock.y, g.clock.m, g.clock.d, min); g.clock.scale = 1; if (g.crowdAuto) g.crowdAuto(true); }, h * 60 + m);

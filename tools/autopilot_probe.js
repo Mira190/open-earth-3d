@@ -4,14 +4,14 @@ const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks, kerbStep, kerbChecks } = require('./autopilot_step');
-const [,, city = 'sydney'] = process.argv;
+const [,, city = 'shibuya'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: !process.env.DISPLAY, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
   const p = await b.newPage({ viewport: { width: +(process.env.W || 1100), height: +(process.env.H || 650) } });
   p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 400)));
   p.on('console', m => { if (m.type() === 'error') console.log('error', m.text().slice(0, 300)); });
   await pinClock(p, city);
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.cars', null, { timeout: 400000 });
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); if (g.lateReady) await g.lateReady(); });
   await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)

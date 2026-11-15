@@ -3,7 +3,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/trains_check.js tokyo
 const { chromium } = require('playwright');
-const [,, city = 'tokyo'] = process.argv;
+const [,, city = 'shibuya'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
@@ -13,7 +13,7 @@ const [,, city = 'tokyo'] = process.argv;
   const logs = [];
   p.on('console', m => { if (m.type() === 'error') logs.push(`error: ${m.text().slice(0, 300)}`); });
   p.on('pageerror', e => logs.push(`pageerror: ${String(e.stack || e).slice(0, 500)}`));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.flyover', null, { timeout: 600000 });
   await p.waitForFunction(() => { const l = document.getElementById('g-loader'); return !l || l.hidden; }, null, { timeout: 900000, polling: 500 });
   await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 300000 }).catch(() => {});

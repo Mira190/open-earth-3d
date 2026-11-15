@@ -3,12 +3,12 @@
 //   xvfb-run -a node tools/top_probe.js kamakura "-443,155;-446,153"
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
-const [,, city = 'kamakura', pts = '0,0'] = process.argv;
+const [,, city = 'shibuya', pts = '0,0'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
   const p = await b.newPage({ viewport: { width: 800, height: 500 } });
   await p.addInitScript(() => { try { localStorage.setItem('oe3d-quality', 'high'); } catch (e) { /* storage blocked */ } });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.flyover', null, { timeout: 600000 });
   await startPlay(p);
   await p.waitForTimeout(+(process.env.SETTLE || 20) * 1000);

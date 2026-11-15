@@ -4,7 +4,7 @@
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const fs = require('fs');
-const [,, city = 'queenstown', outDir = '.', time = ''] = process.argv;
+const [,, city = 'shibuya', outDir = '.', time = ''] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
@@ -19,7 +19,7 @@ const [,, city = 'queenstown', outDir = '.', time = ''] = process.argv;
   p.on('pageerror', e => errs.push(String(e).slice(0, 300)));
   p.on('console', m => { if (m.type() === 'error') errs.push(m.text().slice(0, 300)); });
   fs.mkdirSync(outDir, { recursive: true });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); });
   await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)

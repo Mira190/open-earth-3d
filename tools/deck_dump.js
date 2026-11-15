@@ -32,7 +32,7 @@ const [,, city = 'shibuya', out = `decks_${city}.json`] = process.argv;
       window.__deckNav = JSON.stringify({ T: [...T], W: [...W.keys()], S: [...S] });`);
     await route.fulfill({ response: r, body: src });
   });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__deckNav || window.__gameError', null, { timeout: 600000 });
   const d = JSON.parse(await p.evaluate('window.__deckDump'));
   d.nav = JSON.parse(await p.evaluate('window.__deckNav'));

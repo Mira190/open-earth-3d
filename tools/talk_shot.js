@@ -7,7 +7,7 @@ const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
-const [,, city = 'sydney', outDir = '.', hhmm = '10:30', size = '1440x900', who = ''] = process.argv;
+const [,, city = 'shibuya', outDir = '.', hhmm = '10:30', size = '1440x900', who = ''] = process.argv;
 (async () => {
   const [w, h] = size.split('x').map(Number);
   const b = await chromium.launch(process.env.DISPLAY
@@ -17,7 +17,7 @@ const [,, city = 'sydney', outDir = '.', hhmm = '10:30', size = '1440x900', who 
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   fs.mkdirSync(outDir, { recursive: true });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
   await p.evaluate(() => window.__game.npcsReady && window.__game.npcsReady()); // (the NPCs' characters load after the game opens)
   await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)

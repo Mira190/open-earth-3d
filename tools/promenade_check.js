@@ -5,12 +5,12 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const walk = require('./promenade_walk');
-const [,, city = 'kyoto', outDir = '.'] = process.argv;
+const [,, city = 'shibuya', outDir = '.'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl'] });
   const p = await b.newPage({ viewport: { width: 1100, height: 650 } });
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   const r = await walk(p);
   let bad = 0;

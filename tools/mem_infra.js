@@ -20,7 +20,7 @@ const DEPTH = +(process.env.DEPTH || 2), TOP = +(process.env.TOP || 14);
   bs.on('Tracing.dataCollected', e => events.push(...e.value));
   await bs.send('Tracing.start', { traceConfig: { includedCategories: ['disabled-by-default-memory-infra'], memoryDumpConfig: { triggers: [] } }, transferMode: 'ReportEvents' });
   const t0 = Date.now();
-  p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}${process.env.QUERY || ''}`).catch(() => {});
+  p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}${process.env.QUERY || ''}`).catch(() => {});
   const marks = [];
   for (const s of at.split(',').map(Number)) {
     await new Promise(r => setTimeout(r, Math.max(0, s * 1000 - (Date.now() - t0))));

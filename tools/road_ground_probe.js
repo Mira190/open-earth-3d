@@ -19,7 +19,7 @@ const [,, city = 'shibuya', outDir = '.'] = process.argv;
   const p = await ctx.newPage();
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } }, lean ? 'low' : 'medium');
   fs.mkdirSync(outDir, { recursive: true });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await startPlay(p);
   await p.evaluate(async () => {

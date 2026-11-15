@@ -8,14 +8,14 @@
 //   xvfb-run -a node tools/road_walls.js osaka [--json out.json]
 const { chromium } = require('playwright');
 const fs = require('fs');
-const [,, city = 'osaka', ...rest] = process.argv;
+const [,, city = 'shibuya', ...rest] = process.argv;
 const jsonOut = rest[0] === '--json' ? rest[1] : null;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 800, height: 500 } });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.waitForFunction('window.__game.ways.ready', null, { timeout: 300000 }).catch(() => {}); // (route.js's flags)
   const r0 = await p.evaluate(() => {

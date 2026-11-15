@@ -23,7 +23,7 @@ const [,, city = 'shibuya', outDir = '.', nSpots = '3'] = process.argv;
     try { localStorage.setItem('oe3d-onboard', '1'); } catch (e) { /* storage blocked */ }
   });
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => window.__game.advance(3));

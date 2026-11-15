@@ -8,7 +8,7 @@
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
-const [,, city = 'sydney', secs = '300', spots = '3'] = process.argv;
+const [,, city = 'shibuya', secs = '300', spots = '3'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
@@ -17,7 +17,7 @@ const [,, city = 'sydney', secs = '300', spots = '3'] = process.argv;
   await pinClock(p, city);
   const errors = [];
   p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); if (g.lateReady) await g.lateReady(); });
   await startPlay(p);

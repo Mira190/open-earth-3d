@@ -15,7 +15,7 @@
 // JavaScript and the GL call counts first, and the GL milliseconds as an upper bound.
 const { chromium } = require('playwright');
 const fs = require('fs');
-const [,, city = 'sydney', size = '960x600', after = '20'] = process.argv;
+const [,, city = 'shibuya', size = '960x600', after = '20'] = process.argv;
 const [w, h] = size.split('x').map(Number);
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox', '--enable-precise-memory-info'] });
@@ -138,7 +138,7 @@ const [w, h] = size.split('x').map(Number);
   // (PROFILE=1: the profiler on before the page loads; its clock is put on the page's once the page has one)
   const lcdp = process.env.LOAD && process.env.PROFILE ? await ctx.newCDPSession(p) : null;
   if (lcdp) { await lcdp.send('Profiler.enable'); await lcdp.send('Profiler.setSamplingInterval', { interval: 1000 }); }
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'commit', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'commit', timeout: 120000 });
   let lsync = null;
   if (lcdp) { await lcdp.send('Profiler.start'); lsync = await p.evaluate(() => performance.now()).catch(() => 0); }
   await p.waitForLoadState('domcontentloaded', { timeout: 120000 });

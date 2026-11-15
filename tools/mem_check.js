@@ -182,7 +182,7 @@ async function measure(b, city) {
   const t0 = Date.now();
   let ok = true, map = null, district = null;
   try {
-    await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || ''}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || '?walk=1'}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 400000 });
     await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
     // what a player walking round meets: every NPC's character, the helicopter, the cars' and trees' near models

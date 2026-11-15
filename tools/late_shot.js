@@ -24,7 +24,7 @@ const LATE = /\/assets\/(vehicles\/(cars|helicopter)\.glb|trees\/trees_near\.glb
   await p.route(LATE, r => (hold ? held.push(r) : r.continue()));
   fs.mkdirSync(outDir, { recursive: true });
   const shot = async name => { const f = path.join(outDir, `${city}-${w}x${h}-${name}.png`); await p.screenshot({ path: f }); console.log(f); };
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction(() => window.__game && document.querySelector('#g-loader').hidden, null, { timeout: 900000, polling: 250 });
   await p.waitForTimeout(1500);
   await shot('title-standins');

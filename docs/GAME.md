@@ -1,4 +1,11 @@
-# The game: Sydney, Melbourne, the bayside and Hong Kong on foot, and by car
+# The game: the map on foot, by car and from the air
+
+> **Scope, November 2026.** The project is now one story on one map: Blue Hour, at the Shibuya Scramble
+> ([STORY.md](STORY.md)). This page was written while the project built many maps, a globe and a model viewer.
+> Where it names another city, the title screen, the viewer or the reef sites, it describes work kept at the tag
+> `archive/world-2026-11`; the shared code it explains is the code Shibuya runs. The page opens on the story; the free game
+> this page describes is the same map without it (`?walk=1`). The daily life, the fares, the phone, fishing and the ferries'
+> timetables it mentions were taken out with the other maps.
 
 The city model becomes a place you can be in. In Sydney you walk the centre as
 a surveyor, talk to the people who know it, climb the Opera House steps, catch
@@ -30,35 +37,7 @@ Open it from the title screen (**Play** on a destination's card), from the 3D
 model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-melbourne`,
 `#play-melbourne-bayside` or `#play-hong-kong`.
 
-| Talking to an NPC | On the bridge deck at golden hour |
-|---|---|
-| ![](images/sydney/game-dialogue.jpg) | ![](images/sydney/game-bridge.jpg) |
-| **Under the Harbour Bridge** | **Bird's-eye view from the helicopter** |
-| ![](images/sydney/game-heli.jpg) | ![](images/sydney/game-birdseye.jpg) |
-| **The Cross Harbour ferry leaving Circular Quay** | **The map, with live ferries and fast travel** |
-| ![](images/sydney/game-ferry.jpg) | ![](images/sydney/game-map.jpg) |
-| **Martin Place, 21 June, 12:30: the sun meter** | **After dark over the harbour: the moon in its real phase, the stars and the north shore's lights** |
-| ![](images/sydney/game-martin-place.jpg) | ![](images/sydney/game-night.jpg) |
-| **Surveying from the trig station at mid-arch** | **The height challenge** |
-| ![](images/sydney/game-trig.jpg) | ![](images/sydney/game-guess.jpg) |
-| **Photo mode: a saved picture, captioned with the time and the sun** | **Driving your car up a city street** |
-| ![](images/sydney/game-photo.jpg) | ![](images/sydney/game-drive.jpg) |
-| **A taxi pulls in at the kerb** | **From the back seat, the driver at the wheel** |
-| ![](images/sydney/game-taxi.jpg) | ![](images/sydney/game-backseat.jpg) |
-| **Silver gulls fighting over a box of chips by the Opera Bar** | |
-| ![](images/sydney/game-gulls.jpg) | |
-| **The Opera House's Monumental Steps** | **Melbourne: Hannah explains DDO10 in City Square** |
-| ![](images/sydney/game-steps.jpg) | ![](images/melbourne/game-dialogue.jpg) |
-| **The river shuttle on the Yarra** | **Past the Arts Centre spire** |
-| ![](images/melbourne/game-river.jpg) | ![](images/melbourne/game-heli.jpg) |
-| **The bayside: the Brighton bathing boxes** | **From the St Kilda Pier viewing platform at night: penguins on the breakwater** |
-| ![](images/melbourne-bayside/game-boxes.jpg) | ![](images/melbourne-bayside/game-penguins.jpg) |
-| **Mr Moon's gate at Luna Park** | **The pier's approach over the sand** |
-| ![](images/melbourne-bayside/game-luna-park.jpg) | ![](images/melbourne-bayside/game-pier.jpg) |
-| **Hong Kong: the Star Ferry at Tsim Sha Tsui** | **The Peak Tram** |
-| ![](images/hong-kong/game-ferry.jpg) | ![](images/hong-kong/game-peak-tram.jpg) |
-
-A game can also start from a postcard ([POSTCARDS.md](POSTCARDS.md)): a link opens a city at `#play-<city>@pc-<spot>.<light>`, on the spot
+A game can also start from a postcard (POSTCARDS.md): a link opens a city at `#play-<city>@pc-<spot>.<light>`, on the spot
 where the photograph was taken, with "As on the postcard" offered as the time to start at. A
 map's passport lists the postcards that have come from it.
 
@@ -77,7 +56,7 @@ map's passport lists the postcards that have come from it.
 | <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
 | <kbd>J</kbd> | Diary: today's date, weather and calendar, who is free, the work on offer, and pass the time (see [Daily life](#daily-life-the-day-the-diary-bonds-skills-and-jobs)) |
 | <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map: pick a landmark, a trig station, a wharf or any spot and travel there at once (double-click goes straight there), or set a waypoint; scroll or pinch to zoom, drag to pan · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
-| <kbd>E</kbd> at a `≈` | Fish from the shore, at the spots Sydney and Queenstown have for now: <kbd>Space</kbd> casts, strikes and winds ([docs/FISHING.md](FISHING.md)) |
+| <kbd>E</kbd> at a `≈` | Fish from the shore, at the spots Sydney and Queenstown have for now: <kbd>Space</kbd> casts, strikes and winds (docs/FISHING.md) |
 | <kbd>R</kbd> | Unstick yourself |
 | Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> chase, cockpit or bird's-eye view (drag to look round the cockpit) |
 | Ferry | <kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm for the approach to the next wharf |
@@ -370,7 +349,7 @@ The Star Ferry's routes are real; its timetable and which vessel runs which
 route are not.
 
 Paris has seven stamps, written as three lines after a welcome on the
-Pont d'Iéna (see [the Paris case study](cities/paris.md#6-paris-on-foot)):
+Pont d'Iéna (see the Paris case study):
 - **The river:** Bernard, a bouquiniste, on reading the roofs of Paris; the Batobus from Saint-Germain-des-Prés to Notre-Dame; Léa, a carpenter
   on the cathedral's roof.
 - **The Left Bank:** a chair in the sun in the Luxembourg at noon on 21 December;
@@ -383,7 +362,7 @@ On the Seine the helicopter takes the nearest span to fly under, and a step can
 name its span (`"surface"`).
 
 Amsterdam has eight stamps, written as three lines after a welcome on
-the Dam (see [the Amsterdam case study](cities/amsterdam.md#6-amsterdam-on-foot)):
+the Dam (see the Amsterdam case study):
 - **The canal ring:** Pieter, a building historian on the Herengracht, sends you
   to find a step gable, a neck gable and a bell gable with the lens (a
   `gable` step: the lens names a house's gable and when that type was built);
@@ -399,7 +378,7 @@ the Dam (see [the Amsterdam case study](cities/amsterdam.md#6-amsterdam-on-foot)
 Amsterdam has no real helipad in the old city. The pad on the Dam is a game device, so that the city can be seen from the air.
 
 **Tokyo Pilgrimage** (two maps of Tokyo, see the case studies of
-[Shibuya](cities/shibuya.md#7-tokyo-pilgrimage-shibuya) and [Shinjuku](cities/shinjuku.md#5-tokyo-pilgrimage-shinjuku))
+[Shibuya](cities/shibuya.md#7-tokyo-pilgrimage-shibuya) and Shinjuku)
 is a pilgrimage: in Shibuya a welcome across the scramble by QFRONT, in Shinjuku at the east exit, then
 lines in any order and a report back.
 - **Shibuya:** cross the scramble to Aoi and back to Hachiko, read the arch over Center Gai, take the
@@ -547,309 +526,6 @@ listed at the end.
 | **Real traffic control and dispatch**: SCATS (Sydney), SCOOT (UK), Japan's UTMS/MODERATO and VICS, max-pressure control, Uber's and DiDi's dispatch | SCATS's and actuated signals' gap-out (already here); max-pressure: serve the phase whose queues are longest and not blocked beyond; VICS: congestion shared with every navigator, so a ride goes round a jam; the box-junction rule (the UK's rule 174, Japan's Road Traffic Act article 50): no car in without room beyond. Algorithms from the papers; the systems themselves are proprietary. | They run real cities from loop detectors; here every queue is known exactly, so the controller needs no detector model. |
 | **Breath of the Wild** (its Pro HUD), **Ghost of Tsushima**, **GTA V**, **Genshin Impact**, **Red Dead Redemption 2** | What stays on screen is what is read at a glance: the objective, the minimap, the clock and the prompt for what is in reach. Everything else is one press away and off the picture: GTA and Red Dead keep the phone, the map and the journal on keys and in the pause menu, Genshin folds its row of icons away while you move, and Zelda's Pro HUD and Tsushima show nothing that is not needed now. So the HUD keeps two buttons, the map and the menu; the passport, the diary, photo mode, the phone and the districts fold behind a "more" button (their keys work either way, and a dot on it says a message is waiting), and the walking hint shows for four seconds when the gait changes and then goes. | Those games teach their keys once and hide them; a page on the web is also played by touch, where a button is the only way in, so the folded buttons stay one tap away rather than behind a pause menu. |
 
-## Daily life: the day, the diary, bonds, skills and jobs
-
-Issue #357. Until this, the game was a place without a loop: quests gave stamps, and there was
-no progression, no one to get to know, no calendar, no money and no reason to come back
-tomorrow. The loop below is learned from daily-life games, Persona 5 first among them, and from
-what works in a browser in a short session. Their designs were studied; nothing of their look,
-characters, music or assets is used.
-
-### What was studied, and what was adopted
-
-| Game | How its loop works | Adopted here | Left out, and why |
-|---|---|---|---|
-| **Persona 5 / Royal** (Atlus) | A calendar whose days have slots, and nearly every choice spends one. Confidants deepen over ten ranks; each rank is a scene and unlocks an ability. They keep weekdays and weather (one is out only when it rains, others stay in). Five social stats with named levels, raised by daily acts, gate some ranks. Part-time jobs pay and raise stats. Rain is a bonus (more from studying), not a lock. One theme re-arranged for rain and night. The interface is treated as entertainment in itself: one key colour, lines that lead the eye, everything in motion. | The day in four slots (morning, daytime, evening, night). Bonds with ranks, each rank a short scene, a true fact about the street you stand on, and at set ranks an ability. People free at their own hours, on their own days, some only in the rain. Five skills with named levels that gate some ranks and jobs. Jobs that pay. Rain and night as bonuses. A score that changes with the hour and the weather. A card for the new day and motion in every menu, in this project's own type and its one accent (the sun's amber). | The deadline. Critics call its calendar the most stressful thing in it, with content missed for good, and its own mobile spin-off dropped the calendar. Here spending a slot is the player's choice ("pass the time"), nobody can be missed for good, and no day is ever lost. Ten ranks become five: a browser session is ten minutes, not a hundred hours. No combat, no arcana, none of its art, type or music. |
-| **Yakuza / Like a Dragon** substories | Found by walking past them: a small zone, two people arguing. Tone is budgeted between comic and moving. Rewards are small and useful. | Requests and events start where you walk into them (a spot's prompt, a line in a bubble), not from a list. The diary lists them only after you have met them. Small, useful rewards: a discount, a key, a shortcut. | Their length and fights. |
-| **Shenmue** | People and shops keep hours on a running clock. The first game left players standing about until an appointment; the second added a wait that skips to the hour, and jobs to fill the time. | Shops and people keep hours; the diary says who is about and when. "Pass the time" from the first day, and jobs are there to fill it. | A mandatory job. |
-| **A Short Hike** | A tiny world where exploring pays with something unique each time, so the player is never "just travelling". | Each skill grows only the first time a thing is done in a place (a spot read, a line ridden, a dish tried), so going somewhere new always pays. | |
-| **Alba: A Wildlife Adventure** | Photograph the island's animals to fill a book; an hour or two long. | The photo job: a list of real subjects to photograph, with more for the hour that suits each. | |
-| **GeoGuessr** | A guess scored by distance from the truth. Players build real knowledge: the sun's side, the driving side, the street furniture. | The guide job: point the way to a landmark by its true bearing, scored by the angle you are off. The sun and the streets are the real ones, so the knowledge is real. (The height challenge already scored a guess against the data's own error.) | |
-| **Pokémon GO, Ingress** | Stops at real places of note; a streak that restarts rather than breaks; weather and the hour change what appears; events on real dates, announced ahead. | Events at real places on their real dates, listed ahead in the diary ("in 5 days"). Weather and the hour change who is free. A count of days in each city that never resets and never breaks. | Streak pressure, and anything that asks for a location. |
-| **Animal Crossing** | The real clock and calendar; shops with hours; events on real dates; people change the clock to escape waiting. | The game opens on the city's real date and hour, so its calendar is the real one. Changing the clock is in the menu and is no cheat: every event can be visited by setting its date. | Locking events to the device's clock. |
-| **Wordle** | One small thing a day, the same for everyone, done in three minutes. | Today's page in the diary is the same for everyone in that city on that date: the same weather, the same events, the same people free. | |
-
-Sources for the above are listed under [Sources](#sources) ("Daily life").
-
-### The design in one page
-
-- **Time gates what is on, never whether you may explore.** The streets, the ferries and the
-  helicopter are open at every hour. The hour changes who is free to talk, which shops are open,
-  which jobs are offered and what is on.
-- **The calendar is the real one.** The game opens on the city's own date and hour. Events are
-  at their real places on their real dates; the menu's date takes you to any of them.
-- **A slot is spent by choice.** Time passes on the running clock (real time, or a day in 48 minutes at the menu's 30×),
-  or at once with "pass the time" in the diary. Getting to know someone takes the rest of the
-  slot.
-- **Everything is a true thing about a real place.** A rank's scene carries a fact that can be
-  checked; a job is a real bearing, a real distance, a real hour of light.
-- **Short sessions.** Something finishes within ten minutes: a rank, a job, a dish, a page of
-  the diary.
-
-| The card for a new day | The diary's page for today |
-|---|---|
-| ![](images/life/day-card.jpg) | ![](images/life/diary-today.jpg) |
-| **A rank earned (Kyoto)** | **The passport's skills, under the stamps** |
-| ![](images/life/rank-up.jpg) | ![](images/life/passport.jpg) |
-| **A job in hand: which way is the Imperial Palace?** | |
-| ![](images/life/job.jpg) | |
-
-| On a phone: the day's card | The people you know | The work on offer | A job in hand | A rank | Messages |
-|---|---|---|---|---|---|
-| ![](images/life/day-card-phone.jpg) | ![](images/life/people-phone.jpg) | ![](images/life/work-phone.jpg) | ![](images/life/job-phone.jpg) | ![](images/life/rank-up-phone.jpg) | ![](images/life/messages-phone.jpg) |
-
-### The day and the diary
-
-A day has four parts, set by the sun of the city's own date (`web/game/day.js`): **morning**
-from half an hour before sunrise, **daytime** from 10:30, **evening** from golden hour and
-**night** from the end of dusk. A card comes up for each new day (the weekday, the date, the
-sun's arc from sunrise to sunset with the sun on it, the weather, what is on) and a smaller one
-for each new part of it. The card never takes the controls.
-
-The **diary** (<kbd>J</kbd>, or **Diary** beside Map and Passport) opens on today: the date,
-the hour and the weather, your wallet, the four parts of the day with their hours, what is on
-the calendar today and in the next three weeks, who is free to talk now, what work and which
-counters are open, and **pass the time**: on to the start of any other part of the day,
-tomorrow's if today's has gone. Its other pages are People, Work and Pages (what you did, day
-by day). Each city counts your days in it; the count never resets.
-
-### Bonds
-
-A map's cast are people to get to know (`web/game/bonds.js`). Each has **five ranks**. When
-someone is free (their own parts of the day, their weekdays, some only when it is dry or only
-when it rains) and has nothing waiting on you, talking to them offers the time: "Spend the
-evening with Aoi". The scene is two or three lines, a question, and one fact about the place
-that goes into the diary. A good answer to the question means the hour did not slip by;
-otherwise the clock moves on to the next part of the day. Between ranks they may ask something
-of you (see where the river comes back up, guess a tower's height, photograph 109, run a
-jacket across the scramble), and some ranks give an ability:
-
-| Ability | What it does |
-|---|---|
-| `fare` | A share off every taxi and ride on that map |
-| `tip` | A share more for every job |
-| `job` | A job of theirs, in the diary under Work |
-| `xp` | Points in a skill |
-| `filter` | Night film: photographs after sunset come out tungsten-balanced, and the caption says so |
-| `forecast` | The diary's Today page shows the next day in three-hour steps (sky, temperature, when the rain starts and stops), and they write when rain is due within six hours. One person on every map reads the weather: a fisherman, a hiker, a skipper, a canal keeper |
-
-**Where they are, by the hour.** A person may keep other places at other hours (life.json
-`bonds[].places`, each with its slots, weekdays, hours or weather, a place and the words the
-diary uses for it): the station attendant covers Koshigoe's platform at midday, the student is
-on the beach after school, the monk goes down to the waterfall. The first place that is on is
-where they stand; with none on, they are at their own. Someone you have not met yet keeps the
-place the map gives them at every hour, so the first quest's giver waits by the start; you learn
-their rounds once you know them. They move only while you are not there
-to see it (more than 60 m from both places), or at once as time passes under the diary's veil,
-and quests, the map and the waypoint follow them where they are (`bonds.js` rounds, `game.js`
-npcMove). `pipeline/life.py` checks each place, and `tools/life_step.js` stands every one of
-them up and checks it is on firm ground near where it is written, not on a roof.
-
-Quests always come first: a person who has a walk to give you gives it, whatever the hour.
-Nobody is ever missed for good, and there is no deadline.
-
-### The passport's skills
-
-Five skills grow by what you do, most of all the first time you do a thing in a place
-(`web/game/life.js`), and are drawn under the stamps in the passport:
-
-| Skill | Grows by | Levels |
-|---|---|---|
-| **Eye** | the height challenge, by how close the guess | Rough guess · To the storey · To the metre · Plumb line · Surveyor's eye |
-| **Bearings** | trig stations, spots read, stamps, pointing the way | Visitor · Finds the way · Knows the streets · Walking map · True north |
-| **Light** | sun studies, photographs at golden or blue hour | Daylight · Reads the shade · Golden hour · Blue hour · Master of light |
-| **Lines** | ferries, the funicular and the gondola, lifts, taxis and rides, each route the first time | Passenger · Commuter · Regular · Knows the timetable · Line captain |
-| **Taste** | dishes tried at the counters | Curious · A second helping · Regular · Knows the counter · Local palate |
-
-Skills and the wallet (one per currency) go with you from map to map; the people, the jobs and
-the diary belong to each map. A skill's level gates a few ranks and jobs.
-
-### Work, counters and the calendar
-
-Jobs are taken from the diary's Work page, one at a time and once in each part of the day
-(`web/game/jobs.js`). Each uses what the game already had:
-
-- **Delivery:** from one real door to another against a clock, by any means. A taxi is quicker
-  and costs its fare. On time pays in full, with time to spare a quarter more, late six tenths.
-- **Cab fare:** in your own car: stop at the pick-up, drive your passenger where they say.
-- **Show the way:** a visitor asks where a landmark is; turn to face its true bearing and
-  press <kbd>E</kbd>. Within 8° pays in full, and the answer says how far off you were and how
-  far away it is.
-- **Photographs:** a list of real subjects to take in photo mode, a quarter more for each taken
-  at golden or blue hour.
-- **By train:** catch the right train on a map with a railway (Kamakura's Enoden): from its
-  station to another against the clock, done as you step off at the right one; the wrong stop
-  says which way it is. Tokyo has one on the Yamanote between Yurakucho and Shimbashi (trains.js). A place in life.json can name a station (`{"station": "koshigoe"}`).
-
-At the wheel with a delivery or a fare, <kbd>J</kbd> hands the drive to the autopilot (issue
-#355): the job's waypoint is its destination. A passenger driven by the autopilot tips less.
-
-Money is in the city's own (yen, dollars). Taxis and rides now charge a fare on arrival (flag
-fall and a rate a kilometre); short of it, the driver lets the rest go. **Counters** keep hours
-and sell a dish or a keepsake, each with a line about it. Keepsakes go into one **album** for
-every city (the diary's Keepsakes page): a card for each, with its counter, its city and the day
-it was bought, and an empty card for each still to find on this map. The album also stands in a
-room (issue #419, `web/game/keepsakes.js`): **the traveller's shelf** in Williams Cottage,
-Queenstown, the long shelf on the back wall whose two middle boards keep sixteen things. Each
-keepsake is set out on a walnut plinth with a folded card (what it is, its counter, its city), as a
-model of its own made at its real size in three.js: a hand-high torii with its wish on the post, a
-fox ema with its painted features, a Kiyomizu-yaki cup with its one brushed line, a glazed aubergine
-chopstick rest with its chopsticks, a piece of sea glass, an open Kyoto fan of maple leaves on a
-stream, the Earnslaw's enamel pin on its card, a brass Akita charm on a red cord, a kumade with its
-koban and rice bale, a green and cream tin ferry, a folded cherry-print tenugui and a station stamp
-book open at its stamp (a keepsake without a model is a paulownia box with its glyph). A room offers
-a shelf in game.json `interiors[].keepsakes` (`cities/queenstown/interiors.py keepsake_shelf`), and
-a spot looks along it closer, its texts the album's. They are made when you are within 45 m, lit as
-the room is (the sky's share inside, warm after dark). Williams Cottage is a shop now, which is why
-the shelf is there: the only other live city with rooms is Sydney, and the Opera House's foyers
-are not a place to keep things. A city gets a shelf with its first room of the right kind.
-The **calendar** is events at their
-real places on their real dates, with the hours they run: walk up while one is on and
-<kbd>E</kbd> joins it, and it is kept in the diary. Each event carries the source of its dates.
-
-### Fares
-
-Boarding a ferry or a train taps on with your phone and stepping off taps off (`web/game/fares.js`);
-the fare is the operator's own adult fare, taken from the wallet to the cent or the yen, and the
-reader's card on the HUD says what was paid and why. The reason for charging at all: money had
-too few places to go, and a city's fare rules are facts about it, as its building heights are.
-The reason it does not punish exploring: Sydney caps a day's travel, lower from Friday to
-Sunday, and past the cap every ride that day is free. A wallet short of a fare pays what it has
-and you are let through.
-
-A map's table is `fares` in `cities/<id>/life.json` (checked and built by `pipeline/life.py`):
-`rides` by kind (`ferry`, `rail`; `routes` for two operators on one map), each with `pairs` of
-stops, `bands` by distance or a `flat` fare (`return`: the way back that day is on the ticket);
-`offpeak`, `transfer`, `caps` and `holidays` where the city has them; and the `operator`, the
-day the table is `as_of` and its `source`. The phone's page (the card's name on its home screen)
-shows today's rides, the day's and the week's caps and the rules in a line each.
-
-| Map | Card | What is charged | Source |
-|---|---|---|---|
-| Sydney | Opal | Trains A$4.33 to 10 km (Circular Quay to Wynyard or St James), 30% off outside the peaks and all of Friday to Sunday. Ferries A$7.35 to 9 km, A$9.20 beyond, the same at any hour. Daily cap A$19.30, A$9.65 from Friday to Sunday and on public holidays; weekly cap A$50, Monday to Sunday. A$2 off a change of transport within 60 minutes. | Transport for NSW, adult Opal fares, as published on 14 November 2026 (the July 2025 table; the 29 June 2026 change left the prices as they were). Public holidays: NSW's, Easter, the King's Birthday and Labour Day included, and the weekday given when New Year's Day, Australia Day, Christmas or Boxing Day falls at a weekend. |
-| Tokyo (Marunouchi-Ginza) | Suica | JR, Yurakucho to Shimbashi: ¥155 by IC card. | JR East's revision of 14 March 2026 (¥146 before), from Traffic News and Impress Watch, confirmed by Yahoo! Transit's fare search on 14 November 2026: JR East's own pages refuse automated requests. The water buses are not charged: neither Tokyo Cruise nor the Tokyo Mizube Line sells a ticket between the map's piers today. |
-| Shibuya | Suica | JR: ¥155 by IC card between any two of Harajuku, Shibuya and Ebisu. SHIBUYA SKY: ¥3,000 before 15:00 and ¥3,700 from 15:00, the adult price at the counter; the way down is on the ticket. The survey's first visit is on its pass, so the main line never takes a new visitor's whole wallet (¥3,000). | SHIBUYA SKY's ticket page, as read on 14 November 2026 (issue 441). |
-| Shichirigahama | PASMO | The Enoden: ¥200 to the nearer stations, ¥220 beyond, each pair as the railway's table has it. | Enoshima Electric Railway's fare page, read 14 November 2026 (the amounts of 1 October 2019). |
-
-A ticket at a gate is a ride of kind `lift` by the lift's id (`routes`), bought at its paying stop
-(`from`) and good for the way down (`return`), priced by the hour where the operator does (`times`:
-`[["HH:MM", fare], ...]`); `first_free` puts a first visit on the survey's pass. Holidays are fixed
-dates, `[m, d, "weekday"]` for one that gives the next free weekday when it falls at a weekend,
-`["easter", days]` and `["nth", month, weekday, n]`. Not charged, by decision: Tokyo's water buses
-(no operator sells a ticket between the map's piers); Queenstown's gondola and steamer wait with
-the parked map. Taxis and rides are charged as before.
-`tools/fares_check.js` prices trips with known answers under Node and every live map's table
-stop to stop; `tools/game_check.js` taps on through the game's own boarding and rides to the cap;
-`tools/fare_shot.js` takes the stills.
-
-### The score
-
-`web/game/music.js` composes the music in code with Web Audio: no recordings and nothing taken
-from any game or artist. The owner's direction (9 November): soothing light music, close and
-quiet like ASMR, so that playing is restful. So every voice is soft (felt piano, soft electric
-keys, marimba and kalimba, a breathy flute, warm chorused pads, a sine bass), every attack is
-slow, nothing is plucked or struck hard, and almost no energy is left above 4 kHz
-(`tools/music_check.js` fails a case with more than 3%). A low room tone breathes under it, and
-rain adds sparse soft drops.
-
-| Part of the day | Tempo and mode (default palette) | By palette |
-|---|---|---|
-| Morning | 71 bpm, C lydian | Tokyo B flat major, Kyoto D yo, Sydney D lydian, Queenstown F lydian |
-| Daytime | 75 bpm, G major | Tokyo F, Kyoto D yo, Sydney A, Queenstown C |
-| Evening | 64 bpm, D dorian | Tokyo D minor, Kyoto D in, Sydney E mixolydian, Queenstown G dorian |
-| Night | 54 bpm, A minor | Tokyo G minor, Kyoto D in, Sydney B dorian, Queenstown D minor |
-
-Rain slows it by about 6%, closes the tone and drops the last of the percussion; a car adds a
-soft pulse; a talk ducks it 5 dB; a calendar event lifts it a little. A change is taken up on
-the next bar line and cross-fades over three or four bars. A new day, a rank, a job done and a
-message each have a soft sting of two or three notes in the key that is playing. The game
-tells it the state once a second (`life.js`); it starts with the game's sound, is silenced by
-the Sound switch, and has its own **Music** volume in the menu (kept in the browser).
-`OEMusic.bounce(seconds, states)` renders it offline for a film or a test.
-
-### Fireworks
-
-An event can put fireworks in the sky while it is on and the sun is down (`"fx": "fireworks"`,
-`web/game/fx.js`): Sydney's New Year's Eve over the Harbour Bridge, Jingu Gaien's August
-display on the Shinjuku map, Queenstown's New Year over the lake. One additive cloud of points,
-nothing allocated after the first shell, nothing running when no such event is on.
-
-### The walks of Tokyo and Kyoto, in lines
-
-The Tokyo and Kyoto maps had their walks in one chain, or hardly any. They now run in lines as
-Sydney's do (a welcome, lines side by side in any order, a report back):
-
-- **Tokyo (Marunouchi-Ginza):** welcome (Haruka) → Marunouchi and the Palace (Kenji, Daichi,
-  Sachiko) | Ginza and Yurakucho (Yui; a new walk under the arches with Ishikawa) | the water
-  and the air (Ishikawa, Captain Aoki, Ren) → report back.
-- **Kyoto:** welcome at the station (Haruka) → the temple and the low city (Sozen, Tanaka) |
-  the market (Mrs Nakamura, ending at Nishiki's painted shutters after dark) | the castle and
-  the winter sun (Ken, Yui) → report back.
-- **Higashiyama:** the pagoda → the lanes | the temple → below the pagoda after dark.
-- **Fushimi Inari:** the Romon → the gates | the mountain → the Romon after dark.
-- **The Philosopher's Path:** welcome (Haruka) → the water (Kenji, under the aqueduct) | the
-  incline (Sumire, under the Sanmon) → a last walk with Haruka.
-
-Shibuya and Shinjuku already had theirs. Every live map now has a `life.json` as well: four
-people to know (three on the two small Kyoto maps), four or five jobs, counters and a calendar.
-
-### What is left
-
-- A keepsake room in every city: today only Queenstown has one (Williams Cottage); other cities
-  need a room of the right kind first.
-- Not checked: a real GPU, Safari and iOS, and the music by ear on phone speakers.
-
-Banners (a rank, a level, a job) wait while a station's arrival sign or the day's card is up,
-so that two captions never sit over each other (`style.js`).
-
-The facts first written from memory were checked against sources in November 2026 (issue
-#357): Kiyomizu's jumps are 235 by 234 people, senmaizuke's maker was Daikokuya Tozaburo,
-Sydney Tower's 56 cables steady the shaft, Eikan-do's 2026 night openings run 20 November to
-6 December, and the event sources that did not hold their dates now point to pages that do.
-
-### The phone
-
-The phone (<kbd>N</kbd>) is the hub: beside the ride app it lists Messages, Diary, Work, Map
-and Camera (`web/game/phone.js`). Messages come as a part of the day begins: someone you know
-is free, something on the calendar has started, something is on tomorrow. One thing said is one
-message: the calendar writes once for each run of an event (a season of four weeks is one message,
-keyed by the run's first day, not one for each day you visit in it), the same words from the same
-sender replace their earlier copy, and the list is in the order of the city's clock, newest first.
-A save from before that rule is put right as it is read (`tidy()` in `phone.js`).
-
-### How it is built
-
-| File | What it holds |
-|---|---|
-| `web/game/life.js` | the save (`oe3d-life` in `localStorage`), the event bus (`life.emit`), the skills' rules, the wallet and fares |
-| `web/game/fares.js` | what a ride costs: the rules (`price`), the tap's card, the phone's page |
-| `web/game/story.js` | a map's story in episodes (game.json `story`), and the Stop: a stretch after sunset in which the world is given no time while the player, the camera and an afterimage of another year move on. Asked for with `?story=1` while it is being made; it names no city. An episode is data: its evening, its own overture (laid over the map's), who stands in the stopped world and what they say, one task (a photograph of a subject), the goal's line at each beat and its last card. A new player is never left without the next thing to do: the goal is on screen with the Stop's minutes beside it, a light stands where it is and its mark holds the frame's edge when it is out of view, the keys are named the first time they are needed, and the episode ends on a card with the print, what comes next and two ways on. `tools/story_shot.js` plays the first episode beat by beat (`tools/check.sh story`) |
-| `web/game/goals.js` | a map's lines and quests: what is done of them, the rules a step is met by (`met`), the save's quest state. No city and no drawing in it: a new map brings its goals as data. `tools/goals_check.js` plays every live map's lines to the last stamp under Node and lists the steps a phone cannot reach |
-| `web/game/day.js` | the parts of the day, the calendar, the cards, the diary and its pages |
-| `web/game/bonds.js` | ranks, hours, requests, abilities, the People page |
-| `web/game/jobs.js` | the four kinds of job, counters, events, the Work page, the passport's skills |
-| `web/game/phone.js` | the phone's home rows and messages |
-| `web/game/music.js` | the score |
-| `web/game/fx.js` | fireworks for the calendar |
-| `web/game/style.js`, `web/game/life.css` | the banner for a rank, a level and a job done; every style of the above |
-| `cities/<id>/life.json` | a map's people, jobs, counters and calendar, written by hand |
-| `pipeline/life.py` | checks it and writes `web/data/<id>/life.json` |
-
-`game.js` only lends these the clock, the HUD and the player, tells them what happens
-(`life.emit('guess' | 'survey' | 'spot' | 'stamp' | 'sun' | 'photo' | 'ride' | ...)`) and asks
-what <kbd>E</kbd> does at a place of theirs. A map without a `life.json` still has the day, the
-diary, the skills and the wallet.
-
-**Writing a map's life.** Copy the shape of `cities/shibuya/life.json`. Places are never
-measured: `{"npc": id}`, `{"spot": id}`, `{"travel": id}`, `{"label": "QFRONT"}`,
-`{"wharf": id}`, `{"viewpoint": id}` or `{"lonlat": [lon, lat]}`, with `"d": [dx, dy]` to step aside; the game
-stands each on the nearest firm ground. `python pipeline/life.py --city <id>` fails on a person
-who is not one of the map's NPCs, fewer than five ranks, a rank without a fact, an event
-without a source, a place outside the map, and any line that talks about the data
-(`tools/voice_check.py`'s list). `tools/life_step.js` plays a day, a rank, a job, a dish, an
-event and the save in `tools/game_check.js`; `tools/life_shot.js <city> <out> [WxH]` takes
-stills of every screen.
-
 ## How it works
 
 All of this is driven by `cities/<id>/city.json` (`game` block) and the files the
@@ -955,7 +631,7 @@ pipeline writes. The only city-specific code is landmark geometry in
   other comes down, and they pass at the loop. You ride it like a ferry, from
   station to station, and the HUD shows your height and the gradient.
 - **A railway** (`rail.train`, the first on a Japanese map: the Enoden at
-  [Kamakura](cities/kamakura.md)). One track, trains both ways, passing in the
+  Kamakura). One track, trains both ways, passing in the
   loops.
   - **The timetable is a function of the railway's clock.** A run of each
     direction is integrated once from the speed limits (the line's 45 km/h, 15 km/h
@@ -1183,11 +859,9 @@ pipeline writes. The only city-specific code is landmark geometry in
       solid 18776, a 2.4 m block beside Tokyo Station's M8 exit, and the exit
       itself).
 
-    ![Roofs on posts at day, dusk and night: Yasaka's dance stage, a bell tower in Higashiyama, Tokyo Station's platform canopies, Shinjuku's Triangle Plaza closed in glass, Kyoto Station's bus stands](images/roofs/open-roofs.jpg)
-    ![On a phone](images/roofs/phone.jpg)
-    ![Yasaka-jinja's Buden: a photograph (Jakub Hałun, CC BY 4.0) and its pitched roof now (#258)](images/roofs/buden.jpg)
-    ![The Sumitomo Triangle Plaza's sloping glass, day and dusk (#258)](images/roofs/sumitomo-atrium.jpg)
-    ![The Opera City Galleria's glazed roof, day, dusk and night (#258)](images/roofs/galleria.jpg)
+    
+
+    
   - **Precinct walls are walls** (`pipeline/walls.py`): the earthen walls round
     the Kyoto Gosho and the Sento Gosho come in the open data as buildings 3 m
     wide and hundreds of metres long, with a height estimated from the houses
@@ -2919,16 +2593,6 @@ helicopter a line ahead in the air rather than a pointer.
 
 ## The vehicles
 
-| The helicopter (Cycles render) | The ferry (Cycles render) |
-|---|---|
-| ![](images/vehicles/helicopter.jpg) | ![](images/vehicles/ferry.jpg) |
-| **The river shuttle** | **The traffic: sedan, taxi, hatchback, SUV, van and bus** |
-| ![](images/vehicles/ferry_river.jpg) | ![](images/vehicles/cars.jpg) |
-| **Rotor wash over the harbour** | **A Kelvin wake at 16 knots** |
-| ![](images/sydney/game-rotorwash.jpg) | ![](images/sydney/game-wake.jpg) |
-| **The lake steamer (Queenstown's TSS Earnslaw)** | |
-| ![](images/vehicles/ferry_steamer.jpg) | |
-
 **The lake steamer** (`ferry_steamer.glb`, `ferry_style.model: "steamer"`) is the only single-ended
 vessel: `vehicles.json` marks it `single_ended`, so it lies alongside as it came in, swings round
 at no more than 8° a second once under way (slow ahead while it does), always leads with its bow,
@@ -3200,8 +2864,6 @@ game beside the surveyor, at the hour given (`… 390x844` for a phone).
 ## The trees
 
 | The seven species (Cycles render) | Afternoon traffic under plane trees, a palm and a jacaranda |
-|---|---|
-| ![](images/trees/trees.jpg) | ![](images/sydney/game-traffic.jpg) |
 
 `blender/build_trees.py` grows seven species: London plane, elm, eucalyptus,
 Moreton Bay fig, jacaranda, Canary Island date palm and Japanese maple (momiji).
@@ -3226,32 +2888,6 @@ Moreton Bay fig, jacaranda, Canary Island date palm and Japanese maple (momiji).
   places with their own (a garden's maples) in `"areas": [{"at": [x, y],
   "radius": m, "mix": {...}}]`. `pipeline/scene_config.py` refreshes it
   without a rebuild.
-
-## Per-city flavour
-
-Everything a city's game says and wears is in `cities/<id>/city.json`, not in code.
-[Osaka on Foot](cities/osaka.md#8-osaka-on-foot) is the example:
-- **People.** An NPC's `look` takes a character: a Rocketbox NPC (`R_…`, see
-  [The NPCs](#the-npcs)), or one of the crowd's with skin, hair and clothes and a
-  `pattern` (`leopard`, `tiger`, `kuidaore`, `pinstripe`, `plaid`) painted on the top in
-  the shader. `clip` is what it does while it waits, and `acc` a list of accessories
-  attached to bones (`visor`, `hachimaki`, `jingasa`, `mask`, `lanyard`, `sunglasses`,
-  `umbrella`, `flag`, `drum`, and more in `web/game/people.js`).
-- **Crowd.** `crowd.style` gives the crowd's skin, hair, top and leg colours, the
-  weight of each character, and the share who wear a pattern, a mask or an umbrella.
-- **Words.** `blurb`, `smalltalk` and `passerby` replace the Sydney defaults, and quest
-  text takes the same `{...}` tokens (`{share:plateau}`, `{landmark:castle.ground_m}`,
-  `{sun:Place|M-D|HH:MM}`) so numbers come from the model.
-- **Boats.** A route is a list of landings. Make each route two or three stops long and
-  put the landings a quest uses at the ends, so the boat at a landing is the one that goes
-  where the quest wants.
-- **Night.** The street lights, the traffic's lights and the towers' lights come from
-  `night.json` ([NIGHT.md](NIGHT.md)), styled by `city.json` `night`; `night_ambient` adds
-  a quarter of its old lift on top (neon, signs), and a landmark material can carry
-  `emissive` and `glow` so signs light up.
-- **Neighbourhoods.** `areas` (station signs), `spots` and `chatter` live in `city.json`
-  `game`, or a city's `game_extras` hook returns them with positions measured from its
-  landmarks. [Tokyo Pilgrimage](cities/shibuya.md#7-tokyo-pilgrimage-shibuya) is the example.
 
 ## Testing
 

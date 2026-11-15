@@ -6,7 +6,7 @@
 .game-stage.story { --amber: #ffcf8a; --paper: #f4efe6; --night: rgba(4, 8, 18, 0.62); }
 
 /* the map's own instruments are put away: the story has one line to say and one counter to show */
-.game-stage.story :is(.g-quest, .g-right, .g-prompt, .g-chatter, .g-labels, .lf-card, .g-reticle, .g-vhud, .g-lens) { display: none !important; }
+.game-stage.story :is(.g-quest, .g-right, .g-chatter, .g-labels, .lf-card, .g-reticle, .g-vhud, .g-lens) { display: none !important; }
 .game-stage.story-auto #g-title { opacity: 0; pointer-events: none; }
 
 /* ---- the title: the story's name over the living street, and one button */
@@ -86,6 +86,13 @@
 #g-story-shutter kbd { padding: 5px 7px; border: 1px solid rgba(244, 239, 230, 0.6); border-radius: 2px; background: rgba(4, 8, 18, 0.45); font: inherit; letter-spacing: 0.06em; }
 #g-story-shutter:focus-visible { outline: 1px solid var(--amber); outline-offset: 6px; }
 
+/* ---- the one thing the map still offers (a lift to ride): its key and its words, on the picture */
+.game-stage.story .g-prompt { border: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; color: var(--paper); font: 400 10px/1 var(--f-mono); letter-spacing: 0.24em; text-transform: uppercase; text-shadow: 0 1px 10px #000, 0 0 2px #000; }
+.game-stage.story .g-prompt #gp-alt { display: none; }
+.game-stage.story .gd-choices { max-width: 34em; margin: 0 auto 10px; text-align: left; }
+.game-stage.story .gd-choices button { border-color: rgba(244, 239, 230, 0.3); background: rgba(4, 8, 18, 0.5); font: 300 16px/1.4 var(--f-body); color: var(--paper); border-radius: 2px; }
+.game-stage.story .gd-choices button:is(:hover, :focus-visible) { border-color: var(--amber); background: rgba(255, 207, 138, 0.1); }
+
 /* ---- what they say: a lower third on the picture, not a window over it */
 .game-stage.story .g-dialog { bottom: 0; width: 100%; max-width: none; transform: translateX(-50%); padding: 90px max(24px, calc(50% - 380px)) max(34px, calc(env(safe-area-inset-bottom) + 34px)); border: 0; border-radius: 0; box-shadow: none;
   -webkit-backdrop-filter: none; backdrop-filter: none; background: linear-gradient(to top, rgba(4, 8, 18, 0.88), rgba(4, 8, 18, 0.5) 55%, transparent); text-align: center; }
@@ -108,6 +115,10 @@
 #g-story-end figure { margin: 0 0 10px; padding: 10px 10px 0; background: var(--paper); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.65); transform: rotate(-2deg); }
 #g-story-end img { display: block; width: min(70vw, 400px); aspect-ratio: 3 / 2; object-fit: cover; filter: saturate(0.8) contrast(1.06); }
 #g-story-end figcaption { display: flex; justify-content: space-between; padding: 9px 2px 10px; font: 400 9px/1 var(--f-mono); letter-spacing: 0.22em; text-transform: uppercase; color: #3a3f4c; }
+#g-story-end .sheet { list-style: none; margin: 0 0 6px; padding: 8px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; background: #0b0d12; border-top: 2px dotted rgba(244, 239, 230, 0.3); border-bottom: 2px dotted rgba(244, 239, 230, 0.3); }
+#g-story-end .sheet li { display: grid; gap: 5px; }
+#g-story-end .sheet img { width: min(13vw, 86px); aspect-ratio: 3 / 2; filter: none; }
+#g-story-end .sheet span { font: 400 8px/1 var(--f-mono); letter-spacing: 0.14em; color: var(--amber); white-space: nowrap; }
 #g-story-end small { font: 400 10px/1 var(--f-mono); letter-spacing: 0.4em; margin-right: -0.4em; text-transform: uppercase; color: var(--amber); }
 #g-story-end h2 { margin: 0; font: 200 clamp(26px, 4.4vw, 46px)/1.1 var(--f-display); letter-spacing: 0.12em; margin-right: -0.12em; text-transform: uppercase; }
 #g-story-end p { margin: 0; max-width: 40ch; font: 300 16px/1.6 var(--f-body); color: rgba(244, 239, 230, 0.84); }

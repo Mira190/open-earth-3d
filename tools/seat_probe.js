@@ -6,7 +6,7 @@ const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const fs = require('fs');
 const { pinClock } = require('./pin_clock');
-const [,, city = 'sydney', outDir = '.', size = '1440x900'] = process.argv;
+const [,, city = 'shibuya', outDir = '.', size = '1440x900'] = process.argv;
 const time = (process.env.GAME_TIME || '').replace(/.*T/, '');
 (async () => {
   const [w, h] = size.split('x').map(Number);
@@ -25,7 +25,7 @@ const time = (process.env.GAME_TIME || '').replace(/.*T/, '');
   p.on('pageerror', e => errs.push(String(e).slice(0, 300)));
   p.on('console', m => { if (m.type() === 'error') errs.push(m.text().slice(0, 300)); });
   fs.mkdirSync(outDir, { recursive: true });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(() => { window.__game.hold(true, true); });
   // past the title: one click on Play once it is there (a click that lands before the button is ready leaves the

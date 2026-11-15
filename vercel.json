@@ -6,6 +6,6 @@
   "outputDirectory": "web",
   "ignoreCommand": "[ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]",
   "headers": [
-    { "source": "/(data|assets|vendor|films)/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }] }
+    { "source": "/(data|assets|vendor)/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }] }
   ]
 }

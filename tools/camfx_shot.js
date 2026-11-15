@@ -8,7 +8,7 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
-const [,, city = 'sydney', outDir = '.', size = '1440x900'] = process.argv;
+const [,, city = 'shibuya', outDir = '.', size = '1440x900'] = process.argv;
 const [w, h] = size.split('x').map(Number);
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
@@ -39,7 +39,7 @@ const [w, h] = size.split('x').map(Number);
     return { luma: l / (A.length / 4), diff: Z ? d / (A.length / 4) : null };
   }, [a, z]);
   const frames = n => p.evaluate(n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction(() => window.__game && !document.getElementById('g-title').hidden, null, { timeout: 900000, polling: 500 });
   // the opening shot, part way down: the camera's effects are on while it moves
   await p.evaluate(() => { const b = document.querySelector('#gt-timechoice [data-t="morning"]'); if (b) b.click(); document.getElementById('gt-play').click(); });

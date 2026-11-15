@@ -8,7 +8,7 @@
 // (eye: moved from the model's Eye_Pilot, +x left, +y up, +z forward, m; fov: vertical, degrees; pitch: radians)
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path');
-const [,, city = 'sydney', outDir = '.', vfile, size = '1440x900'] = process.argv;
+const [,, city = 'shibuya', outDir = '.', vfile, size = '1440x900'] = process.argv;
 const [VW, VH] = size.split('x').map(Number);
 const variants = vfile ? JSON.parse(fs.readFileSync(vfile, 'utf8')) : [{ name: 'now' }];
 (async () => {
@@ -27,7 +27,7 @@ const variants = vfile ? JSON.parse(fs.readFileSync(vfile, 'utf8')) : [{ name: '
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
   p.on('console', m => { if (m.type() === 'error' || m.text().startsWith('picks ')) console.log(m.type() === 'error' ? `error: ${m.text().slice(0, 300)}` : m.text()); });
   if (process.env.PICK) await p.addInitScript(pk => { window.__pick = pk; }, process.env.PICK.split(';').map(q => q.split(',').map(Number)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(async () => { const g = window.__game; if (g.heli && g.heli.want) await g.heli.want(); });
   await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 300000 }).catch(() => {});

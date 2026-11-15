@@ -1,6 +1,6 @@
 # The full tier of tools/check.sh, on main after work lands (docs/CHECKS.md). A branch lands on the fast
-# tier (the static checks, its own cities and the smoke cities); this plays every live city the landed
-# commits can have changed, one city and kind a runner, so that nobody waits for it. What it checks is
+# tier (the static checks, the story and the phone's memory); this adds the clip, gl and touch checks, and
+# gives every target (static, story, mem, clip, gl, touch, astc) its own runner, so that nobody waits for it. What it checks is
 # what changed since the last run of it that passed, so a run that was skipped while another was going,
 # or that failed, is made up by the next. A failure opens an issue labelled main-red (or adds to the open
 # one) with the shards that failed and the commits they cover; the next pass closes it. A check that failed on
@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       targets:
-        description: 'Targets for tools/check.sh ("all", "sydney:game shibuya"); empty: what changed since the last pass'
+        description: 'Targets for tools/check.sh ("all", "story mem", "game"); empty: what changed since the last pass'
         default: ''
 
 permissions:

@@ -1,5 +1,10 @@
 # The overture: each map's opening
 
+> **Scope, November 2026.** The project is now one story on one map: Blue Hour, at the Shibuya Scramble
+> ([STORY.md](STORY.md)). This page was written while the project built many maps, a globe and a model viewer.
+> Where it names another city, the title screen, the viewer or the reef sites, it describes work kept at the tag
+> `archive/world-2026-11`; the shared code it explains is the code Shibuya runs.
+
 The first time you play a map, control does not come to you with a camera move from the
 title. It comes at the end of a short film, about forty seconds, played in the game itself:
 the map's own buildings, crowd, traffic, sky and sun, cut to a score. A guide (a cherry
@@ -139,24 +144,6 @@ The crowd is seen from across the junction and from above; no shot stands among 
 | Sangenjaya 三軒茶屋 | steam from the bathhouse chimney | Dusk on the triangle's lanes; the camera comes down the chimney's plume into the lane as the lamps come on one by one, past the noren of the bathhouse |
 | Harajuku 原宿 | a shaft of light | From Takeshita-dori's noise through the great torii into the woods of Meiji Jingu: the city's sound drops away under the camphor trees |
 | Omotesando 表参道 | the zelkova trunks | A slow track down the avenue at low height, the trunks passing like a metronome on the score's pulse; in December, their lights |
-
-## Seeds for the other maps (one idea each, not built)
-
-| Map | Guide | Idea |
-|---|---|---|
-| Shinjuku | a raindrop | *The Garden of Words*: from the cloud base, one drop falls past the towers into Shinjuku Gyoen's pond; its ripple becomes the shelter where you stand. On a dry day, a drop of dew from a maple leaf |
-| Asakusa | incense smoke | From the jōkōro at Sensō-ji, the smoke climbs past the five-storey pagoda and the Skytree comes up across the Sumida |
-| Akihabara | the departure melody | A Sobu line train across the Kanda river at blue hour, the signs reflected along its windows, the station melody as the score's first notes |
-| Tokyo | a shinkansen | The red brick of Tokyo Station at dawn as a train glides in |
-| Kyoto | a temple bell | The bell's ring seen as light passing over the tile roofs; a maple leaf in autumn; through the torii of Fushimi Inari |
-| Osaka | a reflection | Into the neon reflected in the Dōtonbori canal and out of it into the street: the mirror as the cut |
-| Hong Kong | the Star Ferry's wake | Across Victoria Harbour as the towers light up at eight |
-| Sydney | first light | A silver gull riding the wind over the harbour as the sun reaches the sails first |
-| Melbourne | a tram's spark | Down a laneway behind a tram's pantograph |
-| Melbourne Bayside | a little penguin's wake | Ashore on the St Kilda breakwater at dusk |
-| Paris | the sparkle | Timed so the Eiffel Tower's five minutes of sparkle land on the downbeat after dark |
-| Amsterdam | a heron | Low along the canal ring, under the bridges, the carillon |
-| Reef sites | a turtle hatchling | Down the beach at dusk into the water; the reef opens |
 
 ## Making one: the workflow
 

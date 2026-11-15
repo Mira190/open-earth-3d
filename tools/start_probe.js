@@ -8,7 +8,7 @@
 //   PADR=7 (a smaller circle), ROOF=300 xvfb-run -a node tools/start_probe.js shibuya 540,-1130  # roofs and decks below 300 m too
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
-const [,, city = 'sydney', ...pts] = process.argv;
+const [,, city = 'shibuya', ...pts] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
@@ -16,7 +16,7 @@ const [,, city = 'sydney', ...pts] = process.argv;
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
   const errs = [];
   p.on('pageerror', e => errs.push(String(e).slice(0, 200)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   const out = await p.evaluate(([pts, roof, padR]) => {

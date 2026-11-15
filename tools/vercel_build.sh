@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Vercel's build (vercel.json buildCommand): nothing is compiled, web/ is served as it is. It leaves the city
-# films out of the deployment and writes web/version.json for the title screen (the release reads as the
+# Vercel's build (vercel.json buildCommand): nothing is compiled, web/ is served as it is. It leaves any
+# video out of the deployment and writes web/version.json for the page (the release reads as the
 # VERSION and the commit, as GitHub Pages' reads as the VERSION and the run number: .github/workflows/pages.yml).
 # A script, not a line in vercel.json: Vercel refuses a buildCommand longer than 256 characters.
 set -eu

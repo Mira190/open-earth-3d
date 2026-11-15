@@ -3,7 +3,7 @@
 // there less the face's. Reads web/data/<city>/game.json and landmarks.json; no browser.
 //   node tools/floor_settle_probe.js queenstown
 const fs = require('fs');
-const city = process.argv[2] || 'queenstown';
+const city = process.argv[2] || 'shibuya';
 const G = JSON.parse(fs.readFileSync(`web/data/${city}/game.json`, 'utf8')), LM = JSON.parse(fs.readFileSync(`web/data/${city}/landmarks.json`, 'utf8'));
 const S = JSON.parse(fs.readFileSync(`web/data/${city}/scene.json`, 'utf8'));
 global.window = {};
