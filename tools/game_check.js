@@ -1882,15 +1882,17 @@ const npcNight = require('./npc_night');
       const realFrom = !!((g.G.crowd || {}).real_from || []).length;
       // the far crowd: each walker past the nearest drawn as its cast member's far copy (people.js castMaterial, issue 475),
       // no doll drawn where the cast has a copy for everyone
-      let farCast = 0, farDoll = 0;
-      if (draw && draw.meshes) for (const m of draw.meshes) { if (m.material.map) farCast += m.count; else farDoll += m.count; }
+      // (whether anyone stands past the nearest walkers in view at this moment depends on the map: Tokyo's spawn has
+      // nobody within 32 m at midday, issue 494; so the walkers given to each mesh are counted, not those drawn)
+      let farCast = 0, farDoll = 0, castSlots = 0;
+      if (draw && draw.meshes) for (const m of draw.meshes) { if (m.material.map) { farCast += m.count; castSlots += m.userData.slots || 0; } else farDoll += m.count; }
       return { low, sfOn: !!(S && S.active), sfTex: !!(S && S.U && S.U.uSfOn && S.U.uSfOn.value), realCast: realFrom, realNear, nearTotal,
-        farCast, farDoll, castCopies: !!(draw && draw.meshes.length && draw.meshes.every(m => m.material.map)) };
+        farCast, farDoll, castSlots, castCopies: !!(draw && draw.meshes.length && draw.meshes.every(m => m.material.map)) };
     });
     check(r.sfOn === !r.low, `street surfaces ${r.sfOn ? 'on' : 'off'} on the ${r.low ? 'low' : 'high'} tier (surface.js)`);
     if (r.sfOn) check(r.sfTex, 'the scanned surface textures loaded');
     if (r.realCast && r.nearTotal > 0) check(r.realNear > 0, `the nearest walkers are real people (${r.realNear}/${r.nearTotal} near are NPC rigs)`);
-    if (r.nearTotal > 0) check(r.castCopies && r.farCast > 0 && r.farDoll === 0, `the far crowd is the scanned cast's far copies (${r.farCast} drawn as the cast, ${r.farDoll} as dolls)`);
+    if (r.nearTotal > 0) check(r.castCopies && r.castSlots > 0 && r.farDoll === 0, `the far crowd is the scanned cast's far copies (${r.castSlots} walkers given to them, ${r.farCast} drawn as the cast now, ${r.farDoll} as dolls)`);
   }
   // the walk signals' calls for the blind (walkcalls.js): Japan's bird calls in the walk, the ticking elsewhere, none when muted (tools/walkcalls_step.js)
   { const r = await require('./walkcalls_step')(p); if (r.none) console.log(`(no walk signals' calls in ${r.country || 'this country'})`); else for (const [ok, what] of r.checks) check(ok, what); }
