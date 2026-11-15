@@ -229,7 +229,7 @@ dashboard write access; `--check` runs each query and changes nothing. The dashb
 - **Release comparison** (issue 298): every event carries the deployed version (`app`, `web/version.json`),
   so a regression points to the release that brought it. GitHub Pages names a release `0.1.<run>` (its
   workflow's run number); Vercel has no run number, so its builds show `v0.1 · <commit>` and report `0.1+<commit>`
-  (`release` in `version.json`, `vercel.json`; issue 458). Builds before 14 November 2026 all reported `0.1.vercel`:
+  (`release` in `version.json`, written by `tools/vercel_build.sh`, which `vercel.json` runs; issue 458). Builds before 14 November 2026 all reported `0.1.vercel`:
   - *Release comparison, last 30 days*: a table by version, newest first: page loads, load p75 on desktop
     and on phones and tablets, p75 of each load stage, pages that died, page loads with a script error or a
     lost WebGL context (%), median fps and slow frames (%);
