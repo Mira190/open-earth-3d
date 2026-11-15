@@ -41,6 +41,7 @@ window.OEQuality = (function () {
     c.gl2 = true;
     c.maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
     c.maxSamples = gl.getParameter(gl.MAX_SAMPLES);
+    c.units = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS); // (the textures one fragment shader may read: 16 on an Apple GPU, 32 and more elsewhere)
     const dbg = gl.getExtension('WEBGL_debug_renderer_info');
     c.renderer = String((dbg && gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) || gl.getParameter(gl.RENDERER) || '');
     if (/swiftshader|llvmpipe|softpipe|software|basic render/i.test(c.renderer)) c.software = true;
@@ -387,5 +388,59 @@ window.OEQuality = (function () {
     }
     return g;
   }
-  return { probe, auto, tier, override, setOverride, below, pixelRatio, gpuBytes, city, lean, died, sinceDeath, level, held, governor, TIERS, ORDER, NAMES };
+  // ---- texture units
+  // A fragment shader may read as many textures as the device has units for: WebGL2 promises 16, an Apple GPU gives
+  // exactly 16 and a software renderer 32 or more. A program with one sampler too many does not link, and what it
+  // was to draw is missing, with nothing said (issue 485: the ground of every live map on every Mac and iPhone,
+  // through which the sky showed). So a material that many patches add samplers to is fitted last of all: counted,
+  // and while it is over the device's units it goes without what it can do without, in this order.
+  //   ?units=16 plays as a device with that many (never more than the device has): how a software renderer checks it.
+  const UNIT_DROPS = [
+    { sampler: 'uFloorMap', unset: 'FLOOR_MAP' },   // a wood's own floor map: the city's floor is drawn there instead (world.js)
+    { sampler: 'uOeTrail', set: 'OE_NO_TRAIL' },    // the tracks trodden in snow (weather.js)
+    { sampler: 'uOeOcc', set: 'OE_NO_OCC' },        // what stands over the ground in the rain: it is wet under cover too (weather.js)
+  ];
+  function units() {
+    const dev = probe().units || 16, q = +(new URLSearchParams(location.search).get('units') || 0);
+    return q >= 8 ? Math.min(q, dev) : dev;
+  }
+  // the samplers three.js itself gives a program, from the parameters it hands onBeforeCompile
+  const OWN_MAPS = ['map', 'matcap', 'envMap', 'lightMap', 'aoMap', 'bumpMap', 'normalMap', 'displacementMap', 'emissiveMap', 'metalnessMap', 'roughnessMap', 'anisotropyMap', 'clearcoatMap', 'clearcoatNormalMap',
+    'clearcoatRoughnessMap', 'iridescenceMap', 'iridescenceThicknessMap', 'sheenColorMap', 'sheenRoughnessMap', 'specularMap', 'specularColorMap', 'specularIntensityMap', 'transmissionMap', 'thicknessMap', 'alphaMap', 'gradientMap'];
+  function ownUnits(sh) {
+    let n = 1; // (the DFG table of a standard material)
+    for (const k of OWN_MAPS) if (sh[k]) n++;
+    n += (sh.numDirLightShadows || 0) + (sh.numPointLightShadows || 0) + (sh.numSpotLightShadows || 0) + (sh.numSpotLightMaps || 0);
+    if (sh.numRectAreaLights > 0) n += 2; // (the two tables an area light is worked out with)
+    if (sh.transmission) n++;
+    return n;
+  }
+  // the samplers the patches declared in a fragment shader, less the ones its defines leave out
+  function patchUnits(sh) {
+    const defs = sh.defines || {}, names = new Map();
+    for (const m of sh.fragmentShader.matchAll(/uniform\s+(?:(?:highp|mediump|lowp)\s+)?[iu]?sampler\w+\s+([^;]+);/g))
+      for (const d of m[1].split(',')) { const a = /^\s*(\w+)\s*(?:\[\s*(\d+)\s*\])?/.exec(d); if (a && /^u[A-Z]/.test(a[1])) names.set(a[1], +(a[2] || 1)); } // (the patches' own are uName; three.js's, declared under its #ifdefs, are counted by ownUnits)
+    for (const d of UNIT_DROPS) if (d.unset ? !(d.unset in defs) : d.set in defs) names.delete(d.sampler);
+    return names;
+  }
+  // call it at the end of a material's onBeforeCompile; left: the units to keep free (a patch still to come). Returns what
+  // was left out, and .over when there is still no room.
+  function fitUnits(sh, left = 0) {
+    const max = units() - left, out = [];
+    let names = patchUnits(sh), n = ownUnits(sh) + [...names.values()].reduce((a, b) => a + b, 0);
+    for (const d of UNIT_DROPS) {
+      if (n <= max) break;
+      if (!names.has(d.sampler)) continue;
+      const defs = Object.assign({}, sh.defines);
+      if (d.unset) delete defs[d.unset]; else defs[d.set] = '';
+      sh.defines = defs;
+      n -= names.get(d.sampler); names.delete(d.sampler); out.push(d.sampler);
+    }
+    if (n > max && !fitUnits.said) { fitUnits.said = true; console.warn(`A shader wants ${n} texture units and this device has ${units()}: ${[...names.keys()].join(' ')}`); }
+    (fitUnits.log || (fitUnits.log = [])).push({ own: ownUnits(sh), maps: OWN_MAPS.filter(k => sh[k]), shadows: [sh.numDirLightShadows, sh.numPointLightShadows, sh.numSpotLightShadows, sh.numSpotLightMaps], area: sh.numRectAreaLights, left, n, out: out.slice(), kept: [...names.keys()] }); if (fitUnits.log.length > 12) fitUnits.log.shift(); // (what was decided, for a probe to read)
+    out.over = n > max; // (still too many: the caller's own patch, if it is to come, stays out)
+    return out;
+  }
+
+  return { probe, auto, tier, override, setOverride, below, pixelRatio, gpuBytes, city, lean, died, sinceDeath, level, held, governor, units, fitUnits, TIERS, ORDER, NAMES };
 })();

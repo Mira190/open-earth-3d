@@ -971,10 +971,13 @@ vec3 steepRock(vec3 c, float k) {
     if (all(greaterThan(huv, vec2(0.0))) && all(lessThan(huv, vec2(1.0))) && texture2D(uHole, huv).r > 0.502) discard; }`); // (inland.js: 128 at the hole's edge)
       }
       if (QUAY) { // out in front of a quay, above the water: the grid's ramp up to the land
-        Object.assign(sh.uniforms, { uQuayMask: QUAY.mask, uQuayDist: QUAY.dist, uQuayBox: QUAY.box, uQuayBed: QUAY.bed });
+        // the distance to the shore is the texture the sea's own patch reads (uShore): where that patch is in this shader
+        // already and holds the same texture, the quay reads it through that sampler, one texture unit and not two
+        const shared = !!(sh.uniforms.uShore && sh.uniforms.uShore.value === QUAY.dist.value && /uniform sampler2D uShore\b/.test(sh.fragmentShader));
+        Object.assign(sh.uniforms, { uQuayMask: QUAY.mask, uQuayBox: QUAY.box, uQuayBed: QUAY.bed }, shared ? {} : { uQuayDist: QUAY.dist });
         sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vQuayWP;')
           .replace('#include <project_vertex>', '#include <project_vertex>\nvQuayWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uQuayMask, uQuayDist; uniform vec4 uQuayBox; uniform vec3 uQuayBed; varying vec3 vQuayWP;')
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nuniform sampler2D uQuayMask; ${shared ? '\n#define uQuayDist uShore' : 'uniform sampler2D uQuayDist;'}\nuniform vec4 uQuayBox; uniform vec3 uQuayBed; varying vec3 vQuayWP;`)
           .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
   { vec2 quv = vec2((vQuayWP.x - uQuayBox.x) / uQuayBox.z, (uQuayBox.y + vQuayWP.z) / uQuayBox.w);
     if (vQuayWP.y > -0.05 && all(greaterThan(quv, vec2(0.0))) && all(lessThan(quv, vec2(1.0))) && texture2D(uQuayMask, quv).r > 0.5 && texture2D(uQuayDist, quv).r > 127.5 / 255.0) discard;

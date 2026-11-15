@@ -320,6 +320,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (window.OEWeather && (!weather || weather.armed)) OEWeather.patch(sh, { gloss: '1.0 - green', puddles: '1.0 - green', tread: '1.0 - green', porous: 0.42 });
     Wd.gradePhoto(sh); // the photo's haze out (world.js), before the drawn streets go over it
     if (Wd.skyLit) Wd.skyLit(sh); // the sky the ground sees, on its ambient light (world.js, issue 358)
+    // last: no more textures than the device has units for (quality.js; the wet street's mirror, patched in after this, fits again)
+    OEQuality.fitUnits(sh);
   };
   // the ground's program with the wet look and without it are two programs; the weather compiles
   // its in when it first runs (weather.js arm: a device whose weather the guard keeps off never does)

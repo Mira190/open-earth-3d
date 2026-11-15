@@ -21,6 +21,8 @@
 #   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
 #   - checks each map's daily life (pipeline/life.py --check: people, ranks, places, sourced events, built);
 #   - prices rides by each map's fares (tools/fares_check.js: the rules, and every live table stop to stop);
+#   - plays each live map's lines and quests to the last stamp without a browser (tools/goals_check.js: the rules of
+#     web/game/goals.js, the data sound, a save kept and loaded, and which steps a phone cannot reach);
 #   - reads every line the games' characters say, in every city and reef site, for talk about the
 #     data or how the map was built (tools/voice_check.py: open data, PLATEAU, LiDAR, "rebuilt from"...);
 #   - runs each reef site's scripted test (reef/index.html?gametest=1);
@@ -42,6 +44,7 @@
 #   tools/check.sh loader               # the loading screen's hand-over only
 #   tools/check.sh telemetry            # the visitor and SLO events, and the game's save, only
 #   tools/check.sh gl                   # the map opened as a device with its extras shed opens it: no refused WebGL call
+#                                       # and, as a device with 16 texture units, no shader program over them
 #   tools/check.sh all                  # every city, every reef site and the title
 #   tools/check.sh static               # the checks that open no browser only (packs, voice, life, rings...)
 #   tools/check.sh sydney:game          # one kind of a city's checks (game, clip, mem, tour; sydney:clip,mem)
@@ -150,7 +153,8 @@ else
       web/plate.js|web/city.js|tools/load_check.js) shared_change; loader=1; telemetry=1 ;;
       web/game/game.js) shared_change; loader=1; telemetry=1; gl=1 ;;
       web/world.js|web/glcare.js|web/mirror.js|web/water.js|web/lens.js|web/game/atmosphere.js|web/game/ao.js|web/game/weather.js) shared_change; gl=1 ;;   # what draws into a target of its own: the passes a device's governor turns on and off
-      tools/gl_error_probe.js) gl=1 ;;
+      tools/gl_error_probe.js|tools/sampler_probe.js) gl=1 ;;
+      web/surface.js|web/night.js|web/neon.js) shared_change; gl=1 ;;   # what adds a texture to the shared shaders (the units check)
       web/game/fishing.js|tools/fishing_*|pipeline/fishing.py)   # the cities with fishing spots only (docs/FISHING.md)
         if [ "$TIER" = full ]; then for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && add_city "$id"; done; else fish=1; fi ;;
       tools/game_check.js|tools/*_step.js|tools/*_walk.js|tools/npc_night.js|tools/ride_queue.js) shared_change game ;;   # a check's own script: that kind of check
@@ -296,7 +300,15 @@ run_gl() {   # the map as an ordinary device opens it (issue 485; tools/gl_error
     if START=0.8/0.5 Q=msaa=on WALK=1 timeout 1800 $X node tools/gl_error_probe.js "$c" >"$OUT/gl-$c.log" 2>&1; then
       echo "ok   gl     $c: opened with the extras shed and multisampling on, the ladder walked: WebGL refused no call"
     else echo "FAIL gl     $c: $(grep -o '"call":"[^"]*"' "$OUT/gl-$c.log" | head -2 | cut -c9-160 | paste -sd ';' -)   (see $OUT/gl-$c.log)"; fi
+  done  # and as an Apple GPU links it: a fragment shader has 16 texture units there and 32 on the software renderer the checks
+  # draw with, so a program with a seventeenth sampler passed every check and drew nothing on a Mac or an iPhone (issue
+  # 485). Every live map, in the rain (the wet street's samplers in), held to 16 with ?units=16 (tools/sampler_probe.js)
+  for c in $CITIES; do
+    ( if Q="units=16&weather=rain" timeout 1500 $X node tools/sampler_probe.js "$c" >"$OUT/units-$c.log" 2>&1; then
+        echo "ok   units  $c: as a device with 16 texture units, $(grep -o '[0-9]* programs linked' "$OUT/units-$c.log" | head -1), none over 16"
+      else echo "FAIL units  $c: $(grep '^FAIL' "$OUT/units-$c.log" | head -1 | cut -c6-200)   (see $OUT/units-$c.log)"; fi ) &
   done
+  wait
 }
 run_telemetry() {   # the visitor and SLO events end to end, and the game's save on leaving (tools/telemetry_check.js)
   if TPORT=$((PORT + 21)) timeout 1500 $X node tools/telemetry_check.js sydney "$OUT/telemetry" >"$OUT/telemetry.log" 2>&1; then
@@ -343,6 +355,10 @@ EOF
   # between every pair of its stops. A second.
   if node tools/fares_check.js >"$OUT/fares.log" 2>&1; then tail -1 "$OUT/fares.log"
   else echo "FAIL fares  $(grep '^FAIL' "$OUT/fares.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/fares.log)"; fi
+  # each live map's goals (web/game/goals.js): the rules on a made-up map, and every map's lines and quests sound as
+  # data and played from the welcome to the last stamp with no browser. A second.
+  if node tools/goals_check.js >"$OUT/goals.log" 2>&1; then tail -1 "$OUT/goals.log"
+  else echo "FAIL goals  $(grep '^FAIL' "$OUT/goals.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/goals.log)"; fi
   # each city's packed buildings (buildings.bin, pipeline/pack.py) against its buildings.json: up to date,
   # and decoded by the browser's decoder (web/pack.js) to the same values. Ten seconds or so.
   if python3 pipeline/pack.py --check >"$OUT/pack.log" 2>&1 && node tools/pack_check.js >>"$OUT/pack.log" 2>&1; then

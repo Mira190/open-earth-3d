@@ -35,6 +35,10 @@ standing traffic). A two-hour round that fails on a step unrelated to the change
 - `gl`, when the game, the renderer or a pass with a target of its own changed: Shibuya opened as a device with its
   extras shed opens it, multisampled, the governor's ladder walked, and every WebGL call asked for its error
   (`tools/gl_error_probe.js`; every live map in the full tier). The game check walks the same ladder in play.
+  Then every live map is opened in the rain as a device with 16 texture units (`?units=16`, `tools/sampler_probe.js`)
+  and each shader program's samplers are counted as it links: a fragment shader has 16 units on an Apple GPU and 32
+  on the software renderer the checks draw with, so a seventeenth passed every check and drew no ground on a Mac
+  or an iPhone (issue 485). `web/quality.js` `fitUnits` is what keeps a material within them.
 
 **After landing: the full tier, on main, in GitHub Actions** (`.github/workflows/checks.yml`). Each
 push to main runs `CHECK_TIER=full tools/check.sh --plan` against the commit of the last run that
