@@ -635,7 +635,7 @@ const npcNight = require('./npc_night');
   // (a straight walk that rises 1.5 m or more in steps of 30 cm or less) and get to its top; and
   // walk at a wall (a rise of 80 cm or more in half a metre) and stay at its foot
   const levels = await p.evaluate(() => {
-    const g = window.__game, pl = g.player, P = (g.G.patches || [])[0];
+    const g = window.__game, pl = g.player, P = (g.G.patches || []).find(q => !q.smooth); // (not a hero level's drawn ground, pipeline/hero_floor.py: a surface, no walls or flights)
     if (!P) return { none: true };
     const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw };
     const b = typeof P.data === 'string' ? Uint8Array.from(atob(P.data), c => c.charCodeAt(0)) : P.data, Z = new Int16Array(b.buffer, b.byteOffset, P.nx * P.ny);
