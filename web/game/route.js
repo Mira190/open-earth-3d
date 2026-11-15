@@ -164,7 +164,11 @@ window.OERoute = (function () {
     // lattice of lines along each, no more than 6 m apart, and across it every 15 m
     for (const st of nav.strips) {
       const p = st.profile, u0 = p[0][0], u1 = p[p.length - 1][0], hw = st.half_width - 0.8;
-      const at = (u, v) => { const x = st.origin[0] + st.axis[0] * u - st.axis[1] * v, y = st.origin[1] + st.axis[1] * u + st.axis[0] * v; return [x, y, nav.stripHeight(st, x, y) ?? 0]; };
+      // (the height from the profile at u itself: read back from x, y, a point at the strip's very end can fall a hair
+      // outside it and come back null, and a flight's end laid at 0 m joined neither the platform nor the passage it
+      // climbs between, as Tokyo Station's south stairs to platforms 5 and 6 were)
+      const zAt = u => { if (p.length < 2) return p[0][1]; let k = 1; while (k < p.length - 1 && p[k][0] < u) k++; const [ua, za] = p[k - 1], [ub, zb] = p[k]; return ub > ua ? za + (zb - za) * Math.max(0, Math.min(1, (u - ua) / (ub - ua))) : za; };
+      const at = (u, v) => { const x = st.origin[0] + st.axis[0] * u - st.axis[1] * v, y = st.origin[1] + st.axis[1] * u + st.axis[0] * v; return [x, y, zAt(u)]; };
       const nv = hw > 1 ? Math.max(1, Math.ceil(2 * hw / 6)) : 0, vs = nv ? Array.from({ length: nv + 1 }, (_, i) => -hw + 2 * hw * i / nv) : [0];
       const nu = Math.max(1, Math.ceil((u1 - u0) / 4));
       for (const v of vs) lines.push(polyline(Array.from({ length: nu + 1 }, (_, i) => at(u0 + (u1 - u0) * i / nu, v)), 'surface'));
