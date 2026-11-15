@@ -117,7 +117,9 @@ window.OEHero = (function () {
     function load(L) {
       L.state = 'loading';
       const t0 = performance.now();
-      new THREE.GLTFLoader().load(base + L.h.glb, g => {
+      const loader = new THREE.GLTFLoader();
+      loader.oeTex = false; // (a phone's pictures in ASTC blocks, tex.js: packed below, once they have been made smaller)
+      loader.load(base + L.h.glb, g => {
         if (L.state !== 'loading') { dispose(g.scene); return; } // (let go while it came)
         const root = g.scene, seen = new Set(), shrunk = [];
         root.name = `hero-${L.h.id}`;
@@ -149,7 +151,9 @@ window.OEHero = (function () {
         root.visible = false;
         group.add(root);
         L.root = root;
-        const ready = Promise.all(shrunk.map((t, i, a) => shrink(t, a.done || (a.done = new Map())))).then(() => L.root === root && opts.warm ? opts.warm(root) : null);
+        const ready = Promise.all(shrunk.map((t, i, a) => shrink(t, a.done || (a.done = new Map()))))
+          .then(() => (window.OETex && OETex.stats.on ? OETex.packObject(root) : null))
+          .then(() => L.root === root && opts.warm ? opts.warm(root) : null);
         Promise.resolve(ready).catch(e => console.warn('hero warm-up:', e)).then(() => {
           if (L.root !== root) return;
           L.state = 'ready';

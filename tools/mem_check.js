@@ -269,6 +269,8 @@ async function measure(b, city) {
     smaps = Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} ${MB(v)}`).join(', ');
   } catch (e) { /* gone */ }
   const r = await p.evaluate(top => window.__memReport(top), TOP).catch(() => null);
+  // the pictures packed as ASTC blocks on the device (web/tex.js), where the renderer decodes them (SwiftShader does: run without xvfb-run)
+  const astc = await p.evaluate(() => (window.OETex && OETex.stats.on ? { packed: OETex.stats.packed, kept: OETex.stats.kept, mb: OETex.stats.bytes / 1048576, worst: OETex.stats.worst, s: OETex.stats.ms / 1000, log: OETex.stats.log } : null)).catch(() => null);
   try { await cdp.send('HeapProfiler.collectGarbage'); } catch (e) { /* */ }
   const heapEnd = await heaps();
   // SNAP=file: a heap snapshot of the page after the collection, for tools/heap_owners.js (who keeps the array buffers)
@@ -320,7 +322,7 @@ async function measure(b, city) {
   }).catch(e => [String(e)]);
   const pr = await p.evaluate(() => { const c = document.getElementById('game-gl'); return c ? { w: c.width, h: c.height } : null; }).catch(() => null);
   await ctx.close();
-  return { city, ok, map, district, smaps, owners, heapEnd, split, sampled, tracked, s: (Date.now() - t0) / 1000, heap: peakHeap, rss: peakRss, gl: r, canvas: pr, errors };
+  return { city, ok, map, district, astc, smaps, owners, heapEnd, split, sampled, tracked, s: (Date.now() - t0) / 1000, heap: peakHeap, rss: peakRss, gl: r, canvas: pr, errors };
 }
 
 (async () => {
@@ -340,6 +342,10 @@ async function measure(b, city) {
     if (over.length) fail = true;
     if (process.env.JSON) continue;
     console.log(`${over.length ? 'FAIL' : 'ok  '} ${city}: GPU peak ${MB(gpu)} MB (textures ${m.gl ? MB(m.gl.tex) : '?'}, buffers ${m.gl ? MB(m.gl.buf) : '?'}, renderbuffers ${m.gl ? MB(m.gl.rb) : '?'} at the end; canvas ${m.canvas ? `${m.canvas.w}x${m.canvas.h}` : '?'}), JS heap peak ${MB(m.heap)} MB (${MB(m.heapEnd)} at the end after a collection: page objects ${MB(m.split.usedSize || 0)}, its array buffers ${MB(m.split.backingStorageSize || 0)}), renderer process ${MB(m.rss.renderer)} MB, GPU process ${MB(m.rss.gpu)} MB, ${m.s.toFixed(0)} s${over.length ? ` - ${over.join('; ')}` : ''}`);
+    if (m.astc) {
+      console.log(`     pictures in ASTC blocks: ${m.astc.packed} packed (${m.astc.mb.toFixed(1)} MB of blocks, the worst ${m.astc.worst.toFixed(1)} dB), ${m.astc.kept} kept as they were`);
+      if (process.env.ASTC_LOG) for (const l of m.astc.log) console.log(`       ${l.kept ? 'kept  ' : 'packed'} ${String(l.w).padStart(4)}x${String(l.h).padEnd(4)} ${l.db == null ? '' : `${l.db} dB`}${l.adb ? ` alpha ${l.adb}` : ''} ${l.name}${l.why ? ` (${l.why})` : ''}`);
+    }
     if (m.district && m.district.on) console.log(`     a phone's district: ${m.district.frame[0].join('..')} by ${m.district.frame[1].join('..')} m, ${m.district.quests} quests${m.district.walked ? `; a walk out at ${m.district.walked.end.map(Math.round)} stopped at ${m.district.walked.to}${m.district.said ? ', and the game said so' : ''}` : ''}`);
     if (m.map) console.log(`     the map round the player: ${m.map.cells} cells, ${m.map.vertices.toLocaleString()} vertices of buildings; to the far corner ${m.map.moves[0].changed} cells built again in ${m.map.moves[0].ms} ms (${m.map.moves[0].vertices.toLocaleString()} vertices there), back ${m.map.moves[1].changed} in ${m.map.moves[1].ms} ms`);
     for (const e of m.errors || []) if (/the map round/.test(e)) console.log(`     ${e}`);

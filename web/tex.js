@@ -7,8 +7,10 @@
 //   OETex.pack(texture)        a promise: the texture's picture in blocks (or left as it was: off, not a picture,
 //                              too small, or below the encoder's quality floor). Until it resolves the texture is
 //                              held back from the GPU (drawn black), so call it before what wears it is shown
-//   OETex.gltf                 a GLTFLoader plugin (loader.register(OETex.gltf)): a model's colour pictures packed
-//                              before the loader hands the model over
+//   OETex.gltf(loader)         a GLTFLoader plugin (gltf.js registers it on every loader): a model's colour
+//                              pictures packed before the loader hands the model over. A loader with oeTex = false
+//                              is left alone: its owner makes the pictures smaller first, then calls packObject
+//   OETex.packObject(root)     every colour picture the materials under root wear
 //   OETex.settled()            a promise: nothing left encoding
 //   OETex.stats                { packed, kept, texels, bytes, ms, worst } for the tools and the telemetry
 //
@@ -19,9 +21,10 @@
   'use strict';
   const here = document.currentScript ? document.currentScript.src : document.baseURI;
   const FLOOR = 33, ALPHA_FLOOR = 27, MIN_SIDE = 32; // (dB of the top level by the encoder's own count; smaller pictures cost nothing)
-  const stats = { on: false, packed: 0, kept: 0, texels: 0, bytes: 0, ms: 0, worst: 99 };
+  const stats = { on: false, packed: 0, kept: 0, texels: 0, bytes: 0, ms: 0, worst: 99, log: [] }; // (log: each picture, for tools/mem_check.js)
+  const note = (tex, img, r, kept) => { if (stats.log.length < 400) stats.log.push({ name: tex.name || String((img && (img.currentSrc || img.src)) || '').split('/').slice(-2).join('/'), w: r.width || (img && img.width) || 0, h: r.height || (img && img.height) || 0, db: r.db != null ? +r.db.toFixed(1) : null, adb: r.adb != null && r.adb < 99 ? +r.adb.toFixed(1) : undefined, kept, why: r.error }); };
   let worker = null, seq = 0, max = 4096, pending = 0, idle = [];
-  const waiting = new Map(), bySource = new WeakMap();
+  const waiting = new Map(), bySource = new WeakMap(), byTex = new WeakMap();
 
   function on(renderer, want = true) {
     const q = new URLSearchParams(location.search).get('tex');
@@ -61,11 +64,14 @@
     const img = tex.image, bitmap = typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap;
     if (!img || !(bitmap || (typeof HTMLImageElement !== 'undefined' && img instanceof HTMLImageElement && img.complete && img.naturalWidth))) return Promise.resolve(false);
     if (Math.min(img.width, img.height) < MIN_SIDE) return Promise.resolve(false);
+    if (byTex.has(tex)) return byTex.get(tex); // (asked twice: the one answer)
     const src = tex.source, had = bySource.get(src);
     if (had) { // (a clone of one being packed, or packed: the same blocks, and held back until they are there)
       const v = tex.version;
       tex.version = 0;
-      return had.then(r => { if (r) wear(tex, r); else { tex.version = Math.max(1, v); tex.needsUpdate = true; } return !!r; });
+      const again = had.then(r => { if (r) wear(tex, r); else { tex.version = Math.max(1, v); tex.needsUpdate = true; } return !!r; });
+      byTex.set(tex, again);
+      return again;
     }
     const mips = tex.generateMipmaps !== false && tex.minFilter !== THREE.NearestFilter && tex.minFilter !== THREE.LinearFilter;
     const version = tex.version, t0 = performance.now();
@@ -75,21 +81,28 @@
       .then(bm => post({ bitmap: bm, max: Math.min(max, (tex.userData && tex.userData.max) || max), flipY: !!tex.flipY, srgb: tex.colorSpace === THREE.SRGBColorSpace, mips, floor: FLOOR, alphaFloor: ALPHA_FLOOR }, [bm]))
       .then(r => {
         if (r.keep) { // as it was
-          if (bitmap && r.bitmap) tex.image = r.bitmap; else if (r.bitmap) r.bitmap.close();
+          if (!bitmap && r.bitmap) r.bitmap.close();
           if (bitmap && !r.bitmap) { tex.version = version || 1; return null; } // (the picture did not come back: nothing to send but what there was)
-          stats.kept++;
-          tex.version = Math.max(1, version); tex.needsUpdate = true;
-          return null;
+          stats.kept++; note(tex, img, r, true);
+          const back = () => { tex.version = Math.max(1, version); tex.needsUpdate = true; return null; };
+          if (!bitmap) return back();
+          // (an ImageBitmap is sent as it lies, whatever flipY says: one that was to be turned is turned here)
+          if (!tex.flipY) { tex.image = r.bitmap; return back(); }
+          return createImageBitmap(r.bitmap, { imageOrientation: 'flipY', premultiplyAlpha: 'none', colorSpaceConversion: 'none' })
+            .then(bm => { r.bitmap.close(); tex.image = bm; tex.flipY = false; return back(); }, () => { tex.image = r.bitmap; return back(); });
         }
         stats.packed++; stats.texels += r.width * r.height; stats.bytes += r.levels.reduce((s, l) => s + l.data.byteLength, 0); stats.ms += performance.now() - t0;
         if (r.db < stats.worst) stats.worst = r.db;
+        note(tex, img, r, false);
         wear(tex, r);
         return r;
       })
       .catch(e => { console.warn('tex: left as it was,', e && e.message || e); tex.version = Math.max(1, version); tex.needsUpdate = true; return null; })
       .finally(done);
     bySource.set(src, job);
-    return job.then(r => !!r);
+    const mine = job.then(r => !!r);
+    byTex.set(tex, mine);
+    return mine;
   }
 
   const KEYS = ['map', 'emissiveMap'], OTHER = ['normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'alphaMap', 'bumpMap', 'displacementMap', 'lightMap', 'clearcoatMap', 'clearcoatNormalMap', 'clearcoatRoughnessMap', 'transmissionMap', 'thicknessMap', 'specularMap', 'specularColorMap', 'specularIntensityMap', 'sheenColorMap', 'sheenRoughnessMap', 'iridescenceMap', 'anisotropyMap'];
@@ -106,7 +119,7 @@
     });
     return Promise.all([...colour].filter(t => !other.has(t.source)).map(pack));
   }
-  const gltf = () => ({ name: 'OE_astc', afterRoot(result) { return stats.on ? Promise.all((result.scenes || [result.scene]).filter(Boolean).map(packObject)) : null; } });
+  const gltf = loader => ({ name: 'OE_astc', afterRoot(result) { return stats.on && !(loader && loader.oeTex === false) ? Promise.all((result.scenes || [result.scene]).filter(Boolean).map(packObject)) : null; } });
   const settled = () => (pending ? new Promise(ok => idle.push(ok)) : Promise.resolve());
 
   window.OETex = { on, pack, packObject, gltf, settled, stats };

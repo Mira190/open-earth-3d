@@ -28,7 +28,8 @@ export class GLTFLoader extends GLTFLoaderBase {
     super(manager);
     this.setMeshoptDecoder(MeshoptDecoder);
     // a phone's pictures as ASTC blocks (tex.js, issue 443): a model's colour textures packed before it is handed over
-    if (globalThis.OETex) this.register(globalThis.OETex.gltf);
+    // (a loader whose owner makes its pictures smaller first sets oeTex = false and packs them after: people.js, hero.js)
+    if (globalThis.OETex) this.register(() => globalThis.OETex.gltf(this));
   }
   load(url, onLoad, onProgress, onError) {
     let tries = 0;

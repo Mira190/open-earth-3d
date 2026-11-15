@@ -41,6 +41,7 @@
 #   tools/check.sh voice                # what the characters say only (it runs with every target)
 #   tools/check.sh loader               # the loading screen's hand-over only
 #   tools/check.sh telemetry            # the visitor and SLO events, and the game's save, only
+#   tools/check.sh astc                 # the device-side ASTC encoder against a real decoder, only
 #   tools/check.sh all                  # every city, every reef site and the title
 #   tools/check.sh static               # the checks that open no browser only (packs, voice, life, rings...)
 #   tools/check.sh sydney:game          # one kind of a city's checks (game, clip, mem, tour; sydney:clip,mem)
@@ -104,12 +105,13 @@ all_reefs() { for r in $REEFS; do add_reef "$r"; done; }
 if [ $# -gt 0 ]; then
   for t in "$@"; do
     case "$t" in
-      all) all_cities; all_reefs; title=1; loader=1; telemetry=1 ;;
+      all) all_cities; all_reefs; title=1; loader=1; telemetry=1; astc=1 ;;
       voice|static) voice=1 ;;
       *:*) add_kinds "$t" ;;
       title) title=1 ;;
       loader) loader=1 ;;
       telemetry) telemetry=1 ;;
+      astc) astc=1 ;;
       *) if is_in "$t" "$CITIES" || is_in "$t" "$PARKED"; then add_city "$t"
          elif is_in "$t" "$REEFS"; then add_reef "$t"
          else echo "unknown target: $t (cities: $(echo $CITIES); reef sites: $(echo $REEFS))"; exit 2; fi ;;
@@ -180,11 +182,11 @@ if [ $plan -eq 1 ]; then   # the targets of this run, each one an argument to th
     [ -n "$rest" ] && echo "$c:$rest"
   done
   for r in "${reefs[@]}"; do echo "$r"; done
-  [ $title -eq 1 ] && echo title; [ $loader -eq 1 ] && echo loader; [ $telemetry -eq 1 ] && echo telemetry
+  [ $title -eq 1 ] && echo title; [ $loader -eq 1 ] && echo loader; [ $telemetry -eq 1 ] && echo telemetry; [ $astc -eq 1 ] && echo astc
   exit 0
 fi
 
-if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ] && [ $telemetry -eq 0 ]; then
+if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ] && [ $telemetry -eq 0 ] && [ $astc -eq 0 ]; then
   echo "nothing to check: no change to a city, a reef site, the game, the renderer or the title"
   stamp "$@"
   exit 0
@@ -287,6 +289,12 @@ run_telemetry() {   # the visitor and SLO events end to end, and the game's save
     echo "ok   telemetry  $(grep -c '^ok' "$OUT/telemetry.log") steps: views, loads, play time, frame rate, tour, spots, exit, crash, the SLO report, the save"
   else echo "FAIL telemetry  $(grep '^FAIL' "$OUT/telemetry.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/telemetry.log)"; fi
 }
+# the device-side ASTC encoder (web/astc.js) against a real decoder: SwiftShader's, since Mesa's llvmpipe offers none
+run_astc() {
+  if PORT=$PORT env -u DISPLAY timeout 600 node tools/astc_check.js >"$OUT/astc.log" 2>&1; then
+    echo "ok   astc   $(grep -c '^ok' "$OUT/astc.log") pictures encoded on the page and decoded by the GPU, none under the floor"
+  else echo "FAIL astc   $(grep '^FAIL' "$OUT/astc.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/astc.log)"; fi
+}
 run_title() {
   timeout 1800 node tools/title_check.js "$OUT/title" >"$OUT/title.log" 2>&1
   python3 -I - "$OUT/title.log" <<'EOF'
@@ -385,6 +393,7 @@ EOF
   [ $loader -eq 1 ] && run_loader
   [ $title -eq 1 ] && run_title
   [ $telemetry -eq 1 ] && run_telemetry
+  [ $astc -eq 1 ] && run_astc
 } | tee "$OUT/summary.txt"
 grep -q '^FAIL' "$OUT/summary.txt" && exit 1
 stamp "$@"

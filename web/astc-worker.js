@@ -12,6 +12,7 @@ self.onmessage = e => {
     const w = Math.max(1, Math.floor(bitmap.width * k)), h = Math.max(1, Math.floor(bitmap.height * k));
     const cv = new OffscreenCanvas(w, h), g = cv.getContext('2d', { willReadFrequently: true });
     if (flipY) { g.translate(0, h); g.scale(1, -1); } // (blocks cannot be flipped as they are sent: the rows are, here)
+    g.imageSmoothingQuality = 'high';
     g.drawImage(bitmap, 0, 0, w, h);
     const px = g.getImageData(0, 0, w, h).data, alpha = !self.OEAstc.opaque(px), S = self.OEAstc.stats;
     cv.width = cv.height = 0;
