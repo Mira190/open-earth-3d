@@ -240,6 +240,10 @@
 .ts-stats dd small { font: 400 9.5px var(--t-mono); color: var(--tx2); letter-spacing: 0.08em; margin-left: 4px; }
 .ts-prog { font: 400 9px/1 var(--t-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); }
 .ts-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+/* a story's link: one button under its title, and nothing to choose (title.js storyOpen) */
+.ts-story { position: absolute; left: 50%; bottom: max(12vh, 72px); transform: translateX(-50%); z-index: 6; opacity: 0; transition: opacity 1.4s ease; }
+.ts-story.on { opacity: 1; }
+.ts-story .ts-btn { min-width: 200px; justify-content: center; letter-spacing: 0.18em; text-transform: uppercase; }
 .ts-btn { flex: 1; min-width: 140px; border: 1px solid var(--line); background: rgba(236, 232, 225, 0.03); cursor: pointer; padding: 13px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
   font: 400 10px/1 var(--t-display); letter-spacing: 0.16em; white-space: nowrap; text-transform: uppercase; color: var(--tx); transition: background 0.3s, border-color 0.3s, color 0.3s; }
 .ts-btn:hover { border-color: rgba(236, 232, 225, 0.45); background: rgba(236, 232, 225, 0.07); }

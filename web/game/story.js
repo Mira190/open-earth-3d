@@ -44,6 +44,7 @@ window.OEStory = (function () {
 /* the story has its own goals: the walks' card, the prompts and the passers-by's talk are put away while it plays */
 .game-stage.story-on :is(.g-quest, .g-prompt, .g-chatter, .g-labels) { display: none !important; }
 .game-stage.story-stop .g-right { opacity: 0; transition: opacity 0.6s ease; }
+.game-stage.story-auto #g-title { opacity: 0; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { #g-story-frames, #g-story-card, #g-story-veil, .game-stage #game-gl { transition: none; } #g-story-flash.on { animation: none; } }`;
 
   // ctx: { story (the data), stage, toast(html), say(who, lines, done), figure(look, at) -> { x, y, z, face(x, y), animate(dt), remove() },

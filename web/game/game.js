@@ -5283,6 +5283,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     setTimeout(afterPlayable, reduced ? 0 : 700); // (once the loader has faded)
     preTitle = false;
     $('#g-title').hidden = false;
+    // come from a story's link on the globe (title.js): no card to press, the story starts
+    { let auto = false; try { auto = !!story && sessionStorage.getItem('oe-story-auto') === cityId; if (auto) sessionStorage.removeItem('oe-story-auto'); } catch (e) { /* storage blocked */ }
+      if (auto) { stage.classList.add('story-auto'); setTimeout(() => startGame(false), 0); } }
     $('#g-loader').classList.add('out');
     setTimeout(() => {
       $('#g-loader').hidden = true; OEPlate.stop($('#g-loader'));

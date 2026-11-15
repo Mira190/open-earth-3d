@@ -79,6 +79,10 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
 
   // ------------------------------------------------------------ destinations
   const live = cities.filter(c => c.built), planned = cities.filter(c => !c.built);
+  // A story's link (?story=<map id>, a map whose game has one: cities.json "story"): the globe is the story's opening.
+  // Its title stands where the wordmark does, there is no place to pick, and after one button (or a few seconds) the
+  // globe dives to where the first episode is set and the game starts on its own (game.js, story.js).
+  const STORY = (() => { let id = null; try { id = new URLSearchParams(location.search).get('story'); } catch (e) { /* no address */ } const c = id && live.find(q => q.id === id && q.story); return c ? { c, title: String(c.story) } : null; })();
   const dests = [];
   const groups = new Map();
   for (const c of live) {
@@ -427,6 +431,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   const cue = (t, fn, { sound = false } = {}) => cues.push({ t, fn, sound, done: false });
   let soundOn = false;
   const wordEl = $('ts-word');
+  if (STORY) { wordEl.textContent = STORY.title.toUpperCase(); const sub = $('ts-title').querySelector('.s'); if (sub) sub.textContent = `A story in episodes · ${STORY.c.district || STORY.c.name}`; $('ts-tally').textContent = ''; }
   // one span per letter for the reveal; screen readers get the word whole
   wordEl.innerHTML = `<span class="ts-sr">${wordEl.textContent}</span>` + wordEl.textContent.split('').map(ch => `<i aria-hidden="true">${ch === ' ' ? '&nbsp;' : ch}</i>`).join('');
   const letters = [...wordEl.querySelectorAll('i')], titleEl = $('ts-title'), subEl = titleEl.querySelector('.s'), tallyEl = $('ts-tally');
@@ -514,7 +519,29 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   let trans = null;
   function transition(fromPose, dur) { trans = { from: fromPose, t0: clock(), dur }; }
 
+  function storyOpen() {
+    const d = dests.find(x => x.id === STORY.c.id || (x.sites && x.sites.some(c => c.id === STORY.c.id)));
+    if (!d) return false;
+    const el = document.createElement('div');
+    el.className = 'ts-story';
+    el.innerHTML = '<button class="ts-btn primary" id="ts-begin">Begin</button>';
+    app.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('on'));
+    let gone = false;
+    const go = () => {
+      if (gone) return;
+      if (state !== 'menu' && state !== 'open') { after(400, go); return; } // (the opening has not handed over yet)
+      gone = true;
+      try { sessionStorage.setItem('oe-story-auto', STORY.c.id); } catch (e) { /* storage blocked: the game's own card then asks */ }
+      el.classList.remove('on');
+      dive(d, true, d.sites ? STORY.c : null, null);
+    };
+    on(el.firstChild, 'click', go);
+    after(9000, go); // nobody pressed: it begins by itself (the sound waits for a first touch, as a browser has it)
+    return true;
+  }
   function showMenu() {
+    if (STORY && storyOpen()) return;
     app.classList.add('menu');
     menuShownAt = clock();
     postcards();
