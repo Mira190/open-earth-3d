@@ -422,7 +422,7 @@ const TOL = {
       m.raycast = THREE.acceleratedRaycast;
       return m;
     }));
-    const topOf = (c, rig) => { // the top 8 cm of the seated figure, in its root's frame (the same in every seat)
+    const topOf = (c, rig) => { // the top 8 cm of the seated figure, in its root's frame (the same in every seat that poses the legs alike)
       c.group.updateMatrixWorld(true); // (a skinned mesh's bind matrix follows only through updateMatrixWorld)
       const inv = new THREE.Matrix4().copy(rig.root.matrixWorld).invert(), pts = [];
       rig.model.traverse(o => {
@@ -458,13 +458,23 @@ const TOL = {
       for (const scale of [null, 1.05]) {
         const look = OEPeople.randomLook(lib, name);
         if (scale) look.scale = scale;
-        const rig = OEPeople.person(lib, look), crowns = [];
-        // the head as it moves through a few seconds of the seated idle
-        cars[0].sit(rig, 'driver');
-        for (let k = 0; k < 8; k++) { rig.animate(k ? 0.6 : 0.1, 0, 'sit', k * 0.6); crowns.push(topOf(cars[0], rig)); }
+        const rig = OEPeople.person(lib, look), posed = {};
+        // the head as it moves through a few seconds of the seated idle, as a car's seats pose the legs (a seat on the
+        // floor lays them further out and the figure sits lower: vehicles.json leg_rake, cars.js sit)
+        const crownsIn = c => {
+          const key = c.info.leg_rake || 1;
+          if (!posed[key]) {
+            posed[key] = [];
+            c.sit(rig, 'driver');
+            for (let k = 0; k < 8; k++) { rig.animate(k ? 0.6 : 0.1, 0, 'sit', k * 0.6); posed[key].push(topOf(c, rig)); }
+            c.body.remove(rig.root);
+          }
+          return posed[key];
+        };
         for (let ci = 0; ci < cars.length; ci++) for (const seat of ['driver', 'rear_left', 'rear_right']) {
           const c = cars[ci];
           if (!c.seats[seat]) continue;
+          const crowns = crownsIn(c);
           c.sit(rig, seat);
           const cl = Math.min(...crowns.map(crown => underRoof(ci, rig, crown)));
           c.body.remove(rig.root);
