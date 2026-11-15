@@ -273,8 +273,13 @@ def landmark_glows(scene):
 
 
 def landmark_treeless(scene):
-    """Inside Tokyo Station's dome halls and their passages (cities/tokyo/station.py): no street lamp of the map's."""
+    """Inside Tokyo Station's dome halls and their passages (cities/tokyo/station.py): no tree of the map's."""
     return [[round(v * 10) for xy in list(p.exterior.coords) for v in xy] for p in STATION_HERO.BARE]
+
+
+def landmark_bare(scene):
+    """And no street lamp or bench of the map's there (web/streets.js)."""
+    return landmark_treeless(scene)
 
 
 def landmark_assets(out_dir, scene):

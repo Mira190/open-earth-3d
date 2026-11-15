@@ -1005,7 +1005,7 @@ hundred metres of the game now lead to a train.
 The collision is the hall's own walls: the two domes' and pavilions' solids come down (`landmarks.json`
 `demolished`), as does the plain block behind the building, which is redrawn as one mass with the two passages
 through it (`station.py` `chuo`; the Chuo Line's platforms on it are issue 480). No lamp post of the map's stands
-inside (`landmarks.json` `treeless`, `web/streets.js`; `city.json` `night.clear`).
+inside (`landmarks.json` `bare`, `web/streets.js`; `city.json` `night.clear`).
 
 Sources: Jiji Press (the hall about 19 m across and 28 m high); Architectural Institute of Japan, *AIJ Journal of
 Technology and Design* 19 (43), 2013 (the restored plaster's colours, the reliefs, the gallery); JBpress and Nikkei

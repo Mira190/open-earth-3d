@@ -121,9 +121,9 @@ window.OEStreets = (function () {
     if (!lines.length) return st;
     const cw = st.roads = carriageways(lines);
     // flat lists of `stride` numbers per item, x and y first then z, in units of `u` metres
-    // (nor does a lamp or a bench of the map stand where a landmark says nothing of the street's does: inside a hall it
-    // draws, under a viaduct's deck: landmarks.json "treeless", rings in decimetres, as for the trees in world.js)
-    const bare = ((D.LM && D.LM.treeless) || []).map(r => r.map(v => v / 10));
+    // (nor does a lamp or a bench of the map stand where a landmark says nothing of the street's does, inside a hall it
+    // draws: landmarks.json "bare", rings in decimetres, as "treeless" is for the trees in world.js)
+    const bare = ((D.LM && D.LM.bare) || []).map(r => r.map(v => v / 10));
     const under = (x, y) => bare.some(r => { let c = false; for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) if ((r[i + 1] > y) !== (r[j + 1] > y) && x < (r[j] - r[i]) * (y - r[i + 1]) / (r[j + 1] - r[i + 1]) + r[i]) c = !c; return c; });
     const fix = (name, flat, stride, u, r, zu = u) => {
       const keep = [];

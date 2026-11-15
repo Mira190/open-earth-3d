@@ -987,7 +987,8 @@ def closed():
     import shapely
     if not WALLED:
         meshes()
-    area = shapely.union_all(WALLED).buffer(0.2).difference(shapely.union_all(BARE).buffer(-0.4)).buffer(0)
+    # (a walker is 0.35 m in the shoulder: a footway that runs within reach of a wall is across it too)
+    area = shapely.union_all(WALLED).buffer(0.8).difference(shapely.union_all(BARE).buffer(-0.4)).buffer(0)
     return [[[round(float(x), 2), round(float(y), 2)] for x, y in p.exterior.coords] for p in getattr(area, "geoms", [area]) if p.geom_type == "Polygon" and p.area > 1]
 
 
