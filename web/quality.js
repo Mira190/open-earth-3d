@@ -197,7 +197,7 @@ window.OEQuality = (function () {
     return { name, small: name === 'low', lean: thin, lighter, deaths, tex: Math.min(c.maxTex || 16384, name === 'low' ? (thin && lighter >= 2 ? 1024 : TIERS.low.tex) : 16384),
       // cast: how many of the scanned avatars walk beside the player (game.js realCast); extras: the helicopter's and
       // the near trees' models fetched ahead of need (game.js afterPlayable), which the lightest set leaves to demand
-      budget: thin ? { gpuMB: 300, heapMB: 620, groundTiles: [6, 4, 2, 1][lighter], map: MAP[lighter], cast: [8, 8, 4, 2][lighter], extras: lighter < LIGHTEST } : null, shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
+      budget: thin ? { gpuMB: 270, heapMB: 400, groundTiles: [6, 4, 2, 1][lighter], map: MAP[lighter], cast: [8, 8, 4, 2][lighter], extras: lighter < LIGHTEST } : null, shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
       post: c.hdrTarget, samples: c.hdrMsaa ? { high: 4, medium: 2, low: 0 }[name] : 0,
       pixelRatio: (w, h) => (name === 'high' ? Math.max(0.75, Math.min(c.dpr, 2, Math.sqrt(CANVAS_PX / Math.max(1, w * h)))) : pixelRatio(s, w, h)),
       // the most of the canvas's pixels (as a linear scale) the scene may be drawn at: w, h the canvas's device pixels
