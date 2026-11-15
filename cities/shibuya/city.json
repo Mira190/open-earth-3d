@@ -1042,10 +1042,10 @@
     "story": {
       "note": "The story (web/game/story.js; the whole of it is written in docs/STORY.md): Blue Hour, in episodes. Each is one evening: the world runs for lead_s seconds, then stops, and whoever carries the camera walks on among the people standing still. The afterimage is someone of another year who alone moves in the stopped world. Sumiko and the promise are invented; the place, the date and the hour are real (10 October, the blue hour after a sunset at 17:14).",
       "title": "Blue Hour",
-      "frames": 7,
+      "frames": 7, "card": {"eyebrow": "Shibuya 渋谷 · 10 October · 17:14", "native": "ブルーアワー", "line": "Once an evening, for nine minutes after the sun goes down, the crossing stops. Tonight somebody in it turns to look at you."},
       "episodes": [
         {
-          "id": "late",
+          "id": "late", "stamp": "10 Oct · 17:14",
           "no": 1,
           "title": "You came late",
           "date": [10, 10],

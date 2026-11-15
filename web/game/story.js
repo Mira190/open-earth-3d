@@ -5,8 +5,9 @@
 //
 //   "story": {
 //     "title": "Blue Hour", "frames": 7,                     // the film left in the camera
+//     "card": { "eyebrow": "...", "native": "...", "line": "..." }, // the title: over the name, under it, and the line below
 //     "episodes": [{
-//       "id": "late", "title": "You came late", "no": 1,
+//       "id": "late", "title": "You came late", "no": 1, "stamp": "10 Oct · 17:14",   // (the stamp: under its print)
 //       "date": [10, 10], "light": "blue", "weather": "rain", // the evening it is set in (sun.js's presets)
 //       "overture": { ... },                                  // its own opening (overture.js's spec, over the map's)
 //       "lead_s": 1,                                          // the world stops this long after the street is yours
@@ -32,73 +33,6 @@
 'use strict';
 window.OEStory = (function () {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const CSS = `
-#g-story-frames { position: absolute; left: max(18px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom)); z-index: 6; display: flex; align-items: baseline; gap: 10px;
-  padding: 7px 14px 6px; border-radius: 999px; background: rgba(8, 12, 22, 0.55); backdrop-filter: blur(10px); color: #f4efe6; font: 600 12px/1 "Public Sans", system-ui, sans-serif; letter-spacing: 0.12em; text-transform: uppercase;
-  opacity: 0; transition: opacity 0.9s ease; pointer-events: none; }
-#g-story-frames.on { opacity: 1; }
-#g-story-frames b { font: 700 22px/1 "Public Sans", system-ui, sans-serif; letter-spacing: 0; color: #ffcf8a; font-variant-numeric: tabular-nums; }
-#g-story-card { position: absolute; inset: 0; z-index: 7; display: grid; place-items: center; pointer-events: none; opacity: 0; transition: opacity 1.2s ease; background: radial-gradient(ellipse at center, rgba(4, 8, 18, 0) 30%, rgba(4, 8, 18, 0.55) 100%); }
-#g-story-card.on { opacity: 1; }
-#g-story-card div { text-align: center; color: #f4efe6; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.7); }
-#g-story-card small { display: block; font: 600 12px/1 "Public Sans", system-ui, sans-serif; letter-spacing: 0.3em; text-transform: uppercase; color: #ffcf8a; margin-bottom: 14px; }
-#g-story-card span { display: block; font: 300 clamp(28px, 5vw, 54px)/1.1 "Public Sans", system-ui, sans-serif; letter-spacing: 0.02em; }
-/* the stopped world: colder, darker at its edges and drained of colour (a multiply never lifts the blacks into a grey veil) */
-#g-story-veil { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity 1.6s ease; background: radial-gradient(ellipse at 50% 45%, #e6edff 35%, #9aabe6 100%); mix-blend-mode: multiply; }
-#g-story-veil.on { opacity: 1; transition: opacity 0.5s ease; }
-#g-story-flash { position: absolute; inset: 0; z-index: 4; pointer-events: none; opacity: 0; background: #dfe9ff; }
-#g-story-flash.on { animation: g-story-flash 0.7s ease-out; }
-@keyframes g-story-flash { 0% { opacity: 0.75; } 100% { opacity: 0; } }
-.game-stage.story-on #game-gl { transition: filter 1.4s ease; }
-.game-stage.story-stop #game-gl { filter: brightness(0.92) contrast(1.12) saturate(0.5); transition: filter 0.45s ease; }
-/* the story has its own goals: the walks' card, the prompts and the passers-by's talk are put away while it plays */
-.game-stage:is(.story-on, .story-auto) :is(.g-quest, .g-prompt, .g-chatter, .g-labels, .lf-card) { display: none !important; }
-.game-stage.story-stop .g-right { opacity: 0; transition: opacity 0.6s ease; }
-.game-stage.story-auto #g-title { opacity: 0; pointer-events: none; }
-/* the goal: the one thing to do now, and the Stop's minutes running out beside it */
-#g-story-goal { position: absolute; left: 50%; top: max(22px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 6; max-width: min(92vw, 620px); text-align: center; pointer-events: none;
-  opacity: 0; transition: opacity 0.7s ease; color: #f4efe6; text-shadow: 0 1px 14px rgba(0, 0, 0, 0.85); }
-#g-story-goal.on { opacity: 1; }
-#g-story-goal small { display: block; font: 600 11px/1 "Public Sans", system-ui, sans-serif; letter-spacing: 0.28em; text-transform: uppercase; color: #ffcf8a; margin-bottom: 9px; font-variant-numeric: tabular-nums; }
-#g-story-goal span { display: inline-block; padding: 9px 18px 10px; border-radius: 999px; background: rgba(8, 12, 22, 0.55); backdrop-filter: blur(10px); font: 500 clamp(15px, 2.1vw, 19px)/1.25 "Public Sans", system-ui, sans-serif; }
-/* the beacon's mark on the screen: over the place itself, or held at the frame's edge on the side it lies */
-#g-story-mark { position: absolute; left: 0; top: 0; z-index: 5; pointer-events: none; opacity: 0; transition: opacity 0.5s ease; will-change: transform; }
-#g-story-mark.on { opacity: 1; }
-#g-story-mark i { display: block; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid #cfe0ff; box-shadow: 0 0 14px 3px rgba(159, 196, 255, 0.75); animation: g-story-beat 1.6s ease-in-out infinite; }
-#g-story-mark b { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); white-space: nowrap; font: 600 11px/1 "Public Sans", system-ui, sans-serif; letter-spacing: 0.14em; color: #dfe9ff; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9); font-variant-numeric: tabular-nums; }
-@keyframes g-story-beat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.5); } }
-/* the keys, the first time they are needed */
-#g-story-keys { position: absolute; left: 50%; bottom: max(86px, calc(env(safe-area-inset-bottom) + 86px)); transform: translateX(-50%); z-index: 6; pointer-events: none; opacity: 0; transition: opacity 0.6s ease;
-  display: flex; gap: 18px; padding: 10px 18px; border-radius: 14px; background: rgba(8, 12, 22, 0.55); backdrop-filter: blur(10px); color: #f4efe6; font: 500 13px/1 "Public Sans", system-ui, sans-serif; white-space: nowrap; }
-#g-story-keys.on { opacity: 1; }
-#g-story-keys kbd { display: inline-block; min-width: 20px; padding: 4px 6px; margin-right: 6px; border-radius: 5px; border: 1px solid rgba(244, 239, 230, 0.5); font: 600 11px/1 "Public Sans", system-ui, sans-serif; text-align: center; }
-/* the shutter: the one button of the episode */
-#g-story-shutter { position: absolute; left: 50%; bottom: max(70px, calc(env(safe-area-inset-bottom) + 70px)); transform: translateX(-50%); z-index: 8; display: none; align-items: center; gap: 12px; padding: 0 22px 0 8px; height: 60px;
-  border: 0; border-radius: 999px; background: rgba(8, 12, 22, 0.62); backdrop-filter: blur(10px); color: #f4efe6; font: 600 13px/1 "Public Sans", system-ui, sans-serif; letter-spacing: 0.16em; text-transform: uppercase; cursor: pointer; }
-#g-story-shutter.on { display: flex; }
-#g-story-shutter.ready { background: rgba(255, 207, 138, 0.22); box-shadow: 0 0 0 1px #ffcf8a, 0 0 24px rgba(255, 207, 138, 0.35); }
-#g-story-shutter i { width: 44px; height: 44px; border-radius: 50%; border: 2px solid #f4efe6; box-shadow: inset 0 0 0 4px rgba(8, 12, 22, 0.9), inset 0 0 0 22px #ffcf8a; }
-#g-story-shutter kbd { padding: 4px 7px; border-radius: 5px; border: 1px solid rgba(244, 239, 230, 0.5); font: 600 11px/1 "Public Sans", system-ui, sans-serif; letter-spacing: 0; }
-#g-story-shutter:focus-visible { outline: 2px solid #ffcf8a; outline-offset: 3px; }
-/* the viewfinder's corners while the camera is up */
-#g-story-finder { position: absolute; inset: 12% 18%; z-index: 5; pointer-events: none; opacity: 0; transition: opacity 0.5s ease;
-  background: linear-gradient(#f4efe6, #f4efe6) 0 0 / 34px 2px no-repeat, linear-gradient(#f4efe6, #f4efe6) 0 0 / 2px 34px no-repeat, linear-gradient(#f4efe6, #f4efe6) 100% 0 / 34px 2px no-repeat, linear-gradient(#f4efe6, #f4efe6) 100% 0 / 2px 34px no-repeat,
-    linear-gradient(#f4efe6, #f4efe6) 0 100% / 34px 2px no-repeat, linear-gradient(#f4efe6, #f4efe6) 0 100% / 2px 34px no-repeat, linear-gradient(#f4efe6, #f4efe6) 100% 100% / 34px 2px no-repeat, linear-gradient(#f4efe6, #f4efe6) 100% 100% / 2px 34px no-repeat; }
-#g-story-finder.on { opacity: 0.85; }
-/* the last card: the print, what happened, what comes next */
-#g-story-end { position: absolute; inset: 0; z-index: 9; display: none; place-items: center; background: rgba(4, 8, 18, 0.72); backdrop-filter: blur(6px); color: #f4efe6; opacity: 0; transition: opacity 1.2s ease; }
-#g-story-end.on { display: grid; }
-#g-story-end.in { opacity: 1; }
-#g-story-end .card { display: grid; justify-items: center; gap: 18px; max-width: min(92vw, 560px); text-align: center; padding: 20px; }
-#g-story-end img { width: min(72vw, 380px); aspect-ratio: 3 / 2; object-fit: cover; border: 10px solid #f4efe6; border-bottom-width: 34px; box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6); transform: rotate(-2.5deg); filter: saturate(0.85) contrast(1.05); }
-#g-story-end small { font: 600 12px/1 "Public Sans", system-ui, sans-serif; letter-spacing: 0.3em; text-transform: uppercase; color: #ffcf8a; }
-#g-story-end h2 { margin: 0; font: 300 clamp(26px, 4.6vw, 44px)/1.1 "Public Sans", system-ui, sans-serif; }
-#g-story-end p { margin: 0; font: 400 15px/1.5 "Public Sans", system-ui, sans-serif; color: rgba(244, 239, 230, 0.82); }
-#g-story-end .row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 6px; }
-#g-story-end button { height: 46px; padding: 0 22px; border-radius: 999px; border: 1px solid rgba(244, 239, 230, 0.55); background: transparent; color: #f4efe6; font: 600 12px/1 "Public Sans", system-ui, sans-serif; letter-spacing: 0.16em; text-transform: uppercase; cursor: pointer; }
-#g-story-end button.go { background: #ffcf8a; border-color: #ffcf8a; color: #0b1020; }
-#g-story-end button:focus-visible { outline: 2px solid #ffcf8a; outline-offset: 3px; }
-@media (prefers-reduced-motion: reduce) { #g-story-mark i { animation: none; } #g-story-goal, #g-story-keys, #g-story-end { transition: none; } #g-story-frames, #g-story-card, #g-story-veil, .game-stage #game-gl { transition: none; } #g-story-flash.on { animation: none; } }`;
 
   // ctx: { story (the data), stage, player, touch, toast(html), say(who, lines, done), hush(on), dress(date, light, weather),
   //        walkIn(seconds), figure(look, at) -> { x, y, z, face(x, y), animate(dt), remove() },
@@ -107,9 +41,17 @@ window.OEStory = (function () {
   //        again(), free(): the episode once more; the map without its story }
   function create(ctx) {
     const S = ctx.story, eps = S.episodes || [];
-    if (!document.getElementById('g-story-css')) { const st = document.createElement('style'); st.id = 'g-story-css'; st.textContent = CSS; document.head.appendChild(st); }
+    // the story's own interface (story.css): the map's instruments are put away for as long as the story is here
+    ctx.stage.classList.add('story');
+    { // the title: the story's name, the evening, and one button
+      const q = sel => ctx.stage.querySelector(sel), ep0 = eps[0] || {}, T = S.card || {};
+      if (q('#gt-city')) q('#gt-city').textContent = T.eyebrow || '';
+      if (q('#gt-title')) q('#gt-title').innerHTML = `${esc(S.title || '')}${T.native ? `<small lang="ja">${esc(T.native)}</small>` : ''}`;
+      if (q('#gt-blurb')) q('#gt-blurb').textContent = T.line || '';
+      if (q('#gt-play')) q('#gt-play').innerHTML = `<span>${ep0.no ? `Episode ${esc(ep0.no)} · ` : ''}${esc(ep0.title || 'Begin')}</span><kbd>↵</kbd>`;
+    }
     const el = (id, html, tag = 'div') => { const e = document.createElement(tag); e.id = id; e.innerHTML = html; ctx.stage.appendChild(e); return e; };
-    const frames = el('g-story-frames', 'Frames left <b></b>'), card = el('g-story-card', '<div><small></small><span></span></div>'), veil = el('g-story-veil', ''), flash = el('g-story-flash', '');
+    const frames = el('g-story-frames', `<span><b></b>frames left</span><span class="strip">${'<i></i>'.repeat(S.frames || 7)}</span>`), card = el('g-story-card', '<div><small></small><span></span></div>'), veil = el('g-story-veil', ''), flash = el('g-story-flash', '');
     const goalEl = el('g-story-goal', '<small></small><span></span>'), mark = el('g-story-mark', '<i></i><b></b>'), keys = el('g-story-keys', ''), finder = el('g-story-finder', '');
     const shutter = el('g-story-shutter', `<i></i>Take the picture${ctx.touch ? '' : ' <kbd>F</kbd>'}`, 'button'), endEl = el('g-story-end', '');
     shutter.type = 'button';
@@ -118,7 +60,7 @@ window.OEStory = (function () {
     const st = { ep: null, phase: 'idle', beat: '', t: 0, left: S.frames || 7, ghost: null, target: null, print: null, moved: 0, from: null, late: false, miss: 0 };
     const timers = [];
     const later = (ms, fn) => timers.push(setTimeout(fn, ms));
-    const show = () => { frames.querySelector('b').textContent = String(st.left); };
+    const show = () => { frames.querySelector('b').textContent = String(st.left).padStart(2, '0'); frames.querySelectorAll('.strip i').forEach((c, i) => c.classList.toggle('spent', i < (S.frames || 7) - st.left)); };
     function title(small, big, secs) {
       card.querySelector('small').textContent = small; card.querySelector('span').textContent = big;
       card.classList.add('on');
@@ -221,9 +163,9 @@ window.OEStory = (function () {
       const ep = st.ep, E = typeof ep.end === 'string' ? { title: ep.end } : ep.end || {}, late = st.late;
       st.phase = 'done';
       frames.classList.remove('on');
-      endEl.innerHTML = `<div class="card">${st.print ? `<img alt="The photograph you took" src="${st.print}">` : ''}
+      endEl.innerHTML = `<div class="card">${st.print ? `<figure><img alt="The photograph you took" src="${st.print}"><figcaption><span>Frame ${(S.frames || 7) - st.left} of ${S.frames || 7}</span><span>${esc(ep.stamp || '')}</span></figcaption></figure>` : ''}
 <small>${esc(S.title || '')}${ep.no ? ` · Episode ${ep.no}` : ''}</small><h2>${esc(late ? E.late_title || 'The lights changed without you' : E.title || 'To be continued')}</h2>
-${(late ? E.late_line : E.line) ? `<p>${esc(late ? E.late_line : E.line)}</p>` : ''}${!late && E.next ? `<p><b>${esc(E.next)}</b></p>` : ''}
+${(late ? E.late_line : E.line) ? `<p>${esc(late ? E.late_line : E.line)}</p>` : ''}${!late && E.next ? `<p class="next">${esc(E.next)}</p>` : ''}
 <div class="row"><button type="button" class="go" data-do="${late ? 'again' : 'free'}">${late ? 'Try again' : esc(E.free || 'Walk the city')}</button><button type="button" data-do="${late ? 'free' : 'again'}">${late ? esc(E.free || 'Walk the city') : 'Play it again'}</button></div></div>`;
       endEl.classList.add('on');
       requestAnimationFrame(() => endEl.classList.add('in'));
@@ -269,7 +211,7 @@ ${(late ? E.late_line : E.line) ? `<p>${esc(late ? E.late_line : E.line)}</p>` :
       get on() { return st.phase !== 'idle' && st.phase !== 'done'; },
       dispose() {
         timers.forEach(clearTimeout); removeEventListener('keydown', onKey, true); ctx.beacon(null);
-        ctx.stage.classList.remove('story-on', 'story-stop');
+        ctx.stage.classList.remove('story', 'story-on', 'story-stop');
         for (const e of [frames, card, veil, flash, goalEl, mark, keys, finder, shutter, endEl]) e.remove();
         if (st.ghost) st.ghost.remove();
       },

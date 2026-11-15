@@ -12,6 +12,7 @@
 <meta property="og:title" content="Blue Hour">
 <meta property="og:description" content="A story in episodes at the Shibuya Scramble, rebuilt from open data. Once an evening the crossing stops.">
 <link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="game/story.css">
 <style>
 /* City: full-bleed 3D stage, a working panel on the right, a sun dial dock along the bottom.
    Game: the stage full-bleed under its HUD. Both carry on from the title screen (title.css): off-white
@@ -609,7 +610,7 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
 <body>
 <noscript><p class="oe-nojs">Blue Hour is drawn in 3D in the browser and needs JavaScript and WebGL 2.</p></noscript>
 <div class="game-app" id="game-app">
-  <section class="game-stage titled" id="game-stage" aria-label="Game: explore the city on foot, by ferry and by helicopter">
+  <section class="game-stage titled" id="game-stage" aria-label="Blue Hour: the Shibuya Scramble, on foot">
     <canvas id="game-gl"></canvas>
     <div class="labels g-labels" id="g-labels"></div>
     <div class="g-reticle" aria-hidden="true"></div>
@@ -729,11 +730,11 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
     <!-- shown once the city has loaded, over the live scene -->
     <div class="g-title" id="g-title" hidden>
       <div class="gt-card">
-        <span class="eyebrow gt-eb"><span>Open Earth 3D · <span id="gt-city">City</span></span></span>
-        <h1 id="gt-title">On Foot</h1>
-        <p id="gt-blurb">Walk a real city under the real sun, and talk to the people who know it.</p>
+        <span class="eyebrow gt-eb"><span id="gt-city"></span></span>
+        <h1 id="gt-title">Blue Hour</h1>
+        <p id="gt-blurb"></p>
         <div class="gt-time"><span class="eyebrow">Start at</span><div class="seg" id="gt-timechoice"><button data-t="live" aria-pressed="true" id="gt-now">Now</button></div></div>
-        <div class="gt-go"><button class="btn primary" id="gt-play">Start the survey <kbd>↵</kbd></button><button class="btn" id="gt-continue" hidden>Continue</button></div>
+        <div class="gt-go"><button class="btn primary" id="gt-play">Begin <kbd>↵</kbd></button><button class="btn" id="gt-continue" hidden>Continue</button></div>
         <label class="gt-skip note" id="gt-skip" hidden><input type="checkbox" id="gt-skip-on" checked> Skip the intro: you have played before</label>
         <div class="gt-hints">
           <span><kbd>W A S D</kbd> walk · drag to look around</span>
