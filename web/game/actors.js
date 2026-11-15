@@ -694,7 +694,9 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
     function crowded(x, y, self, r) {
       const c0 = Math.floor(x / CELL), r0 = Math.floor(y / CELL);
       for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
-        for (let j = head[bucket(c0 + a, r0 + b)]; j >= 0; j = chain[j]) {
+        // (n: a walker put in the hash twice between two steps, as an overture's placing of the same one again and again
+        // does, closes its chain into a ring; the walk along it ends at the crowd's size, where it hung the page)
+        for (let j = head[bucket(c0 + a, r0 + b)], n = 0; j >= 0 && n <= P.length; j = chain[j], n++) {
           const o = P[j];
           if (o !== self && o.line >= 0 && Math.abs(o.x - x) < r && Math.abs(o.y - y) < r && Math.hypot(o.x - x, o.y - y) < r) return true;
         }

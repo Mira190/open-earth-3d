@@ -3061,15 +3061,52 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // ------------------------------------------------------------ the story (story.js): a map's episodes, and the Stop, in which
   // the world is given no time while the player walks on. Asked for with ?story=1 while it is being made.
+  let storyBeacon = null;
   const story = window.OEStory && G.story && new URLSearchParams(location.search).has('story') ? OEStory.create({
-    story: G.story, stage, player, toast: t => H.toast(t),
-    walking: () => { const j = junctions.J.find(q => q.scramble && Math.hypot(q.x - player.x, q.y - player.y) < 80); return j && j.ph === 3 && j.st === 'g' ? j.t : -1; },
+    story: G.story, stage, player, touch, toast: t => H.toast(t),
+    // the goal's light: a pale column standing where the next thing to do is, and a ring at its foot
+    beacon: at => {
+      if (!storyBeacon) {
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.5, 26, 20, 1, true), new THREE.ShaderMaterial({
+          transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { uT: { value: 0 } },
+          vertexShader: 'varying float vH; void main() { vH = uv.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+          fragmentShader: 'uniform float uT; varying float vH; void main() { float a = (1.0 - vH) * (1.0 - vH) * (0.5 + 0.12 * sin(uT * 2.6 - vH * 9.0)); gl_FragColor = vec4(vec3(0.62, 0.78, 1.0) * a * 2.2, a); }' }));
+        col.position.y = 13 + 2.6; // (from over a head upward: whoever stands under it is seen, not lost in it)
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.05, 48), new THREE.MeshBasicMaterial({ color: 0x9fc4ff, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06;
+        storyBeacon = new THREE.Group(); storyBeacon.add(col, ring); storyBeacon.userData = { col, ring };
+        storyBeacon.traverse(o => { o.frustumCulled = false; o.renderOrder = 20; });
+        world.add(storyBeacon);
+      }
+      storyBeacon.visible = !!at;
+      if (at) storyBeacon.position.copy(W(at[0], at[1], Math.max(0, nav.terrain(at[0], at[1]))));
+    },
+    // where a point of the map is in the frame (0..1 from its top left), whether it is ahead, and how far from you
+    screen: at => { const v = W(at[0], at[1], at[2] ?? player.z + 1.2), d = Math.hypot(at[0] - player.x, at[1] - player.y), f = v.clone().sub(camera.position).dot(camera.getWorldDirection(new THREE.Vector3())) > 0; v.project(camera); return { x: v.x * 0.5 + 0.5, y: 0.5 - v.y * 0.5, front: f, dist: d }; },
+    // (by the compass only: how far the lens must turn to face it; nobody is asked to tilt the camera up a tower)
+    aim: at => { const v = W(at[0], at[1], 0).sub(camera.position), f = camera.getWorldDirection(new THREE.Vector3()); v.y = 0; f.y = 0; if (v.lengthSq() < 1e-6 || f.lengthSq() < 1e-6) return 0; return Math.acos(Math.max(-1, Math.min(1, v.normalize().dot(f.normalize())))) * 180 / Math.PI; },
+    // the frame as it is drawn now, small, for the episode's print (drawn and read back in one task: the canvas keeps no copy)
+    snap: () => {
+      // (what the camera in your hands sees: not yourself, and not the goal's light)
+      const me = player.rig.root.visible, bc = storyBeacon && storyBeacon.visible;
+      player.rig.root.visible = false; if (storyBeacon) storyBeacon.visible = false;
+      mirrorTick();
+      if (atmos) atmos.render(world, camera); else renderer.render(world, camera);
+      player.rig.root.visible = me; if (storyBeacon) storyBeacon.visible = bc;
+      const out = document.createElement('canvas'), h = Math.min(480, canvas.height);
+      out.height = h; out.width = Math.round(h * 1.5);
+      const sw = Math.min(canvas.width, canvas.height * 1.5), sh = sw / 1.5;
+      out.getContext('2d').drawImage(canvas, (canvas.width - sw) / 2, (canvas.height - sh) / 2, sw, sh, 0, 0, out.width, out.height);
+      return out.toDataURL('image/jpeg', 0.86);
+    },
+    again: () => { try { sessionStorage.setItem('oe-story-auto', cityId); } catch (e) { /* storage blocked */ } location.reload(); },
+    free: () => { const u = new URL(location.href); u.searchParams.delete('story'); u.searchParams.delete('overture'); location.href = u.toString(); },
     say: (who, lines, done) => dlg.show(Object.assign({ color: '#9fc4ff' }, who), lines.map(l => fill(l)), null, done),
     hush: on => { if (A.hush) A.hush(on); },
     dress: (date, light, wx) => {
       const [m, d] = date || [clock.m, clock.d];
       setClock(clock.y, m, d, S.presetTime(light, clock.y, m, d));
-      if (wx && weather) weather.set(wx);
+      if (wx && weather) weather.set(wx, { now: true }); // (as it has been for a while: the street already wet in the opening's first frame)
     },
     walkIn: secs => {
       const j = junctions.J.find(q => q.scramble && Math.hypot(q.x - player.x, q.y - player.y) < 80);
@@ -5174,7 +5211,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   presetTime('live');
   // the map's overture (overture.js, game.json "overture"): its score is rendered while the title card is up
-  overture = window.OEOverture && G.overture ? OEOverture.create({ G, scene, CITY, W, world, camera, stage, cine, get live() { return live; }, handOver: (k, f) => handOver(k, f),
+  // (a story's first episode opens on its own overture, laid over the map's: its shots, score and grade, and no night
+  // variant to be swapped for as the sun goes down)
+  const epOv = story && G.story.episodes && G.story.episodes[0] && G.story.episodes[0].overture;
+  overture = window.OEOverture && (G.overture || epOv) ? OEOverture.create({ G: epOv ? Object.assign({}, G, { overture: Object.assign({}, G.overture, epOv, { night: null }) }) : G, scene, CITY, W, world, camera, stage, cine, get live() { return live; }, handOver: (k, f) => handOver(k, f),
     junctions, crowd, footNet, crowdNet, nav, clock, setClock: (y, m, d, min) => setClock(y, m, d, min, !clock.own), player, spawn, tier: QC.name, reduced, sun: () => sun, U, DSM, Wd, weather, show, get atmos() { return atmos; },
     walkIn: (j, inS) => { junctions.walkIn(j, inS); if (inS > 0) { cars.clearBox(j.x, j.y, 45); musterScramble(); } } }) : null;
   if (overture && (story || OEOverture.due(CITY.id))) overture.prepareScore();
@@ -5438,7 +5478,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // faces it sees are the lit ones; off in the air (from a helicopter's height it would light nothing)
   function placeNightFill() {
     const n = U.uNight.value, air = player.mode === 'heli';
-    nightFill.intensity = air ? 0 : nightFill.userData.cd * n;
+    // (a hero level is lit by its own signs and shop fronts, baked: there the fill is the share it asks for, hero.fill,
+    // or it washes the people and the paving at your feet to a flat white the street's own light never gives them)
+    let heroFill = 1;
+    for (const h of G.hero || []) if (h.fill != null && Math.hypot(h.at[0] - player.x, h.at[1] - player.y) < (h.r || 100)) heroFill = Math.min(heroFill, h.fill);
+    nightFill.intensity = air ? 0 : nightFill.userData.cd * n * heroFill;
     if (!nightFill.intensity) return;
     const v = player.mode === 'ferry' && player.vehicle ? player.vehicle : player, z = player.mode === 'ferry' ? 5 : player.z;
     const p = W(v.x, v.y, z + 3), dx = camera.position.x - p.x, dz = camera.position.z - p.z, d = Math.hypot(dx, dz) || 1, k = Math.min(2.5, d * 0.4) / d;
@@ -5497,6 +5541,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
     if (life && !simHold) life.tick(dt, paused, titleOn); // (held by a harness: the day moves on only with advance())
     if (story && !paused) story.tick(dt);
+    if (storyBeacon && storyBeacon.visible) storyBeacon.userData.col.material.uniforms.uT.value = performance.now() / 1000;
     if (!simHold) dlg.tick(dt); // (held by a harness: a conversation goes on only as it asks, dlg.tick, so that one closing on the real clock starts nothing at another step of its run)
     // HUD
     const ob = titleOn ? null : objective();

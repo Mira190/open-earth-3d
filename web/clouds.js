@@ -265,8 +265,13 @@ float oeMeteor( vec3 d ) {
     const shade = [0, 1, 2].map(c => { const v = sky[c] / sl * ref * shG * shT[c]; return v + (ref * (0.5 - 0.2 * rain) * (0.95 + 0.05 * c) - v) * 0.85 * ov; });
     // under a thunderstorm the deck is thick: its underside dark slate, what light comes through it dimmer (look.storm)
     const st = look.storm || 0, stS = 1 - 0.45 * st, stL = 1 - 0.3 * st;
-    su.uCloudLit.value.setRGB(litT[0] * ref * litG * stL, litT[1] * ref * litG * stL, litT[2] * ref * litG * stL);
-    su.uCloudShade.value.setRGB(shade[0] * stS * 0.96, shade[1] * stS, shade[2] * stS * 1.04);
+    const gl0 = look.glow || [0, 0, 0];
+    su.uCloudLit.value.setRGB(litT[0] * ref * litG * stL + gl0[0] * ov, litT[1] * ref * litG * stL + gl0[1] * ov, litT[2] * ref * litG * stL + gl0[2] * ov);
+    // After dark an overcast is lit from below: a city's lights on the cloud base, which is why a wet night over a
+    // city is never black overhead; and in the blue hour the sheet still holds the twilight (look.glow: that light,
+    // in the sky's units, from the hour and the city: atmosphere.js)
+    const gl = look.glow || [0, 0, 0];
+    su.uCloudShade.value.setRGB(shade[0] * stS * 0.96 + gl[0] * ov, shade[1] * stS + gl[1] * ov, shade[2] * stS * 1.04 + gl[2] * ov);
     const rg = mixs(A[7], B[7]) * ref * (1 - 0.8 * ov);
     su.uCloudRim.value.setRGB(rimT[0] * rg, rimT[1] * rg, rimT[2] * rg);
   }

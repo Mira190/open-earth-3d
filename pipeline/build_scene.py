@@ -1716,8 +1716,11 @@ def write_index():
             st = json.load(open(gp, encoding="utf8")).get("story") if os.path.exists(gp) else None
             if st and st.get("title"):
                 c["story"] = st["title"]
+                ep = (st.get("episodes") or [{}])[0]  # its first episode, for the loader to name (index.html)
+                c["story_episode"] = {k: ep[k] for k in ("no", "title") if ep.get(k) is not None}
             else:
                 c.pop("story", None)
+                c.pop("story_episode", None)
             # a phone's district of the map (pipeline/district.py): its packs, cut round the start, and what a phone's
             # game downloads with them
             dm = os.path.join(data, "d", "district.json")

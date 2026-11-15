@@ -1143,6 +1143,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   const seen = +store.get('oe3d-title', true) || 0, returning = seen > 0 && Date.now() - seen < 15 * 60e3;
   const back = from && dests.find(d => d.id === from || (d.sites && d.sites.some(c => c.id === from)));
   try { await earth.load(); } catch (e) { console.warn('title: textures', e); }
+  if (window.__titleManual && earth.full) try { await earth.full; } catch (e) { /* the small day side stays */ } // (a still or a film: the whole earth before its first frame)
   if (!running) return api();
   stageMark('decoded');
   if (mode !== 'still') {
