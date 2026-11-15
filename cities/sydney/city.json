@@ -441,7 +441,7 @@
         "source": "Australian Museum, Silver Gull; Wikipedia, Silver gull"
       }
     ],
-    "crowd": {"pedestrians": 360, "cars": 150, "radius_m": 450},
+    "crowd": {"cast": {"f": ["R_Female_Adult_08", "R_Business_Female_04_f011", "R_Female_Adult_13", "R_Female_Adult_15_f013", "R_Female_Party_02", "R_Female_Adult_14", "R_Female_Adult_13_f003_brown", "R_Female_Adult_02"], "m": ["R_Male_Adult_05", "R_Male_Adult_05_m024", "R_Male_Adult_11", "R_Business_Male_03", "R_Male_Adult_20_m008", "R_Male_Adult_13", "R_Male_Adult_06", "R_Male_Adult_14_m017_grey"], "note": "the walkers drawn as people, in order: central Sydney as the census finds it, about a third of east or south-east Asian background among them (2021 Census, City of Sydney: the share is rounded and the mix an estimate)"}, "pedestrians": 360, "cars": 150, "radius_m": 450},
     "npcs": [
       {
         "id": "ava",

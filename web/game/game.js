@@ -668,6 +668,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const LOW_CAST = 8, HIGH_CAST = 12;
   const realCast = () => {
     if (!lib || !lib.npcs || CR.real === false || /[?&]realcrowd=off/.test(location.search)) return null;
+    const tier = QC.name !== 'low' ? HIGH_CAST : QC.budget && QC.budget.cast ? Math.min(LOW_CAST, QC.budget.cast) : LOW_CAST;
+    // a map names who is on its streets (game.crowd.cast: {f, m}, in order): its own people in everyday clothes, the
+    // visitors a place like it has, any character built for any map. Before, the cast was the story's NPCs in the
+    // order of their names, which put the office suits first, and a crossing was six suits and their copies
+    if (CR.cast) { const pick = k => (CR.cast[k] || []).filter(n => lib.npcs[n]); return pick('f').slice(0, Math.ceil(tier / 2)).concat(pick('m').slice(0, Math.floor(tier / 2))); }
     const from = new Set([cityId, ...(CR.real_from || [])]);
     const all = Object.entries(lib.npcs).filter(([n, c]) => (c.cities || []).some(x => from.has(x)) && !/Police|Pilot|Security|Construction|Delivery|Gardener|Worker|Nurse|Chef/.test(n)).map(([n]) => n);
     const cast = QC.name !== 'low' ? HIGH_CAST : QC.budget && QC.budget.cast ? Math.min(LOW_CAST, QC.budget.cast) : LOW_CAST; // (fewer on a phone's lighter sets: quality.js level)
