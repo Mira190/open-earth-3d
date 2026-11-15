@@ -1040,7 +1040,7 @@
       }
     ],
     "story": {
-      "note": "The story (web/game/story.js; asked for with ?story=1 while it is being made): Blue Hour, in episodes. Each is one evening: the world runs for lead_s seconds, then stops, and whoever carries the camera walks on among the people standing still. The afterimage is someone of another year who alone moves in the stopped world. Sumiko and the promise are invented; the place, the date and the hour are real (10 October, the blue hour after a sunset at 17:14).",
+      "note": "The story (web/game/story.js; the whole of it is written in docs/STORY.md): Blue Hour, in episodes. Each is one evening: the world runs for lead_s seconds, then stops, and whoever carries the camera walks on among the people standing still. The afterimage is someone of another year who alone moves in the stopped world. Sumiko and the promise are invented; the place, the date and the hour are real (10 October, the blue hour after a sunset at 17:14).",
       "title": "Blue Hour",
       "frames": 7,
       "episodes": [
@@ -1050,7 +1050,7 @@
           "title": "You came late",
           "date": [10, 10],
           "light": "blue",
-          "weather": "rain",
+          "weather": "clear",
           "walk_in_s": 0,
           "lead_s": 1,
           "stop_s": 540,
@@ -1061,7 +1061,7 @@
           "goals": {"seek": "Someone is still moving. Walk to her.", "shoot": "Raise her camera: photograph the screens across the crossing.", "aim": "Turn towards the big screens, then take the picture."},
           "late": ["The lights changed. The corner where she stood is empty."],
           "overture": {
-            "note": "The episode's cold open, fifteen seconds in the rain at blue hour: the wet street at the height of a puddle, the crossing from above as the title falls, then the kerb behind you as the lights change. No guide, no painted filter: the street as it is.",
+            "note": "The episode's cold open, fifteen seconds under a clear sky at blue hour (the story keeps its rain for the last evening): the street from the height of the kerb, the crossing from above as the title falls, then the kerb behind you as the lights change. No guide, no painted filter: the street as it is.",
             "title": {"name": "BLUE HOUR", "reading": "Episode 1", "line": "You came late"},
             "guide": "mote",
             "guides": [],

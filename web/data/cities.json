@@ -1,57 +1,57 @@
 [
-  {
-    "id": "shibuya",
-    "name": "Shibuya",
-    "native": "渋谷",
-    "country": "Japan",
-    "lat": 35.6586,
-    "lon": 139.6913,
-    "status": "live",
-    "summary": "Sangenjaya to Shibuya, Harajuku and Yoyogi Park: 48,000 buildings at PLATEAU-surveyed heights, the scramble and Hachiko, SHIBUYA SKY's roof with its lift and escalator, Center Gai, Yoyogi's gymnasiums and the streets Persona 5 drew, from Sangenjaya's backstreets to the station.",
-    "district": "Shibuya",
-    "tagline": "The scramble, Hachiko, SHIBUYA SKY, Center Gai and Sangenjaya's lanes",
-    "timezone": "Asia/Tokyo",
-    "built": true,
-    "game": true,
-    "buildings": 47787,
-    "extent_km": [
-      4.5,
-      4.0
-    ],
-    "frame_m": [
-      -2230,
-      2220,
-      -2005,
-      1995
-    ],
-    "packed": [
-      "buildings",
-      "landmarks",
-      "game",
-      "terrain",
-      "places",
-      "scene"
-    ],
-    "load_bytes": {
-      "model": 4042311,
-      "game": 4619184
-    },
-    "story": "Blue Hour",
-    "story_episode": {
-      "no": 1,
-      "title": "You came late"
-    },
-    "lean_pack": {
-      "dir": "d/",
-      "x": [
-        -350,
-        1250
-      ],
-      "y": [
-        -2100,
-        450
-      ],
-      "bytes": 1554723
-    }
+ {
+  "id": "shibuya",
+  "name": "Shibuya",
+  "native": "\u6e0b\u8c37",
+  "country": "Japan",
+  "lat": 35.6586,
+  "lon": 139.6913,
+  "status": "live",
+  "summary": "Sangenjaya to Shibuya, Harajuku and Yoyogi Park: 48,000 buildings at PLATEAU-surveyed heights, the scramble and Hachiko, SHIBUYA SKY's roof with its lift and escalator, Center Gai, Yoyogi's gymnasiums and the streets Persona 5 drew, from Sangenjaya's backstreets to the station.",
+  "district": "Shibuya",
+  "tagline": "The scramble, Hachiko, SHIBUYA SKY, Center Gai and Sangenjaya's lanes",
+  "timezone": "Asia/Tokyo",
+  "built": true,
+  "game": true,
+  "buildings": 47787,
+  "extent_km": [
+   4.5,
+   4.0
+  ],
+  "frame_m": [
+   -2230,
+   2220,
+   -2005,
+   1995
+  ],
+  "packed": [
+   "buildings",
+   "landmarks",
+   "game",
+   "terrain",
+   "places",
+   "scene"
+  ],
+  "load_bytes": {
+   "model": 4042311,
+   "game": 4619189
+  },
+  "story": "Blue Hour",
+  "story_episode": {
+   "no": 1,
+   "title": "You came late"
+  },
+  "lean_pack": {
+   "dir": "d/",
+   "x": [
+    -350,
+    1250
+   ],
+   "y": [
+    -2100,
+    450
+   ],
+   "bytes": 1554739
   }
+ }
 ]
