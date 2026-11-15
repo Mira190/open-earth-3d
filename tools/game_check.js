@@ -2237,19 +2237,22 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
   // a device that can't keep up (the frame-time governor, quality.js, fed slow frames on a clock of its own):
   // it gives up resolution a step at a time, then the rain's extras and the street's reflections, then every
   // drop, then resolution to its floor, and never the people: the player, the NPCs and the crowd near them keep
-  // their realistic models. Fed fast frames again, the resolution comes all the way back.
+  // their realistic models. Fed fast frames again, the resolution comes all the way back. (The slow frames are a
+  // slow GPU's, shorter with fewer pixels. Frames as slow at any resolution, a phone's in a dense city, get the
+  // resolution back while they are still slow: the floor bought them nothing.)
   const shed = await p.evaluate(async () => {
     const g = window.__game, W = g.weather, G = g.governor, frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
     if (W) { W.set('rain', { now: true }); g.advance(1); }
     const seen = [], note = () => seen.push({ ex: G.extras, w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, px: g.pxScale() });
-    const top = G.scale, ladderTop = G.ladder;
-    for (let i = 0; i < 16 && (G.extras > 0 || G.scale > G.min + 1e-6); i++) { G.simulate(5, () => 60); await frames(2); note(); }
-    const slow = G.simulate(1, () => 60).pop(), slowLadder = G.ladder, slowShadow = g.Wd.shadowSize, slowCrowd = g.crowd.active, slowMsaa = g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
+    const top = G.scale, ladderTop = G.ladder, slowGpu = sc => 30 + 50 * sc * sc;
+    for (let i = 0; i < 16 && (G.extras > 0 || G.scale > G.min + 1e-6); i++) { G.simulate(5, slowGpu); await frames(2); note(); }
+    const slow = G.simulate(1, slowGpu).pop(), slowLadder = G.ladder, slowShadow = g.Wd.shadowSize, slowCrowd = g.crowd.active, slowMsaa = g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
+    const flat = G.simulate(60, () => 60).pop(), flatScale = G.scale;
     const back = G.simulate(120, () => 8).pop();
     await frames(2);
     const ladder = { top: ladderTop, slow: slowLadder, back: G.ladder, shadow: [slowShadow, g.Wd.shadowSize], crowd: [slowCrowd, g.crowd.active] };
     const boxes = [g.player, ...g.npcs].filter(n => n.rig && !n.rig.pending && !n.rig.model).length;
-    const end = { slowMsaa, msaa: g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, scale: G.scale, top, size, slow, back, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, ao: g.atmos && g.atmos.ao ? g.atmos.ao.level : null };
+    const end = { slowMsaa, msaa: g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, scale: G.scale, top, size, slow, back, flat, flatScale, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, ao: g.atmos && g.atmos.ao ? g.atmos.ao.level : null };
     if (W) W.set('live');
     return { seen, end, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0, ladder };
   });
@@ -2260,6 +2263,7 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
     const rainFirst = !first || first.w === null || first.ex === 0 || (first.far === false && first.near === true);
     check(order && rainFirst, `a slow device gives up resolution to 0.8, then the rain's extras and the reflections, the drops, and then resolution to 0.6 (${s.map(x => `${x.px.toFixed(2)}/${x.ex}:${x.w ?? '-'}/${x.mirror ?? '-'}`).join(' ')})`);
     check(e.size === null || Math.abs(e.size - 0.6) < 0.01, `with the scene drawn at that share of the canvas (${e.size === null ? 'no post stack' : e.size.toFixed(2)})`);
+    check(Math.abs(e.flatScale - e.top) < 1e-6 && /\/0$/.test(e.flat), `frames as slow at any resolution get the resolution back and keep the extras off (${e.slow} then ${e.flat})`);
     check(!e.slowMsaa, `and without multisampling at the floor (${e.slowMsaa ?? '-'} samples there, ${e.msaa ?? '-'} again after)`);
     check(Math.abs(e.scale - e.top) < 1e-6 && e.mirror !== true && (e.ao === null || e.ao > 0), `and gets its resolution, reflections and contact shadows back when the frames are fast again (${e.slow} then ${e.back}, AO ${e.ao ?? '-'})`);
     // the one ladder (issue 375): the sun's shadow map, the sea's reflection and the crowd are on it too, and come back

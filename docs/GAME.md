@@ -85,8 +85,35 @@ map's passport lists the postcards that have come from it.
 | Your car | <kbd>W</kbd>/<kbd>S</kbd> drive, brake and (stopped) reverse, <kbd>A</kbd>/<kbd>D</kbd> steer, <kbd>Space</kbd> handbrake, <kbd>H</kbd> horn, <kbd>V</kbd> from the driver's seat, <kbd>R</kbd> back on the road, <kbd>E</kbd> get out |
 | Taxi or ride | <kbd>F</kbd> skip the trip, <kbd>V</kbd> from the back seat, <kbd>E</kbd> get out when it has stopped |
 
-On a phone you get a joystick and buttons. Camera moves (the start, fast travel, a
-survey) end at once on any key or drag.
+On a phone you get a joystick and buttons, and nothing on the screen names a key
+(`web/game/game.js` `touchKeys`, `.oe-touch` in `web/index.html`): a message written with
+<kbd>Y</kbd> or <kbd>F</kbd> comes out naming the button that does the same. What a key does, a
+thumb can do:
+
+| On a phone | What it does |
+|---|---|
+| The stick · a drag on the picture · two fingers | Walk, drive, fly · look round · zoom |
+| **E**, or a tap on the prompt itself | Talk, board, get in, get out |
+| **Hail a taxi**, in the prompt at a kerb | What <kbd>Y</kbd> does |
+| **Lens** · **View** · **Run** · **Guess** · **Jump** | On foot |
+| **Assist** · **View** · **Auto** · **Horn** · **Hand brake** | At the wheel; **Back on the road** in the prompt when the car has stopped (<kbd>R</kbd>) |
+| **Skip** | In a taxi, aboard a ferry or a train (<kbd>F</kbd>) |
+| A passenger's screen | In a taxi, aboard a ferry or a train, on a seat: the stick, **Jump**, **Run** and **Lens** are put away, the ride's readout lies across the screen over one row of buttons (**View**, **Skip**, **E**), and the prompt (**Get in the taxi**, **Get out here**) stands above it |
+| **Take the helm**, in the prompt | Aboard a ferry under way (<kbd>H</kbd>) |
+| **Up** · **Down** | The helicopter |
+| **Map** · **Menu** · **…** | The map, the menu; the passport, diary, photo mode and phone behind the dots |
+
+**Cars are on the ground their road is painted on.** The mapped road lines carry a height every 8 m
+(`pipeline/game_data.py`), and the ground between two of them is not the chord: in Shibuya 150 of
+30,000 places on the roads lay 0.25 to 0.8 m under the drawn ground, where a taxi sank to its sills,
+and as many floated over it. `game.js` `onGround` lays each line on the ground a walker would stand
+on, a point every 4 m, wherever that is within a step and a half of the line's own height; a deck
+keeps its own. `tools/road_ground_probe.js <city>` lists where a line and the ground part (none
+under it in Shibuya and Sydney now; five at the foot of one ramp in Tokyo).
+
+A new action bound to a key needs its button or its place in the prompt (`altAction`) in the
+same change, and `tools/touch_check.js` plays a phone's page: no key shown, the kerb, the wheel,
+the zoom. Camera moves (the start, fast travel, a survey) end at once on any key or drag.
 
 While a city loads, the loader shows how much of its data has arrived and names
 each step, on a card over the city's **survey plate** (`web/plate.js`): the

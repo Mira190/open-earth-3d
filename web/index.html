@@ -592,6 +592,13 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 #gp-main, #gp-alt { display: flex; gap: 8px; align-items: center; }
 #gp-alt { border: 0; background: none; font: inherit; color: inherit; cursor: pointer; padding: 0; }
 #gp-main:not([hidden]) + #gp-alt { border-left: 1px solid var(--line); padding-left: 10px; margin-left: 4px; }
+/* on a phone (game.js sets .oe-touch) nothing names a key: the prompt's two actions are buttons a thumb can hit */
+.oe-touch .game-stage kbd:not(#gp-key) { display: none; }
+.oe-touch .g-prompt { padding: 5px; gap: 6px; border-radius: 999px; }
+.oe-touch #gp-main, .oe-touch #gp-alt, .oe-touch #gp-main:not([hidden]) + #gp-alt { min-height: 40px; margin: 0; padding: 0 16px 0 8px; border-radius: 999px; border: 1px solid var(--line-2); cursor: pointer; overflow: hidden; text-overflow: ellipsis; }
+.oe-touch #gp-alt, .oe-touch #gp-main:not([hidden]) + #gp-alt { padding: 0 16px; border-color: var(--accent); color: var(--accent); flex: none; }
+.oe-touch #gp-main:has(#gp-key[hidden]) { padding-left: 16px; border-color: transparent; }
+.oe-touch .gt-keys { display: none; }
 .g-phone { position: absolute; right: max(14px, env(safe-area-inset-right, 0px)); bottom: 14px; width: min(300px, calc(100% - 28px)); max-height: calc(100% - 330px); overflow: auto; padding: 10px 12px 12px;
   display: grid; gap: 8px; align-content: start; border-top: 3px solid var(--accent); z-index: 4; }
 .g-phone header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -758,11 +765,14 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   .g-sun { padding: 6px 9px 6px 8px; }
   .g-btns .chip-btn { padding: 7px 8px; font-size: 8.5px; letter-spacing: 0.1em; }
   .g-btns kbd { display: none; }
-  .g-toasts { top: auto; bottom: 200px; width: calc(100% - 28px); min-width: 0; }
-  .g-prompt { bottom: 200px; }
+  .g-toasts { top: auto; bottom: calc(200px + var(--vhud-h, 0px)); width: calc(100% - 28px); min-width: 0; }
+  .g-prompt { bottom: calc(200px + var(--vhud-h, 0px)); }
   .g-dialog { bottom: 8px; width: calc(100% - 16px); padding: 14px 16px 10px; }
   .g-dialog p { font-size: 15px; }
   .g-vhud { bottom: 196px; grid-template-columns: repeat(2, auto); }
+  /* a passenger on a phone (game.js vehicleHud): the readout across the screen, over one row of buttons */
+  .game-stage.riding .g-vhud { bottom: 92px; left: max(14px, env(safe-area-inset-left, 0px)); right: max(14px, env(safe-area-inset-right, 0px)); max-width: none; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px 14px; }
+  .game-stage.riding .g-vhud b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .g-phone { bottom: 196px; max-height: max(220px, calc(100% - 478px)); } /* under the row of buttons, over the stick */
   .gph-map { height: 120px; }
   #game-stage:has(#g-phone:not([hidden])) .g-vhud { display: none; } /* the phone covers the corner the trip card sits in */
@@ -1070,7 +1080,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
       <div class="g-btns" id="g-btns"><button class="chip-btn keep" id="g-map-btn">Map <kbd>M</kbd></button><button class="chip-btn" id="g-pass-btn">Passport <span class="num" id="g-pass-count">0</span></button><button class="chip-btn" id="g-photo-btn" title="Photo mode">Photo <kbd>O</kbd></button><button class="chip-btn" id="g-phone-btn" title="Order a ride, bring your car">Phone <kbd>N</kbd></button><button class="chip-btn" id="g-metro-btn" hidden title="The subway map: go on to another district">Districts <kbd>B</kbd></button><button class="chip-btn keep" id="g-menu-btn">Menu <kbd>Esc</kbd></button><button class="chip-btn keep g-more" id="g-more-btn" aria-expanded="false" aria-controls="g-btns" aria-label="More: passport, photo, phone" title="More"><i aria-hidden="true"></i></button></div>
     </div>
     <div class="g-toasts" id="g-toasts" aria-live="polite"></div>
-    <div class="g-prompt" id="g-prompt" hidden><span id="gp-main"><kbd id="gp-key">E</kbd><span id="gp-text"></span></span><button id="gp-alt" hidden><kbd>Y</kbd><span>Hail a taxi</span></button></div>
+    <div class="g-prompt" id="g-prompt" hidden><span id="gp-main"><kbd id="gp-key">E</kbd><span id="gp-text"></span></span><button id="gp-alt" hidden><kbd id="gp-alt-key">Y</kbd><span id="gp-alt-text">Hail a taxi</span></button></div>
     <div class="g-hud g-vhud" id="g-vhud" hidden></div>
     <aside class="g-hud g-lens brackets" id="g-lens" hidden></aside>
     <aside class="g-hud g-phone brackets" id="g-phone" hidden aria-label="Phone"><header><b id="gph-title">Phone</b><button class="x" id="gph-close" aria-label="Put the phone away">×</button></header><canvas class="gph-map" id="gph-map" hidden aria-label="Map of the ride: the car, its route and the pick-up"></canvas><div id="gph-body"></div></aside>
@@ -1208,6 +1218,7 @@ window.THREE = Object.assign({}, T, { OrbitControls, Sky, Reflector, GLTFLoader,
 window.dispatchEvent(new Event('three-ready'));
 </script>
 <script src="quality.js"></script>
+<script src="tex.js"></script>
 <script src="pack.js"></script>
 <script src="sun.js"></script>
 <script src="sun-gpu.js"></script>
