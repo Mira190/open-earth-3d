@@ -41,6 +41,7 @@ const { trainStep, trainChecks } = require('./train_step');
 const { reverseStep } = require('./reverse_step');
 const { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks, kerbStep, kerbChecks } = require('./autopilot_step');
 const npcNight = require('./npc_night');
+const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
 (async () => {
   // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
   const b = await chromium.launch(process.env.DISPLAY
@@ -342,6 +343,17 @@ const npcNight = require('./npc_night');
   check(walk.moved > 3, `walks forward (${walk.moved.toFixed(1)} m in 4 s, on foot at ${walk.z.toFixed(1)} m)`);
   await shot('walk');
   tight(await swing('foot'), 'on foot');
+  // the chase camera on a walk from the start (tools/cam_jumps.js, which plays a minute of it and the car): forward, back
+  // towards the camera, across it and round, a frame at a time. No frame may move or turn the view by a jump, and it
+  // may not swing round you faster than 100 degrees a second (or 45 up or down) unasked: walking back towards the
+  // camera spun the view round and round, and a wall met on the way reared it up 45 degrees in half a second
+  {
+    await p.evaluate(() => { const g = window.__game; g.spawn(); g.cam.lastInput = -10; g.advance(1); });
+    const r = await camRun(p, { walkSecs: 14, car: false, plan: CAM_WALK });
+    await p.evaluate(() => { window.__game.cam.trace = null; });
+    const j = camJumps(r.frames), say = [...j.ev.map(e => `${e.t}s ${e.move} m/${e.turn}°: ${e.why}`), ...j.whips.map(w => `${w.t}s swung ${w.az.toFixed(0)}°/s round, ${w.el.toFixed(0)}°/s up/down: ${w.why}`)];
+    check(!say.length, `the chase camera follows a walk from the start without a jump (${r.frames.length} frames; worst ${j.worstMove} m about you, ${j.worstTurn}° a frame${say.length ? '; ' + say.slice(0, 4).join('; ') : ''})`);
+  }
   await p.evaluate(() => { const g = window.__game; g.spawn(); g.advance(1); });
 
   // the crowd keeps out of the walls: walkers whose body (0.3 m round, knee to head) is in a building or a

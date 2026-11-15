@@ -985,6 +985,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const p = (f && nav.stand(f.x, f.y, f.z + 0.5, { rMax: 3 })) || nav.stand(player.x, player.y, player.z + 0.5, { rMax: 4 }) || f || player;
     Object.assign(player, { mode: 'foot', x: p.x, y: p.y, z: p.z, h: st ? st.h : player.h, speed: 0, ground: true, vz: 0 });
     cam.mode = 'chase'; cam.yaw = player.h; cam.pitch = 0.3; cam.dist = 5.5;
+    blendFrom(0.7, true); // (from the seat's eyes out to over your shoulder, not a cut)
     player.rig.root.visible = true;
   }
   function liftStop(x, y, z) {
@@ -1210,7 +1211,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       player.mode = 'car'; player.vehicle = myCar;
       myCar.C.sit(player.rig, 'driver');
       if (headlamp) myCar.C.carry(headlamp);
+      const turn = Math.abs(angDiff(myCar.D.st.h, cam.yaw));
       cam.mode = 'chase'; cam.dist = 7.5; cam.pitch = 0.2; cam.yaw = myCar.D.st.h;
+      blendFrom(0.8 + turn * 0.16, true); // (round behind the car from where you stood, not swung through it in a frame or two; longer the farther round)
       A.thump();
       H.toast('Your car. <kbd>W</kbd>/<kbd>S</kbd> drive, brake and reverse, <kbd>A</kbd>/<kbd>D</kbd> steer, <kbd>Space</kbd> handbrake, <kbd>H</kbd> horn, <kbd>V</kbd> view, <kbd>E</kbd> get out.');
     } };
@@ -1228,6 +1231,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     player.rig.root.visible = true;
     if (cam.mode === 'cabin') cam.mode = 'chase';
     cam.dist = 6.5; camera.up.set(0, 1, 0);
+    blendFrom(0.6, true); // (the head it looks at drops from the seat to yours beside the door)
     if (headlamp) o.C.drop(headlamp);
     A.car(0, 0, 0); A.skid(0); A.thump();
     return true;
@@ -1940,7 +1944,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       player.mode = 'ride'; player.vehicle = o;
       o.C.sit(player.rig, kerbSeat);
       if (headlamp) o.C.carry(headlamp);
+      const turn = Math.abs(angDiff(o.drv.st.h, cam.yaw));
       cam.mode = 'chase'; cam.dist = 8; cam.pitch = 0.24; cam.yaw = o.drv.st.h;
+      blendFrom(0.8 + turn * 0.16, true);
       A.thump();
       if (o.dest) setOff(o.dest); else askWhereTo();
     }, cancel: () => { if (ride === o && o.phase === 'boarding') o.phase = 'waiting'; } }; // walked off: it waits on (one held in its lane too: hazards on, for five minutes)
@@ -3464,10 +3470,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (the view left is held where it was relative to you, so that at speed in the air it travels with you)
   const VIEW_BLEND = 0.45, viewBlend = { t: 1, pos: new THREE.Vector3(), look: new THREE.Vector3(), up: new THREE.Vector3(), fov: BASE_FOV, at: new THREE.Vector3() };
   const focusW = out => (player.mode === 'heli' ? out.copy(W(heli.st.x, heli.st.y, heli.st.z)) : out.copy(W(player.x, player.y, player.z)));
-  function blendFrom() {
+  // (a scene changing under you, into or out of a car, a taxi or a seat: from where the camera was, over `dur` s,
+  // eased in and out, where the chase rig would have cut to the new view or swung round it at 16 rad/s)
+  function blendFrom(dur = VIEW_BLEND, inOut = false) {
+    viewBlend.dur = dur; viewBlend.inOut = viewBlend.world = inOut; // (held where it was in the world: you are put into the seat or beside the door in the meantime)
     viewBlend.t = 0; focusW(viewBlend.at);
     viewBlend.pos.copy(camera.position).sub(viewBlend.at); viewBlend.up.copy(camera.up); viewBlend.fov = camera.fov;
     camera.getWorldDirection(viewBlend.look).multiplyScalar(30).add(camera.position).sub(viewBlend.at);
+    if (inOut) viewBlend.look.copy(live.look).sub(viewBlend.at); // (what it looked at: you, where you stood)
   }
 
   // ------------------------------------------------------------ interaction
@@ -3641,6 +3651,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (life) life.emit('board', { kind: 'ferry', from: w.id, name: w.name, route: v.route }); // (the tap on: fares.js)
     for (const [l, s] of rideSteps()) if (s.from === w.id) ls(l).rideFrom = w.id;
     cam.yaw = v.h + 0.9; cam.dist = 42; cam.pitch = 0.32;
+    blendFrom(1, true); // (out over the deck from your shoulder, not a cut)
     H.toast(`Aboard ${v.name}, ${v.route}. Next stop: ${wharfById(fer.nextStop(v)).name}. <kbd>F</kbd> to skip ahead, <kbd>H</kbd> to take the helm.`);
     A.engine(0.5);
   }
@@ -3649,6 +3660,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (life) life.emit('board', { kind: 'rail', from: st.id, name: st.name, route: car.line || railRide().name || '' });
     cam.yaw = car.h + 1.4; cam.dist = 30; cam.pitch = 0.3;
     if (car.mainline) { player.rig.root.visible = false; cam.dist = 11; cam.pitch = 0.16; } // (in the car, seen only through its windows; the camera close beside it, under a station's roof)
+    blendFrom(1, true);
     if (car.train) { const nx = rail.nextStop(car); H.toast(`Aboard the ${car.line || railRide().name || 'train'} for ${rail.towards(car)}${nx ? `. Next stop: ${nx.name}` : ''}.${rail.train && rail.train.modelled ? ' <kbd>V</kbd> for the window seat and the cab,' : ''} <kbd>F</kbd> to skip ahead.`); return; }
     H.toast(`Aboard the ${railRide().name || 'funicular'}. ${railRide().note || ''} <kbd>F</kbd> to skip ahead.`);
   }
@@ -3658,10 +3670,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const p = (off && placeNear(off[0], off[1], off[2] + 0.5, null, 6)) || placeNear(here.x, here.y, here.z + 1) || placeNear(car.x, car.y, car.z + 1);
     if (!p) { H.toast('No safe way off here.'); return; }
     car.rider = false; skip = false;
-    if (cam.mode === 'cabin' || cam.mode === 'cab') { cam.mode = 'chase'; blendFrom(); }
+    if (cam.mode === 'cabin' || cam.mode === 'cab') cam.mode = 'chase';
     player.rig.root.visible = true;
     player.mode = 'foot'; player.vehicle = null;
     [player.x, player.y, player.z] = p;
+    cam.distTo = 7.5; blendFrom(0.8, true); // (in from the train's 30 m to over your shoulder, eased: on foot it was left out there)
     if (life && car.moved) life.emit('ride', { kind: 'rail', from: car.from, to: here.id, name: here.name, route: car.line || railRide().name || '', m: car.fromAt ? Math.hypot(here.x - car.fromAt[0], here.y - car.fromAt[1]) : 0 });
     for (const l of [tracked(), ...openLines()].filter(Boolean)) {
       const s = stepOf(l);
@@ -3687,6 +3700,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (v.helm) fer.finishHelm(v);
     player.mode = 'foot'; player.vehicle = null;
     [player.x, player.y, player.z] = p;
+    cam.distTo = 7.5; blendFrom(0.8, true); // (in from the ferry's 42 m to over your shoulder, eased: on foot it was left out there)
     qs.visited[here] = true;
     if (life && lastBoard && lastBoard !== here) { const w0 = wharfById(lastBoard); life.emit('ride', { kind: 'ferry', from: lastBoard, to: here, name: w.name, route: v.route, m: w0 ? Math.hypot(w.berth[0] - w0.berth[0], w.berth[1] - w0.berth[1]) : 0 }); }
     for (const [l, s] of new Map(rideSteps())) if (ls(l).rideFrom === s.from && here === s.to) completeStep(l);
@@ -5600,7 +5614,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         if (ev.type === 'arrive' && car.moved) {
           const st = rail.stationOf(car.id);
           skip = false;
-          if (st && st.under) { alightRail(); cam.mode = 'chase'; cam.dist = 6.5; cam.pitch = 0.3; cam.yaw = player.h; H.toast(`${st.name}. ${st.under.text || 'Up the stairs to the street.'}`); } // (out of sight under the ground: up to its street at once)
+          if (st && st.under) { alightRail(); viewBlend.t = 1; cam.distTo = 0; cam.mode = 'chase'; cam.dist = 6.5; cam.pitch = 0.3; cam.yaw = player.h; H.toast(`${st.name}. ${st.under.text || 'Up the stairs to the street.'}`); } // (out of sight under the ground: up to its street at once)
           else H.toast(`${st.name}. <kbd>E</kbd> to get off.`);
         }
       }
@@ -5903,10 +5917,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     camera.up.copy(live.up);
     camera.position.copy(live.pos);
     if (viewBlend.t < 1) { // (between two views: from the one left to this one)
-      viewBlend.t = Math.min(1, viewBlend.t + dt / VIEW_BLEND);
-      const e = 1 - Math.pow(1 - viewBlend.t, 3), at = focusW(blendAt);
+      viewBlend.t = Math.min(1, viewBlend.t + dt / (viewBlend.dur || VIEW_BLEND));
+      const u = viewBlend.t, e = viewBlend.inOut ? u * u * u * (u * (u * 6 - 15) + 10) : 1 - Math.pow(1 - u, 3), at = viewBlend.world ? viewBlend.at : focusW(blendAt);
       const lk = blendLook.copy(viewBlend.look).add(at).lerp(live.look, e);
-      camera.position.copy(viewBlend.pos).add(at).lerp(live.pos, e);
+      if (viewBlend.world) { // (round what it looks at, by bearing, height and distance: a straight line between two sides of you went through your head)
+        const a = blendA.copy(viewBlend.pos).sub(viewBlend.look), b = blendB.copy(live.pos).sub(live.look);
+        const ra = a.length(), rb = b.length(), ya = Math.atan2(a.x, a.z), pa = Math.asin(THREE.MathUtils.clamp(a.y / (ra || 1), -1, 1)), pb = Math.asin(THREE.MathUtils.clamp(b.y / (rb || 1), -1, 1));
+        const yw = ya + angDiff(Math.atan2(b.x, b.z), ya) * e, pt = pa + (pb - pa) * e, r = ra + (rb - ra) * e;
+        camera.position.set(Math.sin(yw) * Math.cos(pt) * r, Math.sin(pt) * r, Math.cos(yw) * Math.cos(pt) * r).add(lk);
+      } else camera.position.copy(viewBlend.pos).add(at).lerp(live.pos, e);
       camera.up.lerpVectors(viewBlend.up, live.up, e).normalize();
       const f = viewBlend.fov + (camera.fov - viewBlend.fov) * e;
       if (Math.abs(f - camera.fov) > 0.01) { camera.fov = f; camera.updateProjectionMatrix(); }
@@ -5914,8 +5933,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     } else camera.lookAt(live.look);
     Wd.fitShadow(live.look, live.half);
   }
-  const blendLook = new THREE.Vector3(), blendAt = new THREE.Vector3();
-  const cabinQ = new THREE.Quaternion(), camProbe = new THREE.Vector3(), UP_Y = new THREE.Vector3(0, 1, 0);
+  const blendLook = new THREE.Vector3(), blendAt = new THREE.Vector3(), blendA = new THREE.Vector3(), blendB = new THREE.Vector3();
+  const cabinQ = new THREE.Quaternion(), camProbe = new THREE.Vector3(), UP_Y = new THREE.Vector3(0, 1, 0), camSide = new THREE.Vector3(), camSideA = new THREE.Vector3(), camSideB = new THREE.Vector3();
   const CAM_LIFTS = [0, 0.15, 0.3, 0.45, 0.6, 0.8]; // the chase camera's lifts over a wall behind, in radians of pitch
   function rig(dt) {
     const k2 = Math.min(1, dt * 6);
@@ -5998,10 +6017,20 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // drift behind the direction of travel when the player is not steering the camera (in a car, sooner and faster)
     const moving = veh ? Math.abs(vs.v) > 1 : player.mode === 'heli' ? heli.st.speed > 3 : player.speed > 1;
     const air = player.mode === 'heli';
-    if (follow != null && clockT - cam.lastInput > (veh || air ? 0.9 : 1.6) && moving) cam.yaw += angDiff(follow, cam.yaw) * Math.min(1, dt * (veh ? 2.6 : air ? 1.4 + Math.min(1.6, heli.st.speed * 0.04) : 0.9));
+    // on foot it comes round by the sideways part of the walk (the sine of the angle between them), eased in over a
+    // second once the wait is over, and never faster than 0.9 rad/s: the walk is steered from the camera, so walking
+    // back towards it turned the walk with the camera and the view spun round and round at 150 degrees a second, and a
+    // walk across it swung the view the moment the wait ran out
+    const idle = clockT - cam.lastInput;
+    if (follow != null && idle > (veh || air ? 0.9 : 1.6) && moving) {
+      if (veh || air) cam.yaw += angDiff(follow, cam.yaw) * Math.min(1, dt * (veh ? 2.6 : 1.4 + Math.min(1.6, heli.st.speed * 0.04)));
+      else cam.yaw += Math.sin(angDiff(follow, cam.yaw)) * 0.9 * Math.min(1, (idle - 1.6) / 1) * Math.min(1, player.speed / 2) * Math.min(dt, 0.1);
+    }
     if (cam.distTo) { cam.dist += (cam.distTo - cam.dist) * Math.min(1, dt * 2.5); if (Math.abs(cam.distTo - cam.dist) < 0.05) cam.distTo = 0; } // easing in or out
     if (cam.yawTo != null) { const d = angDiff(cam.yawTo, cam.yaw); cam.yaw += d * Math.min(1, dt * 2.5); if (Math.abs(d) < 0.01) cam.yawTo = null; }
-    const dist = player.mode === 'heli' ? Math.max(cam.distTo ? cam.dist : 14, cam.dist) + Math.min(4, heli.st.speed * 0.08) : player.mode === 'ferry' || player.mode === 'rail' ? Math.max(25, cam.dist) : veh ? Math.max(5, cam.dist) + Math.min(2.5, Math.abs(vs.v) * 0.05) : cam.dist;
+    // (in a car it stands back a little more with the speed, eased: a knock that stopped the car dead brought it in half a metre in a frame)
+    cam.back = veh ? (cam.back || 0) + (Math.min(2.5, Math.abs(vs.v) * 0.05) - (cam.back || 0)) * Math.min(1, dt * 3) : 0;
+    const dist = player.mode === 'heli' ? Math.max(cam.distTo ? cam.dist : 14, cam.dist) + Math.min(4, heli.st.speed * 0.08) : player.mode === 'ferry' || player.mode === 'rail' ? Math.max(25, cam.dist) : veh ? Math.max(5, cam.dist) + cam.back : cam.dist;
     const close = player.mode === 'foot' || player.mode === 'board';
     // (at the wheel: on the car along the ground, its bumps eased; a lag behind a moving car that is
     // eased frame by frame grows and shrinks with the frame time, and the car seems to lurch back and
@@ -6013,11 +6042,23 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     else camTarget.lerp(W(tx, ty, tz), close ? 1 : k2);
     // keep the camera out of walls and cars: first rise over them (look down on the player), then come
     // closer. The lift and the pull-in are eased at a bounded rate rather than switched between steps,
-    // so a tight spot never makes the view jump from one frame to the next (#97): it rises quickly when
-    // a wall comes between, holds a moment, and settles back slowly once the way behind is open
+    // so a tight spot never makes the view jump from one frame to the next (#97): it rises steadily when
+    // a wall comes between (pulled in meanwhile), holds while it is needed, and settles back slowly once the way behind is open
+    // Only what stays and hides the player moves it: a pole, a sign's post or a tree's trunk between (blocking the
+    // line to the head but neither of two lines 0.6 m to each side of it) is looked past, and the traffic is not
+    // probed at all. Both pumped the camera in and out as you walked past them or a car went by behind; a car that
+    // comes to the camera itself still has it look down over its roof (below)
     const near = carBoxes(tx, ty, dist + 6, veh);
+    const side = camSide, sa = camSideA, sb = camSideB;
+    const thin = (a, b) => {
+      side.set(b.z - a.z, 0, a.x - b.x);
+      if (side.lengthSq() < 1e-6) return false;
+      side.normalize();
+      for (const s of [1, -1]) if (nav.clearFraction(sa.copy(side).multiplyScalar(s * 0.45).add(a), sb.copy(side).multiplyScalar(s * 0.6).add(b)) < 0.97) return false;
+      return true;
+    };
     // (riding a glass lift, the camera holds outside it, looking in through its glass: not pulled in by the shaft)
-    const clear = player.mode === 'lift' ? () => 1 : (a, b) => Math.min(nav.clearFraction(a, b), near.length ? OECars.sweep({ x: a.x, y: -a.z, z: a.y }, { x: b.x, y: -b.z, z: b.y }, near) : 1);
+    const clear = player.mode === 'lift' ? () => 1 : (a, b) => { const f = nav.clearFraction(a, b); return f < 0.97 && thin(a, b) ? 1 : f; };
     const orbit = (lift, out) => { const pitch = Math.min(1.35, cam.pitch + lift), cp = Math.cos(pitch); return out.set(camTarget.x - Math.sin(cam.yaw) * cp * dist, camTarget.y + Math.sin(pitch) * dist, camTarget.z + Math.cos(cam.yaw) * cp * dist); };
     let want = null;
     for (const lift of CAM_LIFTS) {
@@ -6028,7 +6069,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const jumped = cam.snap || camSmooth.lengthSq() === 0 || camSmooth.distanceTo(orbit(cam.lift, camProbe)) > 60; // after a teleport, or a stretch of advance()
     cam.snap = false;
     if (jumped) { cam.lift = want.lift; cam.liftHold = 0; }
-    else if (want.lift > cam.lift) { cam.lift = Math.min(want.lift, cam.lift + Math.min((want.lift - cam.lift) * dt * 6, dt * 2)); cam.liftHold = 0.5; }
+    // (up at 0.8 rad/s at most, the pull-in covering the wall meanwhile: at 2 rad/s it reared up 45 degrees in half a
+    // second. It comes down only once a lower lift has been clear for 0.6 s running: a wall's edge flickering in and
+    // out of the probe from one frame to the next no longer starts it down and back up)
+    else if (want.lift > cam.lift) { cam.lift = Math.min(want.lift, cam.lift + Math.min((want.lift - cam.lift) * dt * 4, dt * 0.8)); cam.liftHold = 0.6; }
+    else if (want.lift > cam.lift - 0.01) cam.liftHold = 0.6;
     else if ((cam.liftHold -= dt) <= 0) cam.lift = Math.max(want.lift, cam.lift - Math.min((cam.lift - want.lift) * dt * 2, dt * 0.5));
     const f = clear(camTarget, orbit(cam.lift, camPos)), pull = f < 1 ? Math.max(0.15, f - 0.04) : 1;
     if (jumped) cam.pull = pull;
@@ -6056,6 +6101,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const y0 = camPos.y;
     cam.floor = jumped || cam.floor == null ? gz : cam.floor + (gz - cam.floor) * Math.min(1, dt * 8);
     camPos.y = Math.max(camPos.y, ground + 0.5, cam.floor + 0.5);
+    const yFloor = camPos.y;
     const ceil = nav.ceilingAt(camPos.x, -camPos.z, camTarget.y - 1); // under a slab (a colonnade): below its soffit
     if (ceil !== null && camPos.y > ceil - 0.2) camPos.y = Math.max(ground + 0.5, ceil - 0.2);
     // lifted over steps (a stairwell's flight beside a colonnade), the line to the head can graze what the
@@ -6064,6 +6110,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const f = nav.clearFraction(camTarget, camPos);
       if (f < 1) camPos.lerpVectors(camTarget, camPos.clone(), Math.max(0.15, f - 0.04));
     }
+    // (what this frame did, for a harness that sets cam.trace to an object: tools/cam_jumps.js)
+    if (cam.trace) Object.assign(cam.trace, { jumped, f, pullWant: pull, wantLift: want.lift, floorUp: yFloor - y0, ceilDown: yFloor - camPos.y, gz, floor: cam.floor, pre: camSmooth.toArray() });
     live.pos.copy(camPos);
     live.look.copy(camTarget);
     // looking up at a landmark on arrival (cam.tilt): over your head, until you move, steer or drag the view
