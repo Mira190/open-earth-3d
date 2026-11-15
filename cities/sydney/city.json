@@ -562,6 +562,16 @@
         "on_open": "<b>All three walks done.</b> Report back to Ava at Circular Quay."
       }
     ],
+    "lifts": [
+      {"id": "bridge-stairs", "name": "The Bridge Stairs", "line": "The Bridge Stairs · Cumberland Street → the Harbour Bridge footway", "verb": "Climb the stairs to", "m_per_min": 18.0,
+       "note": "The eastern footway of the Harbour Bridge comes down to Cumberland Street in The Rocks by the Bridge Stairs, beside the approach span (OpenStreetMap: the footway on the deck ends over Cumberland Street, 14 m up)",
+       "stops": [{"name": "Cumberland Street, The Rocks", "at": [-331.0, 536.0, 24.12], "face": [-0.4636, -0.886]},
+                 {"name": "the Harbour Bridge footway", "at": [-334.0, 541.0, 38.36], "face": [0.4636, 0.886]}]},
+      {"id": "cahill-walk", "name": "The Cahill Walk", "line": "The Cahill Walk · Circular Quay → over the station", "m_per_min": 60.0,
+       "note": "The Cahill Walk runs along the Cahill Expressway over Circular Quay Station; a lift and stairs at the station's west end take people up to it from the quay",
+       "stops": [{"name": "Circular Quay, by the station", "at": [-172.0, 85.0, 2.62], "face": [0.99, -0.11]},
+                 {"name": "the Cahill Walk", "at": [-156.0, 80.0, 17.8], "face": [0.0, 1.0]}]}
+    ],
     "quests": [
       {
         "id": "quay",

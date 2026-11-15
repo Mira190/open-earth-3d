@@ -652,7 +652,17 @@ window.OERoute = (function () {
     const noWay = new Set();
     // a route on foot from a ({x, y, z}) to b ({x, y, z}; z optional): { pts: [[x, y, z]], len,
     // end: [x, y, z] (where it stops: at b, or the nearest place to stand to it) } or null
+    // (a place given without a level, a waypoint clicked on the map or a quest's spot: the top of what stands there first,
+    // as SHIBUYA SKY's roof is meant, and where no walk reaches that (a station's roof over its platforms, a viaduct over
+    // the street the place is meant on) the floor a walker on the ground there stands on)
     function walk(a, b) {
+      const r = walkTo(a, b);
+      if (r || b.z != null || !ready) return r;
+      const t = nav.terrain(b.x, b.y), f = nav.floorAt(b.x, b.y, t + 0.5), z = f ? f.z : t;
+      return Math.abs(z - topOf(b)) > 1 ? walkTo(a, { x: b.x, y: b.y, z }) : null;
+    }
+    const topOf = b => { const f = nav.floorAt(b.x, b.y, Math.max(300, nav.terrain(b.x, b.y) + 1)); return f && f.kind !== 'deck' ? f.z : nav.terrain(b.x, b.y); };
+    function walkTo(a, b) {
       if (!ready) return null;
       const bz = b.z != null ? b.z : (() => { const f = nav.floorAt(b.x, b.y, Math.max(300, nav.terrain(b.x, b.y) + 1)); return f && f.kind !== 'deck' ? f.z : nav.terrain(b.x, b.y); })();
       const tk = `${Math.round(b.x)},${Math.round(b.y)},${Math.round(bz)}`;

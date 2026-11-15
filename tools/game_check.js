@@ -971,7 +971,7 @@ const npcNight = require('./npc_night');
     for (const L of g.lifts || []) for (let i = 0; i < L.stops.length; i++) {
       const j = (i + 1) % L.stops.length, a = L.stops[i].at, b = L.stops[j].at;
       [pl.x, pl.y, pl.z] = a; pl.mode = 'foot'; g.advance(0.3);
-      const act = g.currentAction && g.currentAction(), offered = !!(act && /lift/i.test(act.text || ''));
+      const act = g.currentAction && g.currentAction(), offered = !!(act && (L.verb ? (act.text || '').startsWith(L.verb) : /lift/i.test(act.text || ''))); // (a flight of stairs: its own verb)
       g.rideLift(L, i, j);
       // a lift ridden in its car (lifts[].car, Queenstown's): through the ride the player stands in the car's
       // middle on its floor, and the car ends at the far stop's floor with that stop's doors shut again
@@ -1468,6 +1468,37 @@ const npcNight = require('./npc_night');
   // your car kept on its wheels: driven at a ledge by its kerb (a planter's coping) and into the kerb, upright at the
   // street's level, and R puts it back on the road the right way up (tools/car_tip_step.js)
   tipChecks(check, car.none ? { none: true } : await p.evaluate(tipStep));
+
+  // every quest giver and quest step's place, and every place on the travel map, reached by the gold line on foot from the
+  // start (route.js walk; a place across the water by the ferry's wharf instead), no more than three times the straight
+  // line (tools/route_quality.js has the detail)
+  const reach = await p.evaluate(async () => {
+    const g = window.__game, G = g.G, ways = g.ways, out = [];
+    for (let i = 0; i < 600 && !ways.ready; i++) await new Promise(r => setTimeout(r, 500));
+    if (!ways.ready) return null;
+    const s = (G.start && G.start.at) || [g.player.x, g.player.y], f = g.nav.floorAt(s[0], s[1], g.nav.terrain(s[0], s[1]) + 1), a = { x: s[0], y: s[1], z: f ? f.z : g.nav.terrain(s[0], s[1]) };
+    const T = [];
+    for (const q of G.quests || []) {
+      const n = q.giver && g.npcs.find(m => m.id === q.giver);
+      if (n) T.push({ name: `${q.id}'s giver ${n.name}`, x: n.x, y: n.y, z: n.z });
+      (q.steps || []).forEach((st, k) => { const m = st.npc && g.npcs.find(o => o.id === st.npc), at = m ? [m.x, m.y, m.z] : st.at; if (at) T.push({ name: `${q.id} step ${k + 1}`, x: at[0], y: at[1], z: at[2] ?? null }); });
+    }
+    for (const t of G.travel || []) if (t.at) T.push({ name: `travel ${t.id}`, x: t.at[0], y: t.at[1], z: t.at[2] ?? null });
+    const seen = new Set();
+    for (const t of T) {
+      const k = `${Math.round(t.x)},${Math.round(t.y)}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const r = ways.walk(a, t), d = Math.hypot(t.x - a.x, t.y - a.y);
+      out.push({ name: t.name, d, len: r ? r.len : null });
+    }
+    return out;
+  });
+  if (reach) {
+    const none = reach.filter(r => r.len == null), far = reach.filter(r => r.len != null && r.d > 50 && r.len > 3 * r.d);
+    check(!none.length, `every quest and travel place is reached on foot from the start (${reach.length - none.length} of ${reach.length}${none.length ? `; none to ${none.map(r => r.name).join(', ')}` : ''})`);
+    check(!far.length, `no walk to them goes more than three times the straight line${far.length ? ` (${far.map(r => `${r.name} ${Math.round(r.len)} m for ${Math.round(r.d)}`).join(', ')})` : ''}`);
+  }
 
   // a taxi: a hand up at the kerb, the nearest one pulls in, in the back, the driver asks where to,
   // the heads clear the roof, it drives off, the trip is skipped to the kerb there, out; then a ride
