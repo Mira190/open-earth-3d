@@ -491,6 +491,47 @@ and night), enlarged three times at the roof lines and the signs' edges: no diff
 the medium tier are not touched (no samples, and two). What a real GPU has to confirm: the milliseconds; the
 count of samples is exact.
 
+### What is left of issues 375 and 358, by what was measured
+
+One frame on foot at the spawn, high tier, 1440 x 900 at 1x, 15:30 (`FOOT=1 FREEZE=1 tools/frame_cost.js`), after
+the work above:
+
+| map | draws | triangles | of them the sun's shadow pass | full-screen passes | written by them |
+|---|---|---|---|---|---|
+| Shibuya | 510 | 2.72 M | 0.78 M in 185 draws | 17 | 26.4 MB |
+| Tokyo | 927 | 3.01 M | 0.63 M in 227 draws | 65 (45 the sea's FFT at 128 x 128) | 38.0 MB |
+| Sydney | 461 | 1.81 M | 0.38 M in 139 draws | 65 (45 the sea's FFT) | 38.0 MB |
+
+The one device that reports GPU time is bound by its pixels, so the items were ordered by the pixels and samples
+they take off, which is the count that carries from a software renderer to a GPU:
+
+- **Done: two samples on a dense display** (above): half the scene's samples there.
+- **Done: a governor that settles** (above): no pixels saved, but the resolution the device can hold is held.
+- **Cut: `BatchedMesh` with per-instance culling.** It was for the static props in the shadow pass. Since the
+  still casters' cache, those are drawn into the shadow map only when the light or the box moves; the 0.4 to 0.8
+  million triangles the pass draws every frame are the crowd, the cars and the trees, which move and are instanced
+  and culled by their own systems (the crowd and cars by the visibility sweep). In the view the props are
+  already left out by cell. Nothing is left for it to cull that a frame pays for.
+- **Cut: shadow cascades.** The pass is 8 to 14% of a frame and a cascade adds passes to it; the far sun's field
+  showed that nothing past the box is missed (under 0.1 of 255); the ladder halves the map on a device that is
+  short. It would buy sharper near shadows, which is the look's question, not the budget's.
+- **Cut: temporal anti-aliasing in place of MSAA (358 C2), and the contact shadows shrunk to a near field.** The
+  cost it was to remove is now removed where it was paid: four samples became two on dense displays, and the
+  governor takes them to none at the floor, where the sharpened upscale carries the edges. On medium and low it
+  would add a full-size resolve and a history target to the tiers that are shortest of fill and memory. The
+  contact shadows are six taps at half size on a rung of their own: 4% of a frame with the bloom and the lens.
+- **Cut: reprojection to the display's rate (358 C3), the cached far layer (C1) and the far shell (B3).** The far
+  layer and the shell were measured at 4 to 7% of Shibuya's triangles for a second facade path and a seam. The
+  reprojection answers a device held at thirty frames a second; the governor now holds the display's rate by
+  resolution and returns to it as soon as it fits, and what a warped frame does at a disocclusion can only be
+  judged on a real display.
+- **Cut: a purpose-built city material.** The measurement behind it (the ground and the walls a fifth of their
+  time when unlit) is a software rasteriser's, where a texture lookup costs many times a GPU's. The part with no
+  effect on the picture was taken (dark spot lights passed over: 8% of the scene pass). The rest (the
+  environment's diffuse lookup, 10% of the scene pass in software) changes the light on every surface of every
+  map, which is the look's to decide with a GPU's timer beside it: the `gpu_ms` of the M3's sessions after this
+  lands say whether shading still bounds it once the samples are halved.
+
 ### Scene renders nobody sees
 
 - **The sea, inland.** The ocean's wave transform (45 passes into 128 px targets), its wake field and, on a
