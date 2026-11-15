@@ -208,5 +208,90 @@ body > .gl-note { position: fixed; }
       stop() { for (const [k, own] of names) { if (own) gl[k] = own; else delete gl[k]; } return [...seen.values()]; },
     };
   }
-  return { watch, reloadOnLoss, trace };
+
+  // ---------------------------------------------------------------- a program the GPU will not link
+  // A shader that compiles here can fail on another GPU: the commonest cause is the texture units a fragment shader
+  // may use, 16 on Apple's GPUs and most phones, 32 on the software renderer the checks run on. The ground's material
+  // asked for 20, did not link on an Apple M3, and every draw with it was refused: the sky showed where the ground
+  // was (issue 485). three.js only writes such a failure on the console. So:
+  //  - fit.off(name): the optional layers of a material (LADDER, the least missed first) ask before they add their
+  //    sampler; each rung of the ladder taken turns one more of them off;
+  //  - when a program fails to link, the ladder goes down a rung and the materials that wore the program are
+  //    compiled again without that layer, until one links; a material that still fails with every layer off is
+  //    compiled as three.js's own, unpatched: plain, but drawn;
+  //  - the rung a device ended on for a map is remembered (for this release), so its next load starts there
+  //    and no link fails;
+  //  - ?units=N plays a device with N units on any machine: a program with more samplers reads as not linked.
+  // tools/sampler_probe.js counts every program's samplers against 16 in the checks, so the ladder is the net,
+  // not the plan.
+  const LADDER = ['trail', 'floor', 'shore', 'mirror', 'surface', 'woods'];
+  const SAMPLERS = [0x8B5E, 0x8B5F, 0x8B60, 0x8B62, 0x8DC1, 0x8DC4, 0x8DC5, 0x8DCA, 0x8DCB, 0x8DCC, 0x8DCF, 0x8DD2, 0x8DD3, 0x8DD4, 0x8DD7];
+  const fit = { level: 0, limit: 0, failed: 0, plain: 0, ladder: LADDER,
+    off(name) { const i = LADDER.indexOf(name); return i >= 0 && i < fit.level; } };
+  const FIT_KEY = 'oe3d-fit';
+  function fitWatch(renderer, { roots = () => [], key = '' } = {}) {
+    const gl = renderer.getContext();
+    const asked = +(new URLSearchParams(location.search).get('units') || 0);
+    fit.limit = asked || gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
+    const memKey = `${key}|${fit.limit}|${(window.OE_VERSION || {}).version || ''}`;
+    // (a GPU with sixteen units starts without the snow's tracks, the first rung, which only snow shows: Tokyo's ground
+    // needs seventeen with them, and a link that fails costs that load a second compile)
+    fit.level = fit.limit <= 16 ? 1 : 0; fit.failed = 0; fit.plain = 0;
+    try { const m = JSON.parse(localStorage.getItem(FIT_KEY) || '{}'); if (m.k === memKey && m.level > fit.level) fit.level = Math.min(LADDER.length, m.level | 0); } catch (e) { /* storage blocked */ }
+    const samplers = p => { let n = 0; for (let i = 0, c = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); i < c; i++) { const u = gl.getActiveUniform(p, i); if (u && SAMPLERS.includes(u.type)) n += u.size; } return n; };
+    if (asked) { // (a device with fewer units, played here: its link fails where this machine's would not)
+      const own = gl.getProgramParameter.bind(gl), over = new WeakMap();
+      gl.getProgramParameter = (p, what) => {
+        const r = own(p, what);
+        if (what !== gl.LINK_STATUS || !r) return r;
+        if (!over.has(p)) over.set(p, samplers(p) > asked);
+        return !over.get(p);
+      };
+    }
+    const old = new WeakSet(); // (programs compiled before the last rung was taken)
+    renderer.debug.onShaderError = (g, program, vs, fs) => {
+      fit.failed++;
+      const text = s => { try { return (s || '').replace(/\s+/g, ' ').trim().slice(0, 160); } catch (e) { return ''; } };
+      const why = text(g.getProgramInfoLog(program)) || text(g.getShaderInfoLog(fs)) || text(g.getShaderInfoLog(vs)) || (asked ? `more than ${asked} texture units` : 'no log');
+      const hit = [], seen = new Set(), stale = old.has(program);
+      for (const root of roots()) if (root) root.traverse(o => {
+        for (const m of [].concat(o.material || [])) {
+          if (!m || seen.has(m) || !renderer.properties.has(m)) continue;
+          seen.add(m);
+          const P = renderer.properties.get(m), progs = P.programs ? [...P.programs.values()] : P.currentProgram ? [P.currentProgram] : [];
+          if (progs.some(x => x && x.program === program)) { hit.push(m); for (const x of progs) if (x && x.program) old.add(x.program); }
+        }
+      });
+      const from = fit.level;
+      // (two programs of one material, with and without the sky's light, fail one after the other: the second was
+      // compiled before the rung the first one's failure took, and takes none itself; nor does a material compiled
+      // before a rung another material's failure took: it is compiled again at that rung first)
+      const current = !stale && hit.some(m => (m.userData.oeFitAt ?? fit.start) === fit.level);
+      if (current && fit.level < LADDER.length) fit.level++;
+      let plain = 0;
+      for (const m of hit) {
+        if (m.userData.oeFitPlain) continue; // (three.js's own shader failed too: nothing left to take away)
+        if (current && from >= LADDER.length) {
+          m.userData.oeFitPlain = true; m.onBeforeCompile = () => {}; m.customProgramCacheKey = () => 'oe-plain'; plain++; fit.plain++;
+        } else if (!m.userData.oeFitKeyed) {
+          // (three.js keys a program by the text of onBeforeCompile, which has not changed: the rung goes in the key)
+          m.userData.oeFitKeyed = true;
+          const own = m.customProgramCacheKey;
+          m.customProgramCacheKey = function () { return `${own.call(this)}|fit${this.userData.oeFitAt}`; };
+        }
+        m.userData.oeFitAt = fit.level;
+        m.needsUpdate = true;
+      }
+      try { localStorage.setItem(FIT_KEY, JSON.stringify({ k: memKey, level: fit.level })); } catch (e) { /* storage blocked */ }
+      const one = hit[0];
+      // (the first line is what the telemetry keeps: web/telemetry.js "shader")
+      console.error(`THREE.WebGLProgram: did not link (${why}); ${hit.length} material${hit.length === 1 ? '' : 's'}${one ? `, ${one.type}${one.name ? ` "${one.name}"` : ''}` : ''}; ${fit.limit} units; rung ${from} to ${fit.level}${fit.level > from ? ` (without ${LADDER[from]})` : ''}${plain ? `, ${plain} plain` : ''}`);
+      if (window.OETelemetry && OETelemetry.set) OETelemetry.set({ fit: fit.level, fit_plain: fit.plain || undefined });
+    };
+    fit.start = fit.level;
+    fit.samplers = samplers;
+    return fit;
+  }
+
+  return { watch, reloadOnLoss, trace, fit, fitWatch };
 })();

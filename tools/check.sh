@@ -47,7 +47,6 @@
 #   tools/check.sh touch                # the game played by touch on a phone's page (tools/touch_check.js), only
 #   tools/check.sh story                # each live map's first story episode played through (tools/story_shot.js)
 #   tools/check.sh gl                   # the map opened as a device with its extras shed opens it: no refused WebGL call
-#                                       # and, as a device with 16 texture units, no shader program over them
 #   tools/check.sh all                  # every city, every reef site and the title
 #   tools/check.sh static               # the checks that open no browser only (packs, voice, life, rings...)
 #   tools/check.sh sydney:game          # one kind of a city's checks (game, clip, mem, tour; sydney:clip,mem)
@@ -162,10 +161,10 @@ else
       web/game/hud.js) shared_change; touch=1 ;;
       tools/touch_check.js) touch=1 ;;   # the game by touch, on a phone's page
       tools/governor_unit.js) voice=1 ;;   # the governor's modelled devices, in the static checks
-      web/world.js|web/glcare.js|web/mirror.js|web/water.js|web/lens.js|web/game/atmosphere.js|web/game/ao.js|web/game/weather.js) shared_change; gl=1 ;;   # what draws into a target of its own: the passes a device's governor turns on and off
+      web/world.js|web/glcare.js|web/mirror.js|web/water.js|web/surface.js|web/lens.js|web/game/atmosphere.js|web/game/ao.js|web/game/weather.js) shared_change; gl=1 ;;   # what draws into a target of its own: the passes a device's governor turns on and off
       tools/gl_error_probe.js|tools/sampler_probe.js) gl=1 ;;
       web/game/story.js|tools/story_shot.js) shared_change; story=1 ;;   # a map's story and the Stop (tools/story_shot.js plays the first episode)
-      web/surface.js|web/night.js|web/neon.js) shared_change; gl=1 ;;   # what adds a texture to the shared shaders (the units check)
+      web/night.js|web/neon.js) shared_change; gl=1 ;;   # what adds a texture to the shared shaders (the units check)
       web/game/fishing.js|tools/fishing_*|pipeline/fishing.py)   # the cities with fishing spots only (docs/FISHING.md)
         if [ "$TIER" = full ]; then for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && add_city "$id"; done; else fish=1; fi ;;
       tools/game_check.js|tools/*_step.js|tools/*_walk.js|tools/npc_night.js|tools/ride_queue.js) shared_change game ;;   # a check's own script: that kind of check
@@ -321,15 +320,13 @@ run_gl() {   # the map as an ordinary device opens it (issue 485; tools/gl_error
     if START=0.8/0.5 Q=msaa=on WALK=1 timeout 1800 $X node tools/gl_error_probe.js "$c" >"$OUT/gl-$c.log" 2>&1; then
       echo "ok   gl     $c: opened with the extras shed and multisampling on, the ladder walked: WebGL refused no call"
     else echo "FAIL gl     $c: $(grep -o '"call":"[^"]*"' "$OUT/gl-$c.log" | head -2 | cut -c9-160 | paste -sd ';' -)   (see $OUT/gl-$c.log)"; fi
-  done  # and as an Apple GPU links it: a fragment shader has 16 texture units there and 32 on the software renderer the checks
-  # draw with, so a program with a seventeenth sampler passed every check and drew nothing on a Mac or an iPhone (issue
-  # 485). Every live map, in the rain (the wet street's samplers in), held to 16 with ?units=16 (tools/sampler_probe.js)
-  for c in $CITIES; do
-    ( if Q="units=16&weather=rain" timeout 1500 $X node tools/sampler_probe.js "$c" >"$OUT/units-$c.log" 2>&1; then
-        echo "ok   units  $c: as a device with 16 texture units, $(grep -o '[0-9]* programs linked' "$OUT/units-$c.log" | head -1), none over 16"
-      else echo "FAIL units  $c: $(grep '^FAIL' "$OUT/units-$c.log" | head -1 | cut -c6-200)   (see $OUT/units-$c.log)"; fi ) &
+    # the same map as a GPU with sixteen texture units in a fragment shader (Apple's, most phones'; the software
+    # renderer has 32): every program that does not link there is compiled again with less until it does, and no
+    # material is left undrawn (tools/sampler_probe.js, glcare.js fit)
+    if Q=units=16 timeout 1800 $X node tools/sampler_probe.js "$c" >"$OUT/units-$c.log" 2>&1; then
+      echo "ok   gl     $c: as a 16-unit GPU every material drawn$(grep -o 'goes without: .*' "$OUT/units-$c.log" | sed 's/^/, /')"
+    else echo "FAIL gl     $c: as a 16-unit GPU a material is left undrawn: $(tail -3 "$OUT/units-$c.log" | head -1 | cut -c1-200)   (see $OUT/units-$c.log)"; fi
   done
-  wait
 }
 # the game played by touch (tools/touch_check.js): a phone's page of the lead map, where no key can be pressed
 run_touch() {

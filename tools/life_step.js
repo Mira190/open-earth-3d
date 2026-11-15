@@ -222,6 +222,29 @@ async function lifeStep(p, check, city) {
         if (out.music) { D.passTo('night'); if (g.weather) g.weather.set('rain', { now: true }); g.advance(1.2); g.advance(1.2); out.want = L.music.state; await new Promise(r => setTimeout(r, 6000)); out.score1 = L.music.describe(); if (g.weather) g.weather.set('clear', { now: true }); }
         out.vol = (() => { const v = L.music.volume(); L.music.volume(0); const off = L.music.off; L.music.volume(v); return off && L.music.volume() === v; })();
       }
+      // ---- the phone's messages: one for one thing said. A save from when the calendar wrote a copy for each day
+      // of a season (out of order, as the clock was moved) becomes one message, three more days in the season add
+      // none, and the list is in the clock's order
+      const se = L.phone && L.data.events.find(x => x.dates);
+      if (se) {
+        const text = `${se.title}${se.where ? `, ${se.where}` : ''}: on now.`, b = L.phone.box();
+        const dayOf = k => { const t = new Date(Date.UTC(c.y, se.dates[0][0] - 1, se.dates[0][1] + k)); return [t.getUTCMonth() + 1, t.getUTCDate()]; };
+        const mine = () => L.phone.box().filter(m => m.from === 'Calendar' && m.text === text);
+        const stamp = m => { const [d, mo] = m.d.split('/').map(Number); return ((m.y * 12 + mo) * 31 + d) * 1440 + m.t; };
+        for (const m of mine()) b.splice(b.indexOf(m), 1);
+        [2, 0, 1].forEach((k, i) => { const [m, d] = dayOf(k); b.push({ from: 'Calendar', text, key: `${c.y}-${m}-${d}|${se.id}`, d: `${d}/${m}`, t: 600 + i, read: 1 }); });
+        L.phone.tidy(b);
+        out.msgOld = mine().length; out.msgKey = mine()[0] && mine()[0].key;
+        for (let k = 0; k < 3; k++) {
+          const [m, d] = dayOf(k);
+          g.setClock(c.y, m, d, 720); g.advance(1);
+          g.setClock(c.y, m, d, se.slots ? D.bounds()[se.slots[0]] + 5 : se.hours ? +se.hours[0].slice(0, 2) * 60 + +se.hours[0].slice(3) + 5 : 730); g.advance(1);
+        }
+        out.msgNow = mine().length;
+        const all = L.phone.box();
+        out.msgOrder = all.every((m, i) => !i || stamp(m) >= stamp(all[i - 1]));
+        out.msgOnce = new Set(all.map(m => `${m.from}\n${m.text}`)).size === all.length;
+      }
       // ---- the save, read back
       L.save();
       const snap = JSON.stringify([L.store.skills, L.store.wallets, L.city().bonds, L.city().jobs, L.city().days]);
@@ -277,6 +300,7 @@ async function lifeStep(p, check, city) {
   check(r.bannerWaited && r.bannerAfter, 'a banner waits for a station\'s arrival sign, then shows');
   if (r.music != null) check(r.music && r.want && r.want.slot === 'night' && r.want.rain > 0.2 && !!r.want.palette === /Japan|Australia|New Zealand/.test(r.country || 'Japan') && r.vol, `the score plays with the sound and follows the hour and the weather ("${r.score0}" to "${r.score1}"), with its own volume`);
   if (r.fireworks != null) check(r.fwOn && r.fireworks > 50 && r.fwOff === 0, `the calendar's fireworks go up while their event is on (${r.fireworks} sparks) and stop after`);
+  if (r.msgOld != null) check(r.msgOld === 1 && /^on\|/.test(r.msgKey || '') && r.msgNow === 1 && r.msgOrder && r.msgOnce, `the phone's messages: a season is one message (an old save's three copies become ${r.msgOld}, ${r.msgNow} after three more of its days), none said twice, in the clock's order`);
   check(r.reloaded && r.restored, 'the save: skills, wallet, ranks, jobs and days read back as they were');
   return r;
 }

@@ -1,72 +1,82 @@
-// How many texture units each shader program of a map's game uses, against the fewest a device may offer.
-// WebGL2 promises 16 units to a fragment shader (MAX_TEXTURE_IMAGE_UNITS) and Apple's GPUs give exactly
-// that; a software renderer gives 32 or more, so a program with 17 samplers links in every check and
-// fails to link on a Mac or an iPhone, where what it was to draw is then missing and the sky shows in its
-// place (issue 485). Counted at each linkProgram, from the context's first call: the active sampler
-// uniforms, an array counted by its length.
-//   [LIMIT=16] [START=0.8/0] [Q=msaa=on] [TIER=high] xvfb-run -a node tools/sampler_probe.js shibuya [morning|night|...]
-// Exits 1 when a program uses more than LIMIT units.
+// Every shader program a map links, against the limits of the devices that play it, not of the machine that checks it.
+// A program that asks for more texture units than a GPU has does not link there: three.js says so on the console only,
+// every draw with it is refused (useProgram, INVALID_OPERATION) and whatever wore the material is missing from the
+// picture, so the sky shows where the ground was (issue 485: an Apple M3 has 16 units in a fragment shader, Mesa's
+// llvmpipe 32, and no check here saw it). This counts each linked program's samplers, in every state the game is put in.
+//   [Q=weather=rain] [TIER=high] xvfb-run -a node tools/sampler_probe.js shibuya [morning|night|...]
+// tools/check.sh gl runs it; exits 1 on a program over LIMIT (16: WebGL 2's floor and what Apple's and most phones' GPUs give).
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const [,, city = 'shibuya', time = ''] = process.argv;
 const LIMIT = +(process.env.LIMIT || 16);
 const wrap = () => {
-  const P = WebGL2RenderingContext.prototype, link = P.linkProgram, src = P.shaderSource, attach = P.attachShader;
-  const names = new WeakMap(), progName = new WeakMap(), progs = [];
-  window.__samplers = { progs, limits: null };
-  P.shaderSource = function (sh, s) { const m = /#define SHADER_NAME (\S+)/.exec(s); names.set(sh, { name: m ? m[1] : '?', defs: (s.match(/#define USE_[A-Z0-9_]+/g) || []).map(x => x.slice(12)) }); return src.call(this, sh, s); };
-  P.attachShader = function (pr, sh) { if (this.getShaderParameter(sh, this.COMPILE_STATUS) !== undefined && this.getShaderParameter(sh, this.SHADER_TYPE) === this.FRAGMENT_SHADER) progName.set(pr, names.get(sh)); return attach.call(this, pr, sh); };
-  P.linkProgram = function (pr) {
-    link.call(this, pr);
-    const S = window.__samplers;
-    if (!S.limits) S.limits = { frag: this.getParameter(this.MAX_TEXTURE_IMAGE_UNITS), vert: this.getParameter(this.MAX_VERTEX_TEXTURE_IMAGE_UNITS), all: this.getParameter(this.MAX_COMBINED_TEXTURE_IMAGE_UNITS) };
-    const rec = { pr, gl: this, info: progName.get(pr) || { name: '?', defs: [] } };
-    progs.push(rec);
-  };
-  // counted when asked, not at the link: three.js links in parallel (KHR_parallel_shader_compile), and a count
-  // asked for at once would make every link wait
-  window.__samplers.count = () => progs.map(({ pr, gl, info }) => {
-    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) return { name: info.name, n: -1, list: [], defs: info.defs };
-    const list = [];
-    let n = 0;
-    for (let i = 0, k = gl.getProgramParameter(pr, gl.ACTIVE_UNIFORMS); i < k; i++) {
-      const u = gl.getActiveUniform(pr, i);
-      if (!u) continue;
-      const t = u.type;
-      if (t === gl.SAMPLER_2D || t === gl.SAMPLER_CUBE || t === gl.SAMPLER_3D || t === gl.SAMPLER_2D_SHADOW || t === gl.SAMPLER_2D_ARRAY || t === gl.SAMPLER_2D_ARRAY_SHADOW || t === gl.SAMPLER_CUBE_SHADOW ||
-        t === gl.INT_SAMPLER_2D || t === gl.UNSIGNED_INT_SAMPLER_2D || t === gl.INT_SAMPLER_3D || t === gl.UNSIGNED_INT_SAMPLER_3D || t === gl.INT_SAMPLER_2D_ARRAY || t === gl.UNSIGNED_INT_SAMPLER_2D_ARRAY) { n += u.size; list.push(u.size > 1 ? `${u.name.replace('[0]', '')}×${u.size}` : u.name); }
+  const P = WebGL2RenderingContext.prototype, link = P.linkProgram;
+  window.__progs = [];
+  P.linkProgram = function (prog) { const r = link.call(this, prog); window.__progs.push({ gl: this, prog }); return r; };
+  window.__samplers = () => {
+    const out = [];
+    for (const o of window.__progs.splice(0)) {
+      const gl = o.gl, p = o.prog;
+      if (gl.isContextLost() || !gl.isProgram(p)) continue;
+      const names = [];
+      let n = 0;
+      for (let i = 0, c = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); i < c; i++) {
+        const u = gl.getActiveUniform(p, i);
+        // (every sampler type's enum: 2D, 3D, cube, shadow, array, and the integer ones)
+        if (u && [0x8B5E, 0x8B5F, 0x8B60, 0x8B62, 0x8DC1, 0x8DC4, 0x8DC5, 0x8DCA, 0x8DCB, 0x8DCC, 0x8DCF, 0x8DD2, 0x8DD3, 0x8DD4, 0x8DD7].includes(u.type)) { n += u.size; names.push(u.size > 1 ? `${u.name}x${u.size}` : u.name); }
+      }
+      const src = (gl.getAttachedShaders(p) || []).map(s => gl.getShaderSource(s) || '').join('\n');
+      const type = /#define SHADER_TYPE (\w+)/.exec(src), name = /#define SHADER_NAME (\S*)/.exec(src);
+      out.push({ n, linked: !!gl.getProgramParameter(p, gl.LINK_STATUS), type: type ? type[1] : '', name: name ? name[1] : '', names, max: gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS) });
     }
-    return { name: info.name, n, list, defs: info.defs };
-  });
+    return out;
+  };
 };
 (async () => {
-  const b = await chromium.launch(process.env.SWIFT || !process.env.DISPLAY ? { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] }
+  const b = await chromium.launch(!process.env.DISPLAY ? { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] }
     : { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
-  const p = await b.newPage({ viewport: { width: 1001, height: 894 }, deviceScaleFactor: 1 });
+  const p = await b.newPage({ viewport: { width: 1001, height: 894 } });
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
   await p.addInitScript(wrap);
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
-  let bad = 0;
-  const seen = new Set();
+  let over = 0, top = 0, count = 0;
   const report = async label => {
-    const r = await p.evaluate(() => ({ limits: window.__samplers.limits, progs: window.__samplers.count() }));
-    const by = new Map();
-    for (const o of r.progs) { const k = `${o.name}|${o.list.join(',')}`; if (!by.has(k)) by.set(k, o); }
-    const rows = [...by.values()].sort((a, c) => c.n - a.n);
-    console.log(`${label}: ${r.progs.length} programs linked, ${by.size} different; this renderer offers ${r.limits ? r.limits.frag : '?'} units to a fragment shader, the check holds them to ${LIMIT}`);
-    for (const o of rows.slice(0, 8)) console.log(`  ${String(o.n).padStart(3)}  ${o.name}  ${o.list.join(' ')}`);
-    for (const o of rows) if (o.n > LIMIT && !seen.has(`${o.name}|${o.list}`)) { seen.add(`${o.name}|${o.list}`); bad++; console.log(`FAIL ${o.name} uses ${o.n} texture units, over ${LIMIT}: ${o.list.join(' ')}`); }
+    const r = await p.evaluate(() => window.__samplers());
+    count += r.length;
+    for (const x of r) {
+      top = Math.max(top, x.n);
+      if (x.n > LIMIT || !x.linked) { over++; console.log(`${label}: ${x.linked ? '' : 'NOT LINKED, '}${x.n} samplers (this machine has ${x.max}) in ${x.type} ${x.name}: ${x.names.join(' ')}`); }
+    }
+    console.log(`${label}: ${r.length} programs linked, the most samplers ${r.reduce((m, x) => Math.max(m, x.n), 0)}`);
   };
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/?overture=0${process.env.START ? `&gov=${process.env.START}` : ''}${process.env.Q ? `&${process.env.Q}` : ''}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?overture=0${process.env.Q ? `&${process.env.Q}` : ''}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.flyover', null, { timeout: 600000 });
   await p.waitForFunction(() => { const l = document.getElementById('g-loader'); return !l || l.hidden; }, null, { timeout: 900000, polling: 500 });
   await p.waitForFunction(() => { const t = document.getElementById('g-title'); return t && !t.hidden; }, null, { timeout: 600000, polling: 250 });
+  await p.waitForTimeout(3000);
+  await report('load and title');
   if (time) await p.evaluate(t => { const x = document.querySelector(`#gt-timechoice [data-t="${t}"]`); if (x) x.click(); }, time);
   await startPlay(p, { asIs: true });
   await p.waitForTimeout(8000);
-  await report(`${city}${time ? ` ${time}` : ''}, playing`);
-  for (const o of await p.evaluate(() => (window.OEQuality && OEQuality.fitUnits.log) || [])) console.log(`  fitted: ${JSON.stringify(o)}`);
+  await report('playing');
+  // the governor's rungs change what the materials are compiled with (the shadow's filter, the extras)
+  for (const [sc, ex] of [[0.8, 0.5], [0.6, 0], [1, 1]]) {
+    await p.evaluate(([s, e]) => window.__game.governor && window.__game.governor.set(s, e), [sc, ex]);
+    await p.waitForTimeout(2500);
+    await report(`scale ${sc}, extras ${ex}`);
+  }
+  // what the page did about them (glcare.js fit): the rungs taken, and whether every material ended with a program that links
+  const fit = await p.evaluate(() => {
+    const f = window.OEGLCare && OEGLCare.fit, gl = document.querySelector('#game-gl').getContext('webgl2');
+    return f ? { level: f.level, failed: f.failed, plain: f.plain, without: f.ladder.slice(0, f.level), units: f.limit, real: gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS) } : null;
+  });
   await b.close();
-  console.log(bad ? `samplers: ${bad} programs over ${LIMIT} texture units` : `samplers ok: no program over ${LIMIT} texture units`);
-  process.exit(bad ? 1 : 0);
-})().catch(e => { console.log(`FAIL ${e.message}`); process.exit(1); });
+  console.log(`${count} programs, the most samplers in one ${top}, the limit ${LIMIT}; the page: ${JSON.stringify(fit)}`);
+  // Without ?units the programs are counted as they are: over the limit fails. With Q=units=16 the page is a device
+  // with sixteen: links fail as they would there, and it must end with everything drawn (no material left plain,
+  // the ladder not run out); the rungs it took are printed, each a layer that device goes without.
+  const emulated = /(^|&)units=\d+/.test(process.env.Q || '');
+  const bad = emulated ? (!fit || fit.plain > 0 || fit.level >= 6) : over > 0;
+  if (emulated && fit && fit.level) console.log(`a ${fit.units}-unit device goes without: ${fit.without.join(', ')}`);
+  if (bad) { console.log('FAIL'); process.exit(1); }
+})().catch(e => { console.error(e); process.exit(1); });

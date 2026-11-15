@@ -446,32 +446,7 @@ asked for its error after every call. `tools/gl_error_probe.js` (`tools/check.sh
 live map on main) opens the map with the extras shed and multisampling on and does the same from the context's
 first call. Both pass on all three live maps: 130,000 calls a load and 11,000 to 34,000 a frame, none refused.
 
-**What it was: texture units.** The M3's next two loads named the call (15 November 2026): two programs of a
-`MeshStandardMaterial` failed to link (`VALIDATE_STATUS false`), and every frame after that `useProgram` was refused in
-the scene's pass. A fragment shader may read as many textures as the device has units for
-(`MAX_TEXTURE_IMAGE_UNITS`): WebGL2 promises 16, Apple's GPUs give exactly 16, and Mesa's llvmpipe gives 32, so the
-checks linked what a Mac and an iPhone could not. The ground's material, patched by eight modules, had reached 20
-samplers in Shibuya, 19 in Tokyo and 18 in Sydney (with and without the sky's reflection: the two failures a load).
-A program that does not link draws nothing, with no error a page sees unless it asks; the ground and what shared its
-material were missing and the sky showed in their place.
-
-What keeps a material within them now:
-
-- the scanned asphalt and concrete are the two layers of one array texture (`web/surface.js`), and the quay's
-  distance to the shore is read through the sea's own sampler of the same texture (`web/world.js`): two units back
-  with nothing given up;
-- `web/quality.js` `fitUnits(sh)`, called last in the ground's `onBeforeCompile` and again by the wet street's mirror
-  before it adds its own: it counts the samplers the patches declared and the ones three.js adds for that program (its
-  maps, its shadow maps, the two tables of an area light), and while the count is over the device's units the program
-  goes without, in order, a wood's own floor map, the tracks trodden in snow, and the rain's cover map. On a device
-  with 16 units Shibuya's ground keeps the wet mirror and gives up those three in the rain; Sydney gives up nothing;
-- `?units=16` plays as such a device on any renderer, and `tools/sampler_probe.js` counts every program's samplers as
-  it links. `tools/check.sh gl` runs it on every live map in the rain and fails a program over 16.
-
-A new texture in a shared shader is a unit on every device: pack it with one that shares its box, or add it to
-`UNIT_DROPS` with what the picture does without it.
-
-**What was not found before that.** The M3 reported `WebGL error 0x502` (INVALID_OPERATION) after the first frame of both
+**What was not found.** The M3 reported `WebGL error 0x502` (INVALID_OPERATION) after the first frame of both
 loads it made once the game asked (`glCheck`), with the shadow map on the GPU and its pass on, at 0.8/0 and at
 0.8/0.5. Mesa's llvmpipe raises none in the same states, with or without multisampling, rain, night, or a walk of
 the ladder, so the call is one a software renderer accepts and Apple's driver does not, and the flag does not

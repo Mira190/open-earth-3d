@@ -76,7 +76,7 @@ float oePuddle(vec2 xz) { float n = oeMirN(xz * 0.11) * 0.6 + oeMirN(xz * 0.37) 
       const before = mat.onBeforeCompile, key = mat.customProgramCacheKey;
       mat.onBeforeCompile = (sh, r) => {
         if (before) before.call(mat, sh, r);
-        if (window.OEQuality && OEQuality.fitUnits && OEQuality.fitUnits(sh, 1).over) return; // (no texture unit left for the mirror on this device: the street is wet without it)
+        if (window.OEGLCare && OEGLCare.fit.off('mirror')) return; // (a GPU short of texture units: glcare.js fit)
         Object.assign(sh.uniforms, U);
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
 uniform sampler2D uMirror; uniform mat4 uMirrorMat; uniform float uMirrorOn, uMirrorTime, uWetM, uRainM, uMirrorDark; uniform vec2 uMirrorPx;
