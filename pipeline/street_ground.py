@@ -24,7 +24,7 @@ creases of over 15 %); otherwise the survey stays as it is (see run()).
 
 Left as they are: the water, the hero levels that draw ground (docs/HERO.md: each is draped on the ground the game had
 when it was built, and walked as drawn, pipeline/hero_floor.py; Tokyo's draws a building only, and its ground is levelled), the ground under a landmark laid on it (paving, a plinth, a planter: a mesh within
-1.5 m of the ground), a city's fine patches, and any node a street would move more than MAX_MOVE_M (an underpass, a
+1.5 m of the ground), the ground under a building's part that stands over it (its clearance), a city's fine patches, and any node a street would move more than MAX_MOVE_M (an underpass, a
 cutting the data maps on the ground), and any node where the lines that reach it disagree on its level by more
 than SPREAD_M (two levels, a footbridge over a street). The heights stay to the decimetre, as game_data.py writes
 them: in centimetres the game's pack grew by a third (170 kB in Shibuya) for creases of 2 % that no one feels.
@@ -189,6 +189,21 @@ def protected(game, scene, landmarks, G, out=""):
             d.polygon([(px[a], py[a]), (px[b], py[b]), (px[c], py[c])], fill=1, outline=1)
     lm = np.asarray(img, bool)
     keep |= ndimage.binary_dilation(lm, iterations=1)
+    # and under a building's part that stands over the ground (min_dm: a bridge between two blocks, an upper floor over
+    # a street): its clearance stays as surveyed (Shibuya's over Route 246 by Mark City is 1.6 m over the road, and 10 cm
+    # more ground under it left the traffic no room, so the trunk road was kept off and the streets round it jammed)
+    bp = os.path.join(out, "buildings.json")
+    if out and os.path.exists(bp):
+        B = json.load(open(bp, encoding="utf8"))
+        f = B["s_fields"]
+        k_min, k_ring = f.index("min_dm"), f.index("ring_dm")
+        img = Image.new("L", (nx, ny), 0)
+        d = ImageDraw.Draw(img)
+        for sd in B["s"]:
+            if sd[k_min] > 0:
+                r = sd[k_ring]
+                d.polygon([((r[i] / 10 - G.x0) / cell, (G.y1 - r[i + 1] / 10) / cell) for i in range(0, len(r) - 1, 2)], fill=1, outline=1)
+        keep |= ndimage.binary_dilation(np.asarray(img, bool), iterations=1)
     return keep
 
 
