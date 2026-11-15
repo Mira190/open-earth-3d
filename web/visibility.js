@@ -48,7 +48,7 @@ window.OEVis = (() => {
     const t = opt.terrain;
     worker.onmessage = onMessage;
     worker.onerror = () => { stop(); };
-    worker.postMessage({ init: { url: new URL(`data/${opt.city}/vis.bin`, document.baseURI).href,
+    worker.postMessage({ init: { url: new URL(`${opt.packs || `data/${opt.city}/`}vis.bin`, document.baseURI).href,
       keep: opt.tier === 'low' ? 1 : 2, // (each shrunk copy is the raster's size and a third again: 24 MB for Shibuya)
       terrain: t ? { data: Float32Array.from(t.data), nx: t.nx, ny: t.ny, cell: t.cell, x0: t.x0, y1: t.y1 } : null } });
     return api;

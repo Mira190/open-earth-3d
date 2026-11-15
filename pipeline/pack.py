@@ -6,7 +6,8 @@ scene.json into landmarks.bin, game.bin, terrain.bin, places.bin and scene.bin.
     python pipeline/pack.py shibuya osaka   # these cities' (packed again even when up to date)
     python pipeline/pack.py --check         # exit 1 if any pack is missing or stale
 
-It also keeps each live city's vis.bin (the occluder raster of pipeline/visibility.py, which the page's
+It also keeps each live city's district for phones (d/, pipeline/district.py: the same packs cut round the
+start) in step with them, and each live city's vis.bin (the occluder raster of pipeline/visibility.py, which the page's
 visibility sweep reads) and skyvis.webp (the sky its ground sees, pipeline/skyvis.py) in step with its
 buildings.json: made when missing or stale, and checked by --check.
 
@@ -244,10 +245,12 @@ class Writer:
         if vals and all(type(v) is list for v in vals):
             flat = [x for v in vals for x in v]
             lens = self.ints([len(v) for v in vals])
-            if flat and (all(_is_num(x) for x in flat) or all(type(x) is str for x in flat)):
-                return {"t": "l", "len": lens, "c": self.column(flat)}
+            # (the typed lists first: below them they were never reached, and a landmark's vertex lists came back as
+            # plain arrays, every decimal a boxed number: 39 MB of Tokyo's page for 2.2 million of them, issue 443)
             if flat and all(_is_num(x) for x in flat) and path in self.typed:
                 return {"t": "l", "len": lens, "c": self.column(flat), "ta": 1}
+            if flat and (all(_is_num(x) for x in flat) or all(type(x) is str for x in flat)):
+                return {"t": "l", "len": lens, "c": self.column(flat)}
             width = max(len(v) for v in vals)
             if width <= 64:
                 cols = [self.column([v[j] for v in vals if len(v) > j], (path[0] if path else None, j)) for j in range(width)]
@@ -505,12 +508,14 @@ def main(argv):
             raise SystemExit(f"no buildings.json for {c}")
     every = [(c, n) for c in (named or cities()) for n in packs(c)]
     sys.path.insert(0, os.path.join(ROOT, "pipeline"))
+    import district
     import skyvis
     import visibility
     if check:
         bad = [(c, n[:-5] + ".bin", s) for c, n in every if (s := stale(c, n))]
         bad += [(c, "vis.bin", s) for c in vis_cities(named) if (s := visibility.stale(c))]
         bad += [(c, "skyvis.webp", s) for c in vis_cities(named) if (s := skyvis.stale(c))]
+        bad += [(c, "d/ (the phone's district)", s) for c in vis_cities(named) if (s := district.stale(c))]
         for c, n, s in bad:
             print(f"FAIL pack   {c}: {n} {s}; run python pipeline/pack.py {c}")
         if not bad:
@@ -531,6 +536,10 @@ def main(argv):
     sky = [c for c in vis_cities(named) if named or skyvis.stale(c)]
     if sky:
         skyvis.main(sky)
+    # and each live city's district for phones (d/, pipeline/district.py), cut from its packs: seconds
+    cut = [c for c in vis_cities(named) if named or district.stale(c)]
+    if cut:
+        district.main(cut)
     return 0
 
 

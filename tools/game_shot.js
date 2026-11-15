@@ -206,6 +206,17 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       // a cutscene the place set off (the survey's turn on the spot) would be caught half way: skip it
       if (g.cine.active) g.cine.skip();
       place(); g.advance(0.5);
+      // (a phone, LEAN=1: the buildings round where the view stands, whole, before the still: world.js mapAt builds them over a second or two)
+      // (near() answers nothing while an earlier build runs: asked again until the cells are those of this place)
+      window.__mapWait = !(g.Wd && g.Wd.mapStream) ? null : (async () => {
+        const st = g.Wd.mapStream, px = g.player.x, py = g.player.y;
+        for (let i = 0; i < 100; i++) {
+          const m = g.Wd.mapAt(px, py, true);
+          if (m) await m;
+          else if (Math.hypot(st.at[0] - px, st.at[1] - py) < 2) break;
+          else await new Promise(r => setTimeout(r, 100));
+        }
+      })();
       // "closer": a photo spot's id, to look closer at it from there (places.js), "along" seconds to the right
       if (v.closer) { g.lookAt(g.G.spots.find(s => s.id === v.closer)); g.advance(1.2); if (v.along) g.advance(v.along, ['KeyD']); if (v.up) g.advance(Math.abs(v.up), [v.up > 0 ? 'KeyW' : 'KeyS']); }
       // "scramble": "walk" or "wait": on until the nearest scramble is that far into its walk (its crowd
@@ -373,6 +384,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       }
     }, v);
     // the plush traveller, once photo mode has the camera where the still is taken from (a few frames on)
+    await p.evaluate(async () => { await window.__mapWait; await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); });
     await p.evaluate(async () => { if (!window.__plushPlace) return; for (let i = 0; i < 3; i++) await new Promise(r => requestAnimationFrame(r)); window.__plushPlace(); window.__plushPlace = null; });
     await (v.closer || v.page ? grabPage : grab)(v.name); // ("page": the page with its HUD, not the canvas alone)
     // "pick": [[u, v], ...] points on the frame (0..1 from its top left): what the camera sees there, printed

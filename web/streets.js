@@ -96,7 +96,8 @@ window.OEStreets = (function () {
 
   // the road lines of a city: the game's (game.json, decimetres), else night.json's (the viewer)
   function roadLines(D) {
-    if (D.G && D.G.paths) return D.G.paths.road.map(r => ({ c: r.c, p: r.p.map(v => v / 10), cw: r.cw }));
+    // (with a district's roads past its edge, paths.far, pipeline/district.py: drawn and kept clear, never driven)
+    if (D.G && D.G.paths) return D.G.paths.road.concat((D.G.paths.far || {}).road || []).map(r => ({ c: r.c, p: r.p.map(v => v / 10), cw: r.cw }));
     const N = D.N;
     if (!N || !N.roads) return [];
     const unpack = b64 => { const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return new Int16Array(u.buffer); };

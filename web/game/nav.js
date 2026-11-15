@@ -871,7 +871,10 @@ window.OENav = (function () {
     // adds to them) are not walls: the landmark's own mesh is, and a measured piece wider than the drawn
     // tower round it would stand as an invisible wall in front of it (issue #91)
     const hidden = new Set((D.scene && D.scene.hidden_solids) || []);
-    const shown = D.B.s.filter((s, i) => !hidden.has(i));
+    // (in a phone's district, pipeline/district.py, the solids past the play area are scenery: drawn, never met)
+    const PX1 = x0 + DSM.nx * DSM.cell, PY0 = y1 - DSM.ny * DSM.cell;
+    const inPlay = !D.district ? null : s => { const r = s[4]; for (let k = 0; k < r.length; k += 2) if (r[k] >= x0 * 10 && r[k] <= PX1 * 10 && r[k + 1] >= PY0 * 10 && r[k + 1] <= y1 * 10) return true; return false; };
+    const shown = D.B.s.filter((s, i) => !hidden.has(i) && (!inPlay || inPlay(s)));
     for (const s of shown) col.add(s, (s[1] + s[2]) / 10, (s[1] + s[3]) / 10, BUILDING, s[0], 10, 4); // (its rings in decimetres, s[4...])
     // the posts a canopy (an arcade, a gate: pipeline/arcades.py) stands on, as buildings.js draws them
     const PH = OEBuildings.POST / 2;
@@ -947,13 +950,16 @@ window.OENav = (function () {
     // bridge's deck under the expressway's that crosses it: the Shuto over Nihonbashi)
     // (lines: for a mapped line, which is never on a strip the data knows nothing of: a station's platforms and
     // stairs, "mapped": false, built over the footways that pass under them)
+    // (and for a mapped line, a surface at or under its height before one over it: the data lifts a line a level (6 m)
+    // over the ground, so a footway on a bridge under the expressway's deck, 4.4 m over the one and 4.3 m under the
+    // other, was put on the expressway, #432: Ichikoku-bashi, Shin-Tokiwa-bashi, Nishigashi-bashi under the Shuto)
     function surfaceAt(x, y, near, lines) {
-      const k = cellOf(x, y);
+      const k = cellOf(x, y), far = z => Math.abs(z - near) + (lines && z > near + 1 ? 100 : 0);
       let h = k >= 0 && pierAt(k) > -50 ? pierAt(k) : -Infinity;
       for (const s of stripsAt(x, y)) {
         if (lines && s.mapped === false) continue;
         const z = stripHeight(s, x, y);
-        if (z != null && (near == null ? z > h : Math.abs(z - near) < Math.abs(h - near))) h = z;
+        if (z != null && (near == null ? z > h : far(z) < far(h))) h = z;
       }
       return h;
     }
@@ -973,8 +979,11 @@ window.OENav = (function () {
       const l = deckGrid.get(Math.floor(x / DG) * 65536 + Math.floor(y / DG));
       if (l) for (const i of l) {
         const d = decks[i], ex = (d.bx - d.ax) / d.L, ey = (d.by - d.ay) / d.L, dx = x - d.ax, dy = y - d.ay, u = dx * ex + dy * ey;
-        if (u < -0.3 || u > d.L + 0.3 || Math.abs(-dx * ey + dy * ex) > d.hw) continue;
-        fn(d.az + (d.bz - d.az) * Math.max(0, Math.min(1, u / d.L)), d);
+        if (u < -0.3 || u > d.L + 0.3) continue;
+        // (a piece narrowed beside another deck has its own width to each side, tapering along it: decks.js together)
+        const t = Math.max(0, Math.min(1, u / d.L)), v = -dx * ey + dy * ex, h = d.hl ? (v > 0 ? d.hl : d.hr) : null;
+        if (Math.abs(v) > (h ? h[0] + (h[1] - h[0]) * t : d.hw)) continue;
+        fn(d.az + (d.bz - d.az) * t, d);
       }
     }
     // the floor a walker at height z would stand on at (x, y): the highest surface no more
@@ -1042,8 +1051,9 @@ window.OENav = (function () {
         // on a deck: not in its parapet (decks.js: a wall PARAPET_W wide inside each edge), unless another deck at that
         // level carries on past it (a dual carriageway's two lines, whose parapets are not drawn where they meet)
         if (f.kind === 'deck' && Math.abs(h - f.z) < 0.6) {
-          const ex = (d.bx - d.ax) / d.L, ey = (d.by - d.ay) / d.L, v = Math.abs(-(x - d.ax) * ey + (y - d.ay) * ex);
-          if (v <= d.hw - (d.par || 0) - 0.1) inside = true; else if (d.par) edge = true;
+          const ex = (d.bx - d.ax) / d.L, ey = (d.by - d.ay) / d.L, sv = -(x - d.ax) * ey + (y - d.ay) * ex, v = Math.abs(sv), hs = d.hl ? (sv > 0 ? d.hl : d.hr) : null;
+          const hw = hs ? hs[0] + (hs[1] - hs[0]) * Math.max(0, Math.min(1, ((x - d.ax) * ex + (y - d.ay) * ey) / d.L)) : d.hw;
+          if (v <= hw - (d.par || 0) - 0.1) inside = true; else if (d.par) edge = true;
         }
       });
       if (low || (edge && !inside)) return { ok: false, why: 'wall' };

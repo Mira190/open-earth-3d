@@ -2599,9 +2599,14 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         const narrowPair = fr && (why === 'narrow' || fr.why === 'narrow' || (!c.mv && !fr.mv && fr.line === c.line && fr.dir !== c.dir));
         if (fr && !narrowPair && c.v < 0.3 && fr.v < 0.3) {
           c.faceAll = c.faceCar === fr ? (c.faceAll || 0) + dt : 0;
-          c.faceT = c.faceCar === fr ? (c.faceT || 0) + dt : 0; c.faceCar = fr;
+          c.faceT = c.faceCar === fr ? (c.faceT || 0) + dt : 0; c.faceCar = fr; c.faceGap = 0;
           if (c.faceT > 4 && goesFirst(c, fr)) { c.passBy = fr; c.passFace = true; c.faceT = 0; }
-        } else { c.faceT = c.faceAll = 0; c.faceCar = null; }
+        }
+        // (the face-off's clock runs on through a break of up to 3 s: the other backing off a metre and this one moving up
+        // into the room is the same knot, not a new one. Each such step began the 20 s again, so a bus and a car in the
+        // mouth of Sydney's junction 460 stood 40 s while the car used up its backing off, then the 20 s: 63 s, #432)
+        else if (c.faceCar && c.faceCar.line >= 0 && (c.faceGap = (c.faceGap || 0) + dt) < 3) { c.faceAll = (c.faceAll || 0) + dt; c.faceT = 0; }
+        else { c.faceT = c.faceAll = c.faceGap = 0; c.faceCar = null; }
         if (c.passBy && ((!c.mv && !c.passFace) || Math.hypot(c.passBy.x - c.x, c.passBy.y - c.y) > c.half + c.passBy.half + 4 || c.passBy.line < 0)) { c.passBy = null; c.passFace = false; }
         // your car and a ride: one parked beside the lane is passed side by side with a hand's width
         // between, or round it: a short swing out towards the kerb, or out over the centre line round
@@ -2869,7 +2874,10 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
             // (and the room it makes counted as what it still goes if it brakes now, v²/10 up to 6 m, not as a second
             // and more of its going on: one that stopped short in a queue beyond left the car behind it on the rails while
             // the crossing shut, Sydney's car 39, #409)
-            if (!hold && X.rail && toStop > -0.3 && gap < 39.5 && gap + (front && !front.q && front.v > 3 && !front.wantPark && !front.parking && !(front.dwell > 0) && !front.deliver && !(front.lineArm && front.toLine < 60 && JN.light(front.lineArm, front.lineEx) !== 'g') ? Math.min(front.v * front.v / 10, 6) : 0) < toStop + a.back + X.rail.w / 2 + 2 * c.half + 1.5) { hold = true; c.clearRails = (c.clearRails || 0) + dt; } // (gap under its 40 m: something is there)
+            // (and none for a car creeping up in a queue itself, under 3 m/s: the one ahead pulling away makes its room in
+            // a second, and then it goes; counted on, it crept onto the rails and stood there when the queue stopped again,
+            // Tokyo's cars 5, 19 and 34, #432)
+            if (!hold && X.rail && toStop > -0.3 && gap < 39.5 && gap + (front && c.v > 3 && !front.q && front.v > 3 && !front.wantPark && !front.parking && !(front.dwell > 0) && !front.deliver && !(front.lineArm && front.toLine < 60 && JN.light(front.lineArm, front.lineEx) !== 'g') ? Math.min(front.v * front.v / 10, 6) : 0) < toStop + a.back + X.rail.w / 2 + 2 * c.half + 1.5) { hold = true; c.clearRails = (c.clearRails || 0) + dt; } // (gap under its 40 m: something is there)
             if (hold) {
               const g = toStop + 2.4;
               if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = X.rail ? 'rails' : X.sig ? 'light' : 'zebra'; }
