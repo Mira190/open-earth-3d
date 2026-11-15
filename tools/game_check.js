@@ -2003,6 +2003,7 @@ const npcNight = require('./npc_night');
   // (a car at the mouth of a street too narrow for two, waiting on one coming the other way: never over 30 s, as on a
   // single-track road, the one nearer its passing place first, #283; and a scramble's count of those at a kerb never below none)
   check(heldQ.narrow.max <= 30, `no car waits over 30 s at a narrow stretch for one coming the other way (${heldQ.narrow.max} s at most${heldQ.narrow.over.length ? `: ${heldQ.narrow.over.join('; ')}` : ''})`);
+  if (process.env.UNTIL === 'held' && process.env.EVAL) console.log(await p.evaluate(process.env.EVAL)); // (EVAL: a statement run in the page after the step, to look at what it left: g is window.__game)
   if (process.env.UNTIL === 'held') { await advances(); await b.close(); process.exit(fails.length ? 1 : 0); } // (UNTIL=held: up to the junctions' and narrow stretches' step, to iterate on it)
   check(heldQ.gates.min >= 0, `the scrambles' counts of those waiting at their kerbs never go below none (${heldQ.gates.min}${heldQ.gates.at ? ` at ${heldQ.gates.at}` : ''})`);
   qNote('a queue at a signal held through more than two greens', heldQ.queues);
@@ -2423,6 +2424,56 @@ const npcNight = require('./npc_night');
       `the hero level ${r.id}'s finest parts are ${r.fine.tier === 'low' ? 'not fetched on the low tier' : `drawn near you (${r.fine.shown} of ${r.fine.meshes} squares)`} (${r.fine.state})`);
   }
   if (heroes) await lightsKept('with the hero level loaded and let go');
+
+  // The governor's ladder, drawn (issue 485; after the traffic's checks: it changes the weather and the hour and
+  // runs the world on, which the traffic's runs above must not play through). The shedding step feeds the governor seconds of slow frames inside one task, so
+  // the states between its top and its floor are never on the screen, and under a harness the governor stands
+  // still: the state an ordinary device plays in (resolution moving a step every few seconds, the extras shed and
+  // back) was one no check drew. Here every step of its way down and back is set and drawn, in clear weather, in
+  // the rain (the wet street's mirror, the occlusion map) and after dark (the sun's shadow pass left out), with
+  // the context asked for its error after every call (glcare.js trace): a draw WebGL refuses, a blit that copies
+  // nothing. A software renderer is given no multisampling (quality.js), so the samples a desktop GPU draws with
+  // (four, two, none) are set here by hand with the extras.
+  const rungs = await p.evaluate(async () => {
+    const g = window.__game, W = g.weather, G = g.governor, A = g.atmos, C = A && A.composer;
+    const gl = document.getElementById('game-gl').getContext('webgl2');
+    const frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+    const top = G.max, way = [], own = !('msaa' in G.ladder) && !!(C && A.setSamples), was = { scale: G.scale, extras: G.extras, min: g.clock.min, frozen: g.clock.frozen };
+    for (let s = top; s > 0.8 + 1e-6; s -= 0.05) way.push([s, 1]);
+    way.push([0.8, 1], [0.8, 0.5], [0.8, 0], [0.75, 0], [0.7, 0], [0.65, 0], [0.6, 0]);
+    for (let s = 0.65; s < top - 1e-6; s += 0.05) way.push([s, 0]);
+    way.push([top, 0], [top, 0.5], [top, 1]);
+    const tr = window.OEGLCare.trace(gl), bad = [], legs = [];
+    const draw = async (leg, steps) => {
+      let n = 0;
+      for (const [s, e] of steps) {
+        G.set(s, e);
+        if (own) A.setSamples(e >= 1 ? 4 : e > 0 ? 2 : 0);
+        await frames(2);
+        n++;
+        for (const o of tr.take()) bad.push(`${leg} at ${G.scale.toFixed(2)}/${e}: ${o.call}(${o.args}) ${o.err} x${o.n} at ${o.at}`);
+      }
+      legs.push(`${leg} ${n}`);
+    };
+    const c0 = tr.calls;
+    await draw('clear', way);
+    if (W) { W.set('rain', { now: true }); g.advance(1); await draw('rain', way); W.set('clear', { now: true }); g.advance(1); }
+    // after dark the sun's shadow pass is left out (world.js setSun): the rungs that make its map again
+    g.setClock(g.clock.y, g.clock.m, g.clock.d, 22 * 60); g.clock.frozen = true;
+    await frames(2); tr.take();
+    await draw('night', [[top, 1], [0.8, 0.5], [0.8, 0], [0.6, 0], [top, 0], [top, 0.5], [top, 1]]);
+    g.setClock(g.clock.y, g.clock.m, g.clock.d, was.min); g.clock.frozen = was.frozen;
+    await draw('day again', [[top, 0.5], [top, 1]]);
+    const calls = tr.calls - c0;
+    tr.stop();
+    if (own) A.setSamples(0);
+    G.set(was.scale, was.extras);
+    if (W) W.set('live');
+    await frames(2);
+    return { bad, legs, calls, samples: own ? 'set by hand' : `the rung's`, msaa: C ? gl.getParameter(gl.MAX_SAMPLES) : 0, found: g.glFound.slice() };
+  });
+  check(rungs.bad.length === 0, `every step of the governor's ladder, drawn: WebGL refuses no call (${rungs.legs.join(', ')} steps, ${rungs.calls} calls asked; samples ${rungs.samples})${rungs.bad.length ? `: ${rungs.bad.slice(0, 6).join(' | ')}` : ''}`);
+  check(rungs.found.length === 0, `and the game's own watch on the context found nothing in the run (${rungs.found.length ? rungs.found.join(' | ').slice(0, 600) : 'no error'})`);
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   check(!refused, `WebGL refused no draw for a sampler on the wrong kind of texture${refused ? ` (${refused} warnings; tools/gl_mismatch_probe.js)` : ''}`);

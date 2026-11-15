@@ -1186,7 +1186,8 @@ pipeline writes. The only city-specific code is landmark geometry in
         the same way.
       - Points where a deck meets the ground stay put, except by up to 1 m in
         the later rounds. A deck never goes below the ground, and moves at
-        most 3 m (an expressway, whose viaduct is measured) or 8 m.
+        most 3 m (an expressway, whose viaduct is measured), 4.5 m (another
+        road) or 8 m (a footway).
       - A line that starts on another deck (steps off a footway) starts at
         that deck's edge and height.
       - A short lift at a line's end over dry land, where the data puts the
@@ -1195,9 +1196,34 @@ pipeline writes. The only city-specific code is landmark geometry in
         over a culvert (Tetsugaku's primary road by Keage).
       - A one-way expressway or trunk line is as wide as its lanes and
         shoulders, not the class's two-way 15 m.
-      - `tools/deck_room.js <city>` lists what is left. Most of it is at
-        expressway junctions, where three lines can ask for two levels at
-        once.
+      - Road decks side by side at different levels are narrowed first (#432).
+        An expressway's two directions and a ramp beside its carriageway are
+        each a one-way line, laid as wide as the class: two lines 7 m apart,
+        a metre apart in measured height, each reached into the other. Each
+        is cut back on the side the other is, to the middle between the two
+        lines less 0.2 m, never narrower than its lanes (2.9 m a side, 2 m
+        for one lane), and the cut tapers back out at 1 in 6. The outer edge
+        is not touched. Only lines too close for that share a slab and are
+        graded to one level. A piece keeps its widths as `hl` and `hr`
+        (`nav.js` `decksAt`), a run as `hws` (`mesh`).
+      - Side by side and laid a storey (5 m) apart, two decks are one over
+        the other: they are put back apart if a merge further along pulls
+        them within the clearance. Without it stacked carriageways were
+        pulled together along their whole length.
+      - Points of different lines at one place and level (a ramp's end on
+        the carriageway it joins) move together, so the grading leaves no
+        step where one line hands the traffic to the next.
+      - A line near a bridge's strip anywhere comes onto it wherever it is
+        under the clearance: settled for the line, not piece by piece.
+      - What 200 rounds leave is given 60 more in which each pair goes to
+        what it is nearer: one level under 1.6 m, else apart.
+      - A mapped line is put on the surface at or under its height before
+        one over it (`nav.surfaceAt`): a footway on a bridge under the
+        expressway is on the bridge.
+      - `tools/deck_room.js <city>` lists what is left: a few places where
+        two lines closer than their lanes are measured more than a knee
+        apart. `tools/deck_dump.js` writes what the grading is given and
+        `tools/deck_grade.js` runs and measures it in Node, in seconds.
     - Under a deck over the water the aerial photograph has the same bridge or
       expressway, draped on the modelled bottom, and it showed through the
       water as a road on the riverbed (Tokyo's Nihonbashi under the Shuto,
