@@ -3086,7 +3086,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // ------------------------------------------------------------ the story (story.js): a map's episodes, and the Stop, in which
   // the world is given no time while the player walks on. Asked for with ?story=1 while it is being made.
   let storyBeacon = null;
-  const story = window.OEStory && G.story && new URLSearchParams(location.search).has('story') ? OEStory.create({
+  const story = window.OEStory && G.story && !new URLSearchParams(location.search).has('walk') ? OEStory.create({
     story: G.story, stage, player, touch, toast: t => H.toast(t),
     // the goal's light: a pale column standing where the next thing to do is, and a ring at its foot
     beacon: at => {
@@ -3124,7 +3124,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       return out.toDataURL('image/jpeg', 0.86);
     },
     again: () => { try { sessionStorage.setItem('oe-story-auto', cityId); } catch (e) { /* storage blocked */ } location.reload(); },
-    free: () => { const u = new URL(location.href); u.searchParams.delete('story'); u.searchParams.delete('overture'); location.href = u.toString(); },
+    free: () => { const u = new URL(location.href); u.searchParams.set('walk', '1'); u.searchParams.delete('overture'); location.href = u.toString(); },
     say: (who, lines, done) => dlg.show(Object.assign({ color: '#9fc4ff' }, who), lines.map(l => fill(l)), null, done),
     hush: on => { if (A.hush) A.hush(on); },
     dress: (date, light, wx) => {
