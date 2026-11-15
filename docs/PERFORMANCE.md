@@ -1589,3 +1589,29 @@ inputs' fingerprint and fall back to the live build when they differ. Not done i
 On a phone the district answers it by building less: Shibuya's walking model 762 -> 564 ms, footways 372 -> 210 and
 roads 221 -> 82; Tokyo's 2,445 -> 1,655, 800 -> 364 and 291 -> 81 (the table under "A phone's district").
 
+
+## The device's own numbers (November 2026)
+
+The owner's Apple M3 played Shibuya at 5 to 20 frames a second with the governor at its floor (scale 0.6, no
+extras, no multisampling), and at 59 only by day at that floor. Telemetry said the GPU held the frame; it could not
+say which part of it. Two things came of that.
+
+**The frame, part by part, on the player's device** (`web/game/perf.js`, `?perf` on a game's address, with
+`?story=<map>` for the story's evening). A few seconds after the street is the player's, the page draws its frame
+several times over, finished each time (`gl.finish` and a pixel read back), then again with one thing taken away
+at a time: the post stack and each of its passes, the shadows, the screens' area lights, the wet street's mirror,
+the weather, the multisampling, the scene at the governor's floor and at full size, every material flat (what
+the geometry alone costs) and each top-level group of the scene. The table is shown on the page and sent with the
+telemetry as a `perf` event. `tools/perf_scan.js` runs it here to see that it runs through; under a software
+renderer its numbers say little. `tools/frame_cost.js` times one finished frame of a map at an hour and a weather,
+with and without the area lights, for comparing two ways of drawing the same thing.
+
+**The screens' area lights in closed form** (`web/neon.js` `lean()`). three.js evaluates a rectangular light with
+linearly transformed cosines: two table lookups, a matrix and four clipped edge integrals, twice, for each of ten
+lights at every lit pixel, by day as well (the lights are in the programs whether or not a screen is on). Here the
+rectangle is the form factor A cos / (pi d^2 + A) towards its nearest point for the diffuse part, and Karis's
+representative point with one GGX lobe for the specular (Real Shading in Unreal Engine 4, SIGGRAPH 2013); a light
+that is off returns at once. Under the software renderer the lights' share of a rainy evening frame at the floor
+went from 57 ms of 381 to 28 of 349, and stills of the scramble at 19:30 in rain differ by 5 levels in 255 on
+average (`?arealight=ltc` brings three.js's own back). The two LTC tables are no longer bound either, which leaves
+two more of an Apple or a phone GPU's sixteen texture units to a material's own layers. Not measured on a real GPU.

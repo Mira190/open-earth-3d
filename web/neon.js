@@ -9,7 +9,7 @@
 // (Heitz, Dupuy, Hill and Neubelt, SIGGRAPH 2016; three.js's LTC tables, MIT): a screen lights
 // what is in front of it with the right falloff and spread, never what is behind it, and its
 // reflection in a wet street (wet.js) is the screen's own rectangle. A light moving from one screen
-// to another fades out and in. The number of lights is the tier's (high 8, medium 4, low none,
+// to another fades out and in. (The rectangle is evaluated in closed form, not with three.js's tables: lean(), below.) The number of lights is the tier's (high 8, medium 4, low none,
 // web/quality.js): it is fixed for the session, so no material recompiles as the camera moves.
 // The street's static pools of the screens' light (night.js uGlowMap) stay for the far city and
 // the low tier.
@@ -74,14 +74,77 @@ window.OENeon = (function () {
   // fill: light cards over a plaza after dark (game.look.fill: [{at: [x, y], z: height over the
   // ground, w, h metres, colour, k, aim: [x, y, z over the ground] for a card that does not face straight down}]), the light its shopfronts, floodlights and signs put on the
   // middle of a square that no street lamp stands in (Shibuya's scramble); ground(x, y): the ground's height
+  // The area light's cost. three.js evaluates a rectangle with linearly transformed cosines: two table lookups, a
+  // matrix and four clipped edge integrals, twice (diffuse and specular), for every light at every pixel a lit
+  // material covers. With ten lights that was most of a night frame: an Apple M3 drew the same street in 22 ms by
+  // day and 60 to 100 ms after dark, at any resolution (telemetry, November 2026). What the eye is given by a
+  // screen across a street is its colour on the paving and the crowd, falling off with distance and facing, and a
+  // soft highlight where a wet surface faces it; the screen's own picture in the wet street is the mirror's
+  // (mirror.js), not this light's. So the rectangle is evaluated in closed form here instead:
+  //   diffuse   the form factor of the rectangle seen from the point, A cos(light) / (pi d^2 + A), towards the
+  //             point of the rectangle nearest the surface (exact far off, bounded by 1 close to);
+  //   specular  Karis's representative point (Real Shading in Unreal Engine 4, SIGGRAPH 2013): the point of
+  //             the rectangle nearest the reflected ray, one GGX lobe towards it, its energy kept as the
+  //             lobe is widened by the light's size.
+  // A few dozen operations a light, no texture: the two LTC tables also leave the sixteen texture units an
+  // Apple or a phone GPU has to a material's own layers. ?arealight=ltc brings three.js's own back, to compare.
+  const LTC = /[?&]arealight=ltc\b/.test(location.search);
+  const LEAN = `
+	void RE_Direct_RectArea_Physical( const in RectAreaLight rectAreaLight, const in vec3 geometryPosition, const in vec3 geometryNormal, const in vec3 geometryViewDir, const in vec3 geometryClearcoatNormal, const in PhysicalMaterial material, inout ReflectedLight reflectedLight ) {
+		if ( rectAreaLight.color.r + rectAreaLight.color.g + rectAreaLight.color.b <= 0.0 ) return; // (a screen that is off, and every one of them by day)
+		vec3 oeC = rectAreaLight.position;
+		float oeLw = length( rectAreaLight.halfWidth ), oeLh = length( rectAreaLight.halfHeight );
+		vec3 oeU = rectAreaLight.halfWidth / oeLw, oeV = rectAreaLight.halfHeight / oeLh, oeN = - cross( oeU, oeV );
+		vec3 oeD = geometryPosition - oeC;
+		float oeSide = dot( oeD, oeN );
+		if ( oeSide <= 0.0 ) return;
+		float oeA = 4.0 * oeLw * oeLh;
+		vec3 oeP = oeC + oeU * ( clamp( dot( oeD, oeU ), - oeLw, oeLw ) * 0.75 ) + oeV * ( clamp( dot( oeD, oeV ), - oeLh, oeLh ) * 0.75 );
+		vec3 oeL = oeP - geometryPosition;
+		float oeD2 = dot( oeL, oeL );
+		oeL *= inversesqrt( oeD2 );
+		float oeW = oeA * saturate( - dot( oeL, oeN ) ) / ( PI * oeD2 + oeA );
+		reflectedLight.directDiffuse += rectAreaLight.color * material.diffuseContribution * ( oeW * saturate( dot( geometryNormal, oeL ) ) );
+		vec3 oeR = reflect( - geometryViewDir, geometryNormal );
+		float oeRn = dot( oeR, oeN );
+		vec3 oeS = oeP;
+		if ( oeRn < - 1e-4 ) {
+			vec3 oeH = oeD + oeR * ( - oeSide / oeRn );
+			oeS = oeC + oeU * clamp( dot( oeH, oeU ), - oeLw, oeLw ) + oeV * clamp( dot( oeH, oeV ), - oeLh, oeLh );
+		}
+		vec3 oeLs = oeS - geometryPosition;
+		float oeDs2 = dot( oeLs, oeLs );
+		oeLs *= inversesqrt( oeDs2 );
+		float oeWs = oeA * saturate( - dot( oeLs, oeN ) ) / ( PI * oeDs2 + oeA );
+		float oeA2 = pow2( pow2( material.roughness ) );
+		float oeK = oeA2 / ( oeA2 + 0.25 * oeWs );
+		reflectedLight.directSpecular += rectAreaLight.color * min( vec3( 4.0 ), ( PI * oeWs * oeK * saturate( dot( geometryNormal, oeLs ) ) ) * BRDF_GGX( oeLs, geometryViewDir, geometryNormal, material ) ); // (bounded: no pixel of a rough wet surface sparks)
+	}
+`;
+  let leaned = null;
+  // three.js's shader chunks with the rectangle's closed form in place of the LTC one (once; before the lights exist,
+  // so no program has been built with the other)
+  function lean() {
+    if (leaned != null) return leaned;
+    const C = THREE.ShaderChunk, src = C.lights_physical_pars_fragment, i = src.indexOf('void RE_Direct_RectArea_Physical'), DECL = /uniform sampler2D ltc_1;\s*uniform sampler2D ltc_2;/;
+    let k = -1; // (the function's own closing brace)
+    for (let q = i < 0 ? src.length : src.indexOf('{', i), depth = 0; q < src.length; q++) { if (src[q] === '{') depth++; else if (src[q] === '}' && --depth === 0) { k = q; break; } }
+    if (k < 0 || !/BRDF_GGX\s*\(/.test(src.slice(0, i)) || !DECL.test(C.lights_pars_begin)) { console.warn('area lights: three.js has changed its rectangle chunk'); return (leaned = false); }
+    C.lights_physical_pars_fragment = src.slice(0, i) + LEAN.trim() + src.slice(k + 1);
+    C.lights_pars_begin = C.lights_pars_begin.replace(DECL, '');
+    return (leaned = true);
+  }
+
   async function create(Wd, renderer, { tier = 'low', gain = 1, fill = [], ground = () => 0 } = {}) {
     const n = COUNT[tier] || 0, info = Wd.screens;
     const none = { lights: [], screens: [], cards: [], update() {}, count: 0 };
     if (!n || !info || (!info.meshes.length && !fill.length)) return none;
-    try {
-      const lib = await import('three/addons/lights/RectAreaLightUniformsLib.js');
-      lib.RectAreaLightUniformsLib.init();
-    } catch (e) { console.warn('area lights unavailable:', e); return none; }
+    if (LTC) {
+      try {
+        const lib = await import('three/addons/lights/RectAreaLightUniformsLib.js');
+        lib.RectAreaLightUniformsLib.init();
+      } catch (e) { console.warn('area lights unavailable:', e); return none; }
+    } else if (!lean()) return none;
     const screens = [];
     for (const e of info.meshes) { e.mesh.updateMatrixWorld(true); screens.push(...screensOf(e)); }
     const cards = fill.map(f => {
