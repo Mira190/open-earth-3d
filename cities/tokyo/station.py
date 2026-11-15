@@ -896,7 +896,7 @@ def hall(K, c, R, g, e, t, w_door, d_front, d_back, Z):
     uf = -(d_front - 0.75)   # the inner face of the front wall
     for u0, u1 in ((uf, -apo), (apo, u_end)):
         for sgn in (-1, 1):   # the side walls, pale stone to a white frieze under the ceiling
-            a, b = (W(u0, sgn * hw), W(u1, sgn * hw)) if sgn < 0 else (W(u1, sgn * hw), W(u0, sgn * hw))
+            a, b = (W(u0, sgn * hw), W(u1, sgn * hw)) if sgn > 0 else (W(u1, sgn * hw), W(u0, sgn * hw))   # (the room on the right)
             L = float(np.linalg.norm(b - a))
             tt = (b - a) / L
             nn = np.array([tt[1], -tt[0]])
@@ -917,10 +917,10 @@ def hall(K, c, R, g, e, t, w_door, d_front, d_back, Z):
         # over the way into the hall, from the vestibule's ceiling up to the hall's opening: nothing (the opening is
         # lower than the ceiling); and the hall's own reveal closes the 0.6 m between them
     # the front wall's inner face, with the three doorways
-    a, b = W(uf, hw), W(uf, -hw)
+    a, b = W(uf, -hw), W(uf, hw)
     L = float(np.linalg.norm(b - a))
     tt = (b - a) / L
-    doors = [(hw - (w_door + dx), 1.7, g + 0.05, g + 4.1, False) for dx in (2.0, 0.0, -2.0)]
+    doors = [(hw + (w_door + dx), 1.7, g + 0.05, g + 4.1, False) for dx in (-2.0, 0.0, 2.0)]
     od = ak.holed_wall(stone, ak.WORLD, a, b, g - 0.3, g + VEST_H, doors)
     for oo in od:
         ak.reveal(stone, ak.WORLD, a, b, oo, 0.0, -0.4)

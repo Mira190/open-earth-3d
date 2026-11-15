@@ -950,6 +950,9 @@ Technology and Design* 19 (43), 2013 (the restored plaster's colours, the relief
 | Tokyo Station Innen 1.jpg | Zairon | CC BY-SA 4.0 | the floor's rings |
 | JR Tokyo Station (50762242212).jpg | Kzaral | CC BY 2.0 | the storeys' heights |
 
+Stills: `tools/scramble_shot.js tokyo tools/views/tokyo-station.json` (the spawn, the doors, the hall, its dome, the
+passage, the concourse, a platform and the air; day, dusk and night).
+
 Short of the bar still: the ground storey's six side bays are plain glazed fronts (the real hall has the ticket
 gates, the ticket office and the hotel's and gallery's doors there: issue 480); the zodiac animals, the helmets and
 the capitals are not carved; the plaster is a colour, not a scanned surface.

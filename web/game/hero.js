@@ -71,8 +71,9 @@ window.OEHero = (function () {
           // the signs' and shop fronts' light on it after dark, in its own colour (an irradiance, baked)
           .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += diffuseColor.rgb * vHeroBake.rgb * uHeroBake * uHeroNight;');
         // a room (room*: a hall inside a building) is lit by its own lamps by day too, and takes a share of the sky's
-        // light through its windows, not all of it as a street does
-        if (/^room/.test(name)) sh.fragmentShader = sh.fragmentShader.replace('uHeroBake * uHeroNight;', 'uHeroBake * max(uHeroNight, 0.8);')
+        // light through its windows, not all of it as a street does. Its lamps are no brighter at night: the eye is,
+        // and the exposure with it, so the baked light's share falls as night comes or the room burns out
+        if (/^room/.test(name)) sh.fragmentShader = sh.fragmentShader.replace('uHeroBake * uHeroNight;', 'uHeroBake * mix(0.8, 0.3, uHeroNight);')
           .replace('reflectedLight.indirectDiffuse *= mix(1.0, vHeroBake.a, 0.85);', 'reflectedLight.indirectDiffuse *= 0.45 * mix(1.0, vHeroBake.a, 0.85);');
         // the city's street lights, at the share the level asks (h.street): its own lamps and signs are baked in
         if (Wd.streetLit && !/^(glow|tube|chase|paper|lamp)/.test(name)) {
