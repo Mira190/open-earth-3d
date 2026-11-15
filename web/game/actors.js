@@ -523,7 +523,9 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       p.state = 'walk'; p.mode = 'ground'; p.lat = null; p.side = 0.6 + rnd() * 1.2; p.kerbNext = null; p.kerbBack = false;
       // (a share of them where the crowd gathers, api.hot: a scramble; out of the player's way there)
       const H = api.hot && api.hot.filter(h => Math.hypot(h.x - cx, h.y - cy) < radius);
-      const hot = H && H.length && rnd() < H.reduce((a, h) => a + h.share, 0) ? H[Math.floor(rnd() * H.length)] : null;
+      // (one of them by its share: a quay's promenade with twice the share of a side square gets twice the walkers)
+      let hot = null;
+      if (H && H.length) { let r = rnd(); for (const h of H) if ((r -= h.share) < 0) { hot = h; break; } }
       // (with the game under way, rMin > 0, only where the camera cannot see: a walker comes into view on foot, from
       // round a corner or from far off, and where the crowd gathers in the player's sight it is those who fill it)
       const unseen = rMin > 0 && !!eye;
@@ -549,7 +551,8 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       }
       return false;
     }
-    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, kerbWaits: [], hot: null, plazas: null, muster };
+    let opened = false; // (has the crowd taken its first step: update)
+    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, kerbWaits: [], fresh: 0, hot: null, plazas: null, muster };
     // where footway li steps off the kerb onto a road with no crossing marked there, each way along it
     // ({ s, dir, x, y }): found the first time a walker is on it, a metre at a time (crossings.road, from
     // game.js, says what is carriageway; crossings.zebra, a zebra's stripes, where the cars give way instead)
@@ -1157,12 +1160,19 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         const k = bucket(Math.floor(q.x / CELL), Math.floor(q.y / CELL));
         chain[i] = head[k]; head[k] = i;
       }
+      // (api.fresh: the hour was set, not reached: those who come out with it are put anywhere, near the player too, as
+      // when the game opens. A cut to lunchtime that put the lunch crowd only out of sight left the player's square empty)
+      // The same on the crowd's first step. It was `t < 1`, the game's first second, but the title card holds the crowd
+      // while the game's clock runs on under it, so by the time Play was pressed everyone was put as a latecomer is:
+      // out of sight and 270 m off, or 45 m off where the crowd gathers. Nobody stood within 32 m of the player at
+      // any map's opening (issue 494), whatever the map's numbers.
+      const fresh = api.fresh > 0 || !opened; opened = true; if (api.fresh > 0) api.fresh -= dt;
       const pvx = player ? Math.sin(player.h) * player.speed : 0, pvy = player ? Math.cos(player.h) * player.speed : 0;
       for (let i = 0; i < n; i++) {
         p = P[i];
         if (i >= api.active) { R.hide(i); release(p); if (p.pz) { uncount(p); p.pz = p.g = null; p.state = 'walk'; } p.line = -1; continue; }
         if (p.pz) { if (p.pause > 0) p.pause -= dt; plazaStep(i, p, dt, player); p.mode = 'ground'; gait(p, dt); R.place(i, p, p.moving); continue; }
-        if (p.line < 0 || Math.hypot(p.x - cx, p.y - cy) > radius * 1.15) respawn(p, cx, cy, p.line < 0 && t < 1 ? 0 : radius * 0.6);
+        if (p.line < 0 || Math.hypot(p.x - cx, p.y - cy) > radius * 1.15) respawn(p, cx, cy, p.line < 0 && (t < 1 || fresh) ? 0 : radius * 0.6);
         if (p.line < 0) { R.hide(i); continue; }
         if (p.pause > 0) p.pause -= dt;
         if (p.state === 'walk') { // farther off, a longer step every few frames does

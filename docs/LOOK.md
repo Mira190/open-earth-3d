@@ -364,6 +364,32 @@ Considered and not taken: octahedral impostors (a picture per view angle: 8 to 1
 and a flat card where the crowd's shadows and night lights need a body), and the near walkers' skinned clips on
 every walker (a skeleton a person: the cost the instancing exists to avoid).
 
+**Where they are** (`game.crowd.places`, issue 494). One number for a whole map (the pool over `radius_m`, about
+0.0008 walkers a square metre) left the busiest square of a city as empty as its back streets: at 12:30 nobody
+stood within 32 m of the player at Tokyo's or Sydney's start. Three causes, three changes:
+
+- *The opening.* The crowd's first placing was meant to put people anywhere, the player's side too, but it asked
+  for the game's first second, and the title card holds the crowd while the game's clock runs under it. Everyone
+  was put as a latecomer is: out of sight and 270 m off, or 45 m off where the crowd gathers. Now the crowd's
+  first step, and the step after the hour is *set* (a still, the menu's clock, a story's cut), put people anywhere
+  (`actors.js` `opened`, `crowd.fresh`); a clock that runs on still brings people in on foot from out of sight.
+- *A density by place.* A map lists where its people are: `places: [{id, at, r, share, pull, hours, paths}]`.
+  `share` is the part of the walkers put on the street who are put within `r` of the place (by its share among
+  the places near the player), `pull` how often a walker near it takes the way towards it at a footway's end,
+  `hours` `[hour, weight]` on the share (a station's forecourt at the commute, a quay from mid-morning). They are
+  the same walkers, so the pool, and the frame, cost what they did. Tokyo: the Marunouchi side of the station.
+  Sydney: Circular Quay's west promenade and the concourse between the station and the wharves. Shibuya's
+  scrambles were places already (`crowd.hot`, set from the junctions).
+- *Ways across open paving* (`places[].paths`). Footways are mapped as lines, and a quay thirty metres wide has
+  two: the crowd walked those in file and left the paving bare. A place adds the ways people take across it (the
+  water's edge, the pavement along the station's front), for the crowd only; `game.js` lays them on the ground and
+  joins each end to a mapped footway's end within 6 m, and drops what is not ground to walk on.
+
+Tokyo and Sydney have `hours` now (an office district's day; a commuter quay and foreshore's), with
+`pedestrians_peak` for the desktop's pool, so the lunch hour is fuller than 3 a.m. Measured with
+`tools/crowd_around.js` (`TIER`, `SIM`), `tools/frame_cost.js` and `tools/mem_check.js`; the numbers are in
+issue 494. `pipeline/game_sync.py` copies these settings into `game.json` without a rebuild.
+
 **Who is on the street** (`game.crowd.cast`, `web/game/game.js` `realCast`). The walkers drawn as people were the
 story's NPCs in the order of their names, which put the office suits first, and three faults made copies of
 them: the pick of a character was the walker's number modulo the cast's size, so a group that set out together

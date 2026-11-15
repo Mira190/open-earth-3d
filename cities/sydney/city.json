@@ -441,7 +441,20 @@
         "source": "Australian Museum, Silver Gull; Wikipedia, Silver gull"
       }
     ],
-    "crowd": {"cast": {"f": ["R_Female_Adult_08", "R_Business_Female_04_f011", "R_Female_Adult_13", "R_Female_Adult_15_f013", "R_Female_Party_02", "R_Female_Adult_14", "R_Female_Adult_13_f003_brown", "R_Female_Adult_02"], "m": ["R_Male_Adult_05", "R_Male_Adult_05_m024", "R_Male_Adult_11", "R_Business_Male_03", "R_Male_Adult_20_m008", "R_Male_Adult_13", "R_Male_Adult_06", "R_Male_Adult_14_m017_grey"], "note": "the walkers drawn as people, in order: central Sydney as the census finds it, about a third of east or south-east Asian background among them (2021 Census, City of Sydney: the share is rounded and the mix an estimate)"}, "pedestrians": 360, "cars": 150, "radius_m": 450},
+    "crowd": {"cast": {"f": ["R_Female_Adult_08", "R_Business_Female_04_f011", "R_Female_Adult_13", "R_Female_Adult_15_f013", "R_Female_Party_02", "R_Female_Adult_14", "R_Female_Adult_13_f003_brown", "R_Female_Adult_02"], "m": ["R_Male_Adult_05", "R_Male_Adult_05_m024", "R_Male_Adult_11", "R_Business_Male_03", "R_Male_Adult_20_m008", "R_Male_Adult_13", "R_Male_Adult_06", "R_Male_Adult_14_m017_grey"], "note": "the walkers drawn as people, in order: central Sydney as the census finds it, about a third of east or south-east Asian background among them (2021 Census, City of Sydney: the share is rounded and the mix an estimate)"}, "pedestrians": 360,
+      "pedestrians_peak": 520,
+      "hours": [[0, 0.22], [2, 0.1], [5, 0.16], [7, 0.55], [8, 0.85], [9, 0.75], [11, 0.82], [12, 1], [14, 0.86], [16, 0.88], [17, 1], [19, 0.9], [21, 0.7], [23, 0.4]],
+      "places": [
+        {"id": "quay-west", "at": [-186, 214], "r": 80, "share": 0.2, "pull": 0.55, "hours": [[0, 0.4], [7, 0.6], [10, 1], [20, 1], [23, 0.5]],
+         "paths": [[[-179.5, 170.5], [-177, 185], [-174.5, 200], [-171, 215], [-168, 228], [-165.5, 240], [-161, 247]],
+                   [[-190, 170.5], [-193, 190], [-196, 215], [-191, 232], [-191, 242], [-195, 249]],
+                   [[-216, 173], [-200, 195], [-186, 215], [-178, 235], [-177.5, 253]]],
+         "note": "the west promenade of Circular Quay, where the game starts: visitors on the way to the Rocks, the MCA and the Overseas Passenger Terminal, from mid-morning into the evening"},
+        {"id": "quay-wharves", "at": [-70, 140], "r": 85, "share": 0.16, "pull": 0.5, "hours": [[0, 0.35], [7, 1], [9, 0.8], [12, 0.9], [16, 1], [19, 0.8], [23, 0.4]],
+         "note": "the concourse between the station and the ferry wharves: the commute's peaks, and lunch"}
+      ],
+      "places_note": "places: where the crowd gathers (issue 494). paths: ways across the open paving the crowd walks besides the mapped footways (the water's edge, the middle of the promenade, a diagonal), ends joined to mapped footways. share: the part of the walkers put on the street who are put within r of the place; pull: how often a walker near it turns towards it at the end of a footway; hours: [hour, weight] on the share. hours (the crowd's own): the share of the pool out by the hour; Circular Quay is a commuter interchange (ferries, trains, light rail) and the city's most visited foreshore, busiest at lunch and from 17:00 (the shape is an estimate, not a count). pedestrians_peak: the pool on a desktop; a phone keeps pedestrians.",
+      "cars": 150, "radius_m": 450},
     "npcs": [
       {
         "id": "ava",
