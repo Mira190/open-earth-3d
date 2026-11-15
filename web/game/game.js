@@ -1222,7 +1222,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (headlamp) myCar.C.carry(headlamp);
       cam.mode = 'chase'; cam.dist = 7.5; cam.pitch = 0.2; cam.yaw = myCar.D.st.h;
       A.thump();
-      H.toast('Your car. <kbd>W</kbd>/<kbd>S</kbd> drive, brake and reverse, <kbd>A</kbd>/<kbd>D</kbd> steer, <kbd>Space</kbd> handbrake, <kbd>H</kbd> horn, <kbd>V</kbd> view, <kbd>E</kbd> get out.');
+      H.toast(touch ? 'Your car. Push the stick forward to drive, back to brake and reverse, and to either side to steer. <b>Hand brake</b>, <b>Horn</b>, <b>View</b> and <b>Auto</b> are beside it; <b>E</b> gets out.'
+        : 'Your car. <kbd>W</kbd>/<kbd>S</kbd> drive, brake and reverse, <kbd>A</kbd>/<kbd>D</kbd> steer, <kbd>Space</kbd> handbrake, <kbd>H</kbd> horn, <kbd>V</kbd> view, <kbd>E</kbd> get out.');
     } };
   }
   // out of a car onto the ground beside a door, on foot again
@@ -2499,6 +2500,34 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return roadNet.nearest(player.x, player.y, 11, player.z, 2.5) ? { key: 'Y', text: 'Hail a taxi', act: hail } : null;
   }
 
+  // The prompt's second action. At a kerb, hailing a taxi; and on a phone, where no key reaches them, the ferry's
+  // helm while she is under way and the car put back on the road when it has come to a stop
+  function altAction() {
+    const k = kerbAction();
+    if (k || !touch) return k;
+    const v = player.vehicle;
+    if (player.mode === 'ferry' && v && v.phase === 'sail' && !v.helm) return { key: 'H', text: 'Take the helm', act: takeHelm };
+    if (player.mode === 'car' && !pilot && Math.abs(myCar.D.st.speed) < 0.5) return { key: 'R', text: 'Back on the road', act: resetCar };
+    return null;
+  }
+  // On a phone no hint names a key: each key in a message becomes the name of the button that does its work
+  function touchKeys(s) {
+    if (s.indexOf('<kbd>') < 0) return s;
+    const m = player.mode;
+    const word = { E: 'E', F: 'Skip', Y: 'Hail a taxi', H: m === 'car' ? 'Horn' : 'Take the helm', V: 'View', J: m === 'car' ? 'Auto' : 'Diary', I: 'Assist', K: 'Assist',
+      Space: m === 'heli' ? 'Up' : m === 'car' ? 'Hand brake' : 'Jump', C: 'Down', M: 'Map', N: 'Phone', P: 'Passport', O: 'Photo', X: 'Run', Shift: 'Run', L: 'Show route',
+      Enter: 'Save photo', Esc: 'Step back', R: 'Back on the road', Q: 'Lens', G: 'Guess', B: metro ? metro.name : 'Districts', T: 'the walk\'s name' };
+    return s.replace(/<kbd>W<\/kbd>\/<kbd>S<\/kbd>/g, 'the stick up and down').replace(/<kbd>A<\/kbd>\/<kbd>D<\/kbd>/g, 'the stick to either side')
+      .replace(/<kbd>([^<]+)<\/kbd>/g, (all, k) => (word[k] ? `<b>${word[k]}</b>` : ''));
+  }
+  H.keys = touch ? touchKeys : null;
+  document.documentElement.classList.toggle('oe-touch', touch);
+  if (touch) {
+    $('.gt-hints').innerHTML = '<span>The stick walks · drag to look around · two fingers zoom</span><span><b>E</b> talk, board the ferry, fly the helicopter, drive your car</span>'
+      + '<span><b>Hail a taxi</b> at the kerb · <b>Phone</b>: order a ride</span><span><b>Lens</b> · <b>Guess</b> a height · <b>Map</b> · <b>Menu</b></span>';
+    $('#g-photo .note').textContent = 'Drag to turn · two fingers to come closer';
+  }
+
   // ------------------------------------------------------------ the phone (N): order a ride, bring your car
   const phone = { el: $('#g-phone'), body: $('#gph-body'), map: $('#gph-map'), view: 'home', acts: [], at: 0, fresh: true };
   const rideOn = () => ride && ride.phase !== 'leaving';
@@ -2530,7 +2559,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       html = (phone.note && clockT - phone.noteT < 8 ? `<p class="note">${phone.note}</p>` : '') // (why the ride just ordered isn't coming)
         + `<div class="list">${item('Order a ride', rideOn() ? `${ride.name} is ${ride.phase === 'coming' ? 'on the way' : ride.phase === 'waiting' ? 'waiting for you' : 'taking you'}` : 'A car to wherever you say, here in half a minute', () => phoneShow(rideOn() ? 'ride' : 'where'))}`
         + `${myCar ? item('Bring my car', `It's ${Math.round(Math.hypot(myCar.D.st.x - player.x, myCar.D.st.y - player.y))} m away`, () => { bringCar(); phoneShow(false); }) : ''}${life && life.phone ? life.phone.home(item, phoneShow) : ''}</div>`
-        + `<p class="note">Or raise your hand at the kerb (<kbd>Y</kbd>) and a taxi will pull in.</p>`;
+        + `<p class="note">Or raise your hand at the kerb (${touch ? '<b>Hail a taxi</b>' : '<kbd>Y</kbd>'}) and a taxi will pull in.</p>`;
     } else if (phone.view === 'where') {
       $('#gph-title').textContent = 'Ride · where to?';
       const list = destinations(player.x, player.y);
@@ -3380,7 +3409,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   let drag = null;
   on(canvas, 'pointerdown', e => { drag = { x: e.clientX, y: e.clientY, moved: 0, id: e.pointerId }; canvas.setPointerCapture(e.pointerId); A.start(); if (overture && overture.active) overture.skip(); else if (arriving) settleArrival(); else if (cine.active) cine.skip(); });
   on(canvas, 'pointermove', e => {
-    if (!drag || drag.id !== e.pointerId) return;
+    if (!drag || drag.id !== e.pointerId || fingers.size > 1) return;
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
     if (photo.on) { photo.az += dx * 0.006; photo.pitch = Math.max(-0.35, Math.min(1.5, photo.pitch + dy * 0.005)); photoSync(); return; }
@@ -3392,12 +3421,26 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     cam.lastInput = clockT;
   });
   on(canvas, 'pointerup', e => { if (drag && drag.moved < 6 && dlg.open) dlg.next(false); drag = null; });
-  on($('#gp-alt'), 'click', () => { const a = kerbAction(); if (a) { A.start(); a.act(); } });
+  on($('#gp-alt'), 'click', () => { const a = altAction(); if (a) { A.start(); a.act(); } });
+  // on a phone the prompt is a button too, and two fingers on the picture zoom as the wheel does
+  if (touch) on($('#gp-main'), 'click', () => interact());
+  function zoom(f) {
+    if (photo.on) { photo.dist = Math.max(1.5, Math.min(400, photo.dist * f)); photoSync(); return; }
+    if (player.mode === 'heli' && cam.mode === 'bird') cam.birdAlt = Math.max(120, Math.min(1200, cam.birdAlt * f));
+    else { cam.distTo = 0; cam.dist = Math.max(2.5, Math.min(player.mode === 'foot' ? 30 : 120, cam.dist * f)); }
+  }
+  const fingers = new Map(); let pinch = 0;
+  const spread = () => { const [a, b] = [...fingers.values()]; return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+  on(canvas, 'pointerdown', e => { if (e.pointerType !== 'touch') return; fingers.set(e.pointerId, [e.clientX, e.clientY]); pinch = fingers.size === 2 ? spread() : 0; });
+  on(canvas, 'pointermove', e => {
+    if (!fingers.has(e.pointerId)) return;
+    fingers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (fingers.size === 2 && pinch > 0) { const d = Math.max(8, spread()); zoom(Math.max(0.8, Math.min(1.25, pinch / d))); pinch = d; }
+  });
+  for (const ev of ['pointerup', 'pointercancel']) on(canvas, ev, e => { fingers.delete(e.pointerId); pinch = 0; });
   on(canvas, 'wheel', e => {
     e.preventDefault();
-    if (photo.on) { photo.dist = Math.max(1.5, Math.min(400, photo.dist * (e.deltaY > 0 ? 1.1 : 0.91))); photoSync(); return; }
-    if (player.mode === 'heli' && cam.mode === 'bird') cam.birdAlt = Math.max(120, Math.min(1200, cam.birdAlt * (e.deltaY > 0 ? 1.12 : 0.89)));
-    else { cam.distTo = 0; cam.dist = Math.max(2.5, Math.min(player.mode === 'foot' ? 30 : 120, cam.dist * (e.deltaY > 0 ? 1.12 : 0.89))); }
+    zoom(photo.on ? (e.deltaY > 0 ? 1.1 : 0.91) : e.deltaY > 0 ? 1.12 : 0.89);
   }, { passive: false });
   // touch: joystick on the left, buttons on the right
   if (touch) {
@@ -3416,7 +3459,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const hold = (id, down, up) => { on($(id), 'pointerdown', e => { e.preventDefault(); down(); }); on($(id), 'pointerup', up || (() => {})); on($(id), 'pointercancel', up || (() => {})); };
     hold('#gt-act', () => (dlg.open ? dlg.next(false) : interact()));
     hold('#gt-jump', () => { if (player.mode === 'heli') touchLift = 1; else keys.add('Space'); }, () => { touchLift = 0; keys.delete('Space'); });
-    hold('#gt-down', () => { if (player.mode === 'heli') touchLift = -1; else if (player.mode === 'car') A.honk(); else guessStart(); }, () => { touchLift = 0; }); // Down in the air, the horn in a car, Guess on foot
+    // Down in the air, the horn in a car, Skip for a passenger (a taxi's trip, a ferry's or a train's leg), Guess on foot
+    hold('#gt-down', () => {
+      const m = player.mode;
+      if (m === 'heli') touchLift = -1; else if (m === 'car') A.honk(); else if (m === 'ride') skipRide(); else if (m === 'ferry' || m === 'rail') skip = !skip; else guessStart();
+    }, () => { touchLift = 0; });
     hold('#gt-run', () => { if (player.mode === 'car') { pilotAsk(); return; } keys.has('ShiftLeft') ? keys.delete('ShiftLeft') : keys.add('ShiftLeft'); $('#gt-run').setAttribute('aria-pressed', String(keys.has('ShiftLeft'))); });
     hold('#gt-cam', () => { if (player.mode === 'car' || player.mode === 'ride') cam.mode = cam.mode === 'cabin' ? 'chase' : 'cabin'; else nextView(); });
     hold('#gt-lens', () => (player.mode === 'car' ? assistToggle() : lens()));
@@ -3707,7 +3754,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const v = player.vehicle;
     if (!v || v.phase !== 'sail') { H.toast('Wait until she is under way.'); return; }
     v.helm = { manual: false, throttle: 0.6, input: {} };
-    H.toast('The skipper hands you the wheel for the next wharf. Autopilot until the approach, then it\'s yours: W/S throttle, A/D rudder.');
+    H.toast('The skipper hands you the wheel for the next wharf. Autopilot until the approach, then it\'s yours: ' + (touch ? 'the stick is her throttle and her rudder.' : 'W/S throttle, A/D rudder.'));
   }
   // Getting in, as GTA and Sketchbook do it: walk round to the pilot's door, which swings open;
   // step up onto the skid and slide into the seat; the door shuts at once and the rotor spools
@@ -3790,7 +3837,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     player.mode = 'heli'; heli.st.on = true; heli.st.doorTo = 0;
     player.rig.root.position.copy(heli.way.seat); player.rig.root.rotation.set(0, 0, 0);
     cam.mode = 'chase'; cam.distTo = 20; // pull back to the chase view (near enough that the helicopter fills a sixth of the picture's height); it swings behind once under way
-    if (!heliCoach()) H.toast('Door shut, rotor spooling up: it lifts at 90%. <kbd>Space</kbd> climb, <kbd>C</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd>, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> change view.');
+    if (!heliCoach()) H.toast(touch ? 'Door shut, rotor spooling up: it lifts at 90%. Hold <b>Up</b> to climb and <b>Down</b> to descend; the stick flies and turns; <b>View</b> changes the view.'
+      : 'Door shut, rotor spooling up: it lifts at 90%. <kbd>Space</kbd> climb, <kbd>C</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd>, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> change view.');
   }
   // the first flight in this browser (any map): a short coach, a step at a time, each ticked off as you do
   // it (onboard.js): wait for the rotor, climb, fly and turn, come down and land. Out before the end, it
@@ -5473,9 +5521,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       drawMini({ x: me.x, y: me.y, yaw: player.mode !== 'heli' ? cam.yaw : cam.mode === 'bird' ? heli.st.h : cam.mode === 'cockpit' ? heli.st.h - cam.lookYaw : cam.yaw, heading: player.mode === 'heli' ? heli.st.h : player.mode === 'ferry' ? player.vehicle.h : player.h,
         radius: mini.r += (radius - mini.r) * Math.min(1, dt * 2.5), route: guide.pts ? [[me.x, me.y]].concat(gold.ahead()) : null, icons, ride: rideRoute });
       if (!hud('#g-bigmap').hidden && Math.floor(clockT * 2) !== Math.floor((clockT - dt) * 2)) drawBig();
-      const a = currentAction(), alt = kerbAction();
+      const a = currentAction(), alt = altAction();
       hud('#g-prompt').hidden = !a && !alt;
       hud('#gp-main').hidden = !a; hud('#gp-alt').hidden = !alt;
+      if (alt) { put('#gp-alt-key', alt.key); put('#gp-alt-text', alt.text); }
       if (a) { put('#gp-key', a.key || ''); hud('#gp-key').hidden = !a.key; put('#gp-text', a.text); }
       if (!phone.el.hidden && phone.view === 'ride') {
         if (clockT - phone.at > 0.5) { phone.at = clockT; phoneRender(); }
@@ -6410,11 +6459,24 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (ev.type === 'helm' && mine) v.helm.started = clockT;
   }
 
+  // on a phone the vehicle's readout stands over the stick, where the prompt and the messages are: they move up by
+  // its height (--vhud-h, index.html), or a thumb could not reach "Get out" behind it
+  let vhudH = -1, vhudT = 0;
   function vehicleHud() {
+    vehicleHudFill();
+    if (!touch || clockT - vhudT < 0.3) return;
+    vhudT = clockT;
+    const el = $('#g-vhud'), h = el.hidden ? 0 : el.offsetHeight + 8;
+    if (h !== vhudH) { vhudH = h; stage.style.setProperty('--vhud-h', `${h}px`); }
+  }
+  function vehicleHudFill() {
     const el = $('#g-vhud');
     if (touch) {
-      $('#gt-down').hidden = player.mode === 'seat' || player.mode === 'ferry' || player.mode === 'ride';
-      $('#gt-down').textContent = player.mode === 'heli' ? 'Down' : player.mode === 'car' ? 'Horn' : 'Guess';
+      const m = player.mode, dn = $('#gt-down'), rides = m === 'ride' || m === 'ferry' || m === 'rail';
+      dn.hidden = m === 'seat' || (m === 'ride' && !(ride && ride.phase === 'driving')) || (m === 'ferry' && !!(player.vehicle && player.vehicle.helm));
+      const dt_ = m === 'heli' ? 'Down' : m === 'car' ? 'Horn' : rides ? 'Skip' : 'Guess';
+      if (dn.textContent !== dt_) dn.textContent = dt_;
+      dn.setAttribute('aria-pressed', String((m === 'ferry' || m === 'rail') && skip));
       $('#gt-jump').textContent = player.mode === 'heli' ? 'Up' : player.mode === 'car' ? 'Hand brake' : (fish && fish.api && fish.api.button()) || 'Jump'; // (Cast and Reel with a line out: fishing.js)
       // (at the wheel there is nothing to run: the button is the autopilot's)
       const run = $('#gt-run'), txt = player.mode === 'car' ? 'Auto' : 'Run';

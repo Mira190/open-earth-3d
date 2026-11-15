@@ -301,7 +301,7 @@ window.OEHud = (function () {
   function toast(text, kind = '') {
     const el = document.createElement('div');
     el.className = `g-toast ${kind}`;
-    el.innerHTML = text;
+    el.innerHTML = api.keys ? api.keys(text) : text; // (a phone names its buttons, not keys: game.js)
     const box = $('#g-toasts');
     box.appendChild(el);
     while (box.children.length > 3) box.firstChild.remove(); // keep the stack short
@@ -324,5 +324,6 @@ window.OEHud = (function () {
     setTimeout(() => el.remove(), 3200);
   }
 
-  return { baseMap, minimap, rideMap, rideLine, dialogue, toast, drawIcon, stamp };
+  const api = { baseMap, minimap, rideMap, rideLine, dialogue, toast, drawIcon, stamp, keys: null };
+  return api;
 })();

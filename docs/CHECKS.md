@@ -35,6 +35,10 @@ standing traffic). A two-hour round that fails on a step unrelated to the change
 - `gl`, when the game, the renderer or a pass with a target of its own changed: Shibuya opened as a device with its
   extras shed opens it, multisampled, the governor's ladder walked, and every WebGL call asked for its error
   (`tools/gl_error_probe.js`; every live map in the full tier). The game check walks the same ladder in play.
+- `touch`, when the game, its HUD, the page or `web/quality.js` changed: Shibuya on a phone's page (390 x 844 at
+  3x, touch), where no key can be pressed (`tools/touch_check.js`): the canvas at two device pixels to the CSS
+  pixel, no key named on the screen or in a message, a taxi hailed by a tap at the kerb, the car's pad and its
+  prompt clear of the readout, two fingers zooming.
 
 **After landing: the full tier, on main, in GitHub Actions** (`.github/workflows/checks.yml`). Each
 push to main runs `CHECK_TIER=full tools/check.sh --plan` against the commit of the last run that
