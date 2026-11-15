@@ -31,7 +31,7 @@ window.OEWeather = (function () {
   const U = { uOeWet: { value: 0 }, uOeRain: { value: 0 }, uOeOvercast: { value: 0 }, uOeT: { value: 0 },
     // settled snow and falling snow (0..1), fog (0..1), lightning (0..1), and the wind: x, z in m/s, the
     // gust 0..1 and the distance the air has travelled (metres, for whatever sways or drifts with it)
-    uOeGlint: { value: 0 }, uOeSnow: { value: 0 }, uOeSnowfall: { value: 0 }, uOeFog: { value: 0 }, uOeFlash: { value: 0 }, uOeWind: { value: null },
+    uOeGlint: { value: 0 }, uOeLit: { value: 0 }, uOeSnow: { value: 0 }, uOeSnowfall: { value: 0 }, uOeFog: { value: 0 }, uOeFlash: { value: 0 }, uOeWind: { value: null },
     // the rain occlusion map (heights of the tops of things round the camera, from above) and its frame
     uOeOcc: { value: null }, uOeOccBox: { value: null }, uOeOccOn: { value: 0 }, uOeOccBase: { value: 0 },
     // the tracks in lying snow round the player (trail(), below): how trodden each texel is, its frame (x0, y0 in the
@@ -131,7 +131,7 @@ window.OEWeather = (function () {
     return (hash2(i, j) * (1 - u) + hash2(i + 1, j) * u) * (1 - v) + (hash2(i, j + 1) * (1 - u) + hash2(i + 1, j + 1) * u) * v; };
   // ------------------------------------------------------------ shared GLSL
   const GLSL = `
-uniform float uOeWet; uniform float uOeRain; uniform float uOeT; uniform float uOeSnow; uniform float uOeSnowfall; uniform vec4 uOeWind; uniform float uOeGlint;
+uniform float uOeWet; uniform float uOeRain; uniform float uOeT; uniform float uOeSnow; uniform float uOeSnowfall; uniform vec4 uOeWind; uniform float uOeGlint; uniform float uOeLit;
 uniform sampler2D uOeOcc; uniform vec4 uOeOccBox; uniform float uOeOccOn; uniform float uOeOccBase;
 uniform vec4 uOeTrailBox; uniform float uOeTrailOn;
 #ifndef OE_NO_TRAIL
@@ -244,7 +244,7 @@ if (uOeWet + uOeSnow > 0.001) {
   oeWet = uOeWet * oeOpen * mix(0.22 + 0.3 * oeN(vec2(dot(vOeW.xz, vec2(0.83, 0.56)) * 0.9, vOeW.y * 0.07)), 1.0, oeUp);
   oeGl = clamp(${gloss}, 0.0, 1.0) * oeWet;
   diffuseColor.rgb *= mix(1.0, 1.0 - ${porous}, oeWet);
-  roughnessFactor = mix(roughnessFactor, min(roughnessFactor, mix(0.42, 0.2, uOeGlint)), oeGl); // (uOeGlint: the sun out on a street still wet, its film at its smoothest)
+  roughnessFactor = mix(roughnessFactor, min(roughnessFactor, mix(0.42, 0.2, max(uOeGlint, uOeLit))), oeGl); // (uOeGlint: the sun out on a street still wet, its film at its smoothest; uOeLit: after dark, when what it mirrors is lamps, signs and screens, each a streak down the street, not a grey sky)
 ${pools ? `  if (uOeWet > 0.001) { // (dry: no noise to work out)
     oePd = oePuddle(vOeW.xz) * clamp(${puddles}, 0.0, 1.0) * oeFlat * oeOpen;
     diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.45, oePd);
@@ -1161,6 +1161,7 @@ void main() {
         else if (S.snowDepth > 0) S.snowDepth = Math.max(0, S.snowDepth - dt * (0.002 + Math.max(0, cur.temp) / 400 + sunOut / 220 + cur.rain / 40));
         U.uOeRain.value = cur.rain;
         U.uOeGlint.value = Math.min(1, U.uOeWet.value * 1.5) * sunOut * (1 - Math.min(1, cur.rain * 3)); // light after rain
+        U.uOeLit.value = Wd && Wd.U && Wd.U.uNight ? Wd.U.uNight.value : 0;
         U.uOeSnow.value = S.snowDepth; U.uOeSnowfall.value = cur.snow; U.uOeFog.value = cur.fog;
         U.uOeT.value = reduced ? tSec * 0.3 : tSec;
         // the state everything else reads (OEWeather.S)

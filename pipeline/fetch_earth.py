@@ -71,6 +71,12 @@ def day():
     for m, rec in enumerate(MONTHS, 1):
         src = fetch(f"{EO}{rec // 1000 * 1000}/{rec}/world.topo.bathy.2004{m:02d}.3x5400x2700.jpg")
         save(Image.open(src).convert("RGB").resize((W, H), Image.LANCZOS), f"day-{m:02d}.jpg", 84)
+    day_lo()
+
+
+def day_lo():
+    """A small day side for every month, shown until the month's own arrives: the title starts on it (web/earth.js load)."""
+    save(Image.open(os.path.join(OUT, "day-04.jpg")).convert("RGB").resize((1024, 512), Image.LANCZOS), "day-lo.jpg", 80)
 
 
 def water():

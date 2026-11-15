@@ -260,6 +260,7 @@ device that cannot draw the Earth, is a frame of the high tier (29 October 2026,
 | File | From | Licence |
 |---|---|---|
 | `day-01.jpg` … `day-12.jpg` | Blue Marble Next Generation with topography and bathymetry, 2004 (NASA Earth Observatory) | Public domain |
+| `day-lo.jpg` | The same, 1024 px, one for every month: the title starts on it and the month's own takes its place when it arrives (`pipeline/fetch_earth.py` `day_lo`; `web/earth.js` `load`: the title waits for 1.8 MB, the other 4.2 MB come in behind the opening) | Public domain |
 | `surface.jpg`, `lights.jpg` | Black Marble 2016 (NASA Earth Observatory, Suomi NPP VIIRS); Natural Earth land and lakes; GEBCO_08 elevation via Blue Marble | Public domain |
 | `clouds.jpg` | Blue Marble cloud composite (NASA Earth Observatory) | Public domain |
 | `milkyway.jpg` | The Milky Way panorama, ESO/S. Brunier | CC BY 4.0 |

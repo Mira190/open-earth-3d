@@ -7,6 +7,7 @@
 //             "hide": ["kbhero_kb_atlas", ...],       // landmark meshes it draws instead, hidden while it is shown
 //             "bake": 1.0, "glow": [0.35, 1.6],       // its baked night light's gain; its signs' glow by day and by night
 //             "street": 0.4,                          // the share of the city's street lights it takes (its own are baked)
+//             "fill": 0.3,                            // the share of the night's fill light round the player it takes (game.js nightFill)
 //             "fine": "hero/kabukicho_fine.glb",      // its finest parts (blender/hero_kit.py Geo.fine): see below
 //             "fine_m": 70}]                          // how near the camera a square of them is drawn (m)
 // The model is built in the city's local frame (blender/build_hero.py: x east, y north, z up, which glTF
