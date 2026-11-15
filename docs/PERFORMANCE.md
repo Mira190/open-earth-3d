@@ -1554,6 +1554,45 @@ same, faces and leaves are the same; the pairs differ by the crowd's and the scr
 Safari's WebGL takes them from a Worker-encoded buffer the same way is expected and unproven. `?tex=raw` turns the
 packing off, and the telemetry's events carry `astc: 1` where it is on, so a phone that does worse with it shows.
 
+### A phone's picture: two pixels to the point, and no floor for nothing
+
+The owner's verdict on an iPhone, the day the district landed: the picture is far too poor. The telemetry of that
+visit says why. The low tier's canvas is 1.25 device pixels to the CSS pixel, a slow laptop's figure: 491 x 869 on
+a 393 x 695 view whose screen has 1179 x 2085. Within three seconds of play the governor had the scene at 0.6 of
+that, 295 x 521, and it stayed there, and then took half the display's rate as its target. The frames did not
+come back for it: 30 to 53 a second at every scale, with 10 to 14 ms of script, 420 to 510 draw calls and 1.1 to
+1.5 million triangles in each. A frame that is slow for its calls and its vertices takes as long at 0.6 as at 0.8.
+
+Two changes (`web/quality.js`):
+
+- **A phone's canvas is two device pixels to the CSS pixel** within the tier's budget of 1.25 million (1.5 at its
+  lightest level): 786 x 1390 on that iPhone, 2.6 times the pixels at full scale, and at the governor's floor
+  still 1.2, what full scale was before. One pass, no multisampling: about 12 MB more of targets, where ASTC had
+  just freed 60 to 70.
+- **Resolution that buys nothing is given back.** The governor keeps the frame time at its middle step with no
+  extras left; when the floor has been held three seconds for less than 15% off it, the scale returns to the
+  middle step and climbs a step every four seconds while the frame stays within 8% of its time at the floor. The
+  scale it reaches stays the floor for two minutes. A device that opens at the floor from its record is asked
+  the same way, a step up at a time. Frames that are a slow GPU's (shorter with fewer pixels) go to the floor
+  and stay, as before; half the display's rate is still the target where the full rate cannot be met.
+
+On a clock of its own (`G.simulate`), "scale/extras":
+
+| Frames | Before | Now |
+|---|---|---|
+| 60 ms whatever the scale | 1.00/1 … 0.60/0, and stays | 1.00/1 … 0.60/0, 0.80/0 … 1.00/0 |
+| 24 ms whatever the scale | … 0.60/0, half rate, 0.65/0 … 1.00/0 | … 0.60/0, 0.80/0 … 1.00/0, 1.00/0.5 |
+| 30 + 50 s² ms (a slow GPU) | … 0.60/0 | the same |
+| a GPU that fits at 0.8 with half the extras | 1.00/1, 0.85/1, 0.80/1, 0.80/0.5 | the same |
+
+`tools/game_check.js` plays both kinds (its slow frames are a slow GPU's now, and a flat 60 ms must get the
+resolution back); `tools/touch_check.js` checks the canvas's size on a phone's page.
+
+**Not checked: a real iPhone.** That its GPU draws 2.6 times the pixels in the same frame is what the telemetry
+implies and no more. If it does not, the governor's ordinary way down takes the scale to 0.6 of the new canvas,
+which is the old canvas's full size, so the picture is never worse than the best it was. The `time` events carry
+`px_k`, `scale` and `fps`: the next visit shows which.
+
 ### The surface model in sixteen bits, the rasters by tile: cut
 
 Both were on round 4's list by what they held on the whole map: the surface model 34 MB, the inland rasters 29 MB

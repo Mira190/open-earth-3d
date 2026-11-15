@@ -39,6 +39,10 @@ standing traffic). A two-hour round that fails on a step unrelated to the change
   and each shader program's samplers are counted as it links: a fragment shader has 16 units on an Apple GPU and 32
   on the software renderer the checks draw with, so a seventeenth passed every check and drew no ground on a Mac
   or an iPhone (issue 485). `web/quality.js` `fitUnits` is what keeps a material within them.
+- `touch`, when the game, its HUD, the page or `web/quality.js` changed: Shibuya on a phone's page (390 x 844 at
+  3x, touch), where no key can be pressed (`tools/touch_check.js`): the canvas at two device pixels to the CSS
+  pixel, no key named on the screen or in a message, a taxi hailed by a tap at the kerb, the car's pad and its
+  prompt clear of the readout, two fingers zooming.
 
 **After landing: the full tier, on main, in GitHub Actions** (`.github/workflows/checks.yml`). Each
 push to main runs `CHECK_TIER=full tools/check.sh --plan` against the commit of the last run that

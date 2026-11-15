@@ -44,6 +44,7 @@
 #   tools/check.sh loader               # the loading screen's hand-over only
 #   tools/check.sh telemetry            # the visitor and SLO events, and the game's save, only
 #   tools/check.sh astc                 # the device-side ASTC encoder against a real decoder, only
+#   tools/check.sh touch                # the game played by touch on a phone's page (tools/touch_check.js), only
 #   tools/check.sh gl                   # the map opened as a device with its extras shed opens it: no refused WebGL call
 #                                       # and, as a device with 16 texture units, no shader program over them
 #   tools/check.sh all                  # every city, every reef site and the title
@@ -82,7 +83,7 @@ PARKED=$(tools/live_cities.sh --parked)
 REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || [ ! -f "web/data/$d/scene.json" ] || echo "$d"; done)   # a reef site: its scene built, no city game
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
 
-cities=() reefs=() title=0 loader=0 voice=0 telemetry=0 gl=0 shared= fish=0 astc=0
+cities=() reefs=() title=0 loader=0 voice=0 telemetry=0 gl=0 shared= fish=0 astc=0 touch=0
 declare -A want=()   # the kinds to run for each city
 add_city() {   # a city, and the kinds of its checks to run (all of them when none is named)
   local c=$1 k
@@ -109,13 +110,14 @@ all_reefs() { for r in $REEFS; do add_reef "$r"; done; }
 if [ $# -gt 0 ]; then
   for t in "$@"; do
     case "$t" in
-      all) all_cities; all_reefs; title=1; loader=1; telemetry=1; gl=1; astc=1 ;;
+      all) all_cities; all_reefs; title=1; loader=1; telemetry=1; gl=1; astc=1; touch=1 ;;
       voice|static) voice=1 ;;
       *:*) add_kinds "$t" ;;
       title) title=1 ;;
       loader) loader=1 ;;
       telemetry) telemetry=1 ;;
       astc) astc=1 ;;
+      touch) touch=1 ;;
       gl) gl=1 ;;
       *) if is_in "$t" "$CITIES" || is_in "$t" "$PARKED"; then add_city "$t"
          elif is_in "$t" "$REEFS"; then add_reef "$t"
@@ -152,9 +154,11 @@ else
       web/title.js|web/earth.js) title=1; telemetry=1 ;;   # (the title screen's load stages: tools/telemetry_check.js)
       web/title.*|tools/title_*|web/score.js|web/film.*|web/fonts.css) title=1 ;;
       web/telemetry.js|tools/telemetry_*|tools/slo_*) title=1; telemetry=1 ;;   # watches every page, sends nothing
-      web/index.html|web/quality.js) shared_change; title=1; loader=1; telemetry=1; gl=1 ;;
+      web/index.html|web/quality.js) shared_change; title=1; loader=1; telemetry=1; gl=1; touch=1 ;;
       web/plate.js|web/city.js|tools/load_check.js) shared_change; loader=1; telemetry=1 ;;
-      web/game/game.js) shared_change; loader=1; telemetry=1; gl=1 ;;
+      web/game/game.js) shared_change; loader=1; telemetry=1; gl=1; touch=1 ;;
+      web/game/hud.js) shared_change; touch=1 ;;
+      tools/touch_check.js) touch=1 ;;   # the game by touch, on a phone's page
       web/world.js|web/glcare.js|web/mirror.js|web/water.js|web/lens.js|web/game/atmosphere.js|web/game/ao.js|web/game/weather.js) shared_change; gl=1 ;;   # what draws into a target of its own: the passes a device's governor turns on and off
       tools/gl_error_probe.js|tools/sampler_probe.js) gl=1 ;;
       web/surface.js|web/night.js|web/neon.js) shared_change; gl=1 ;;   # what adds a texture to the shared shaders (the units check)
@@ -192,11 +196,11 @@ if [ $plan -eq 1 ]; then   # the targets of this run, each one an argument to th
     [ -n "$rest" ] && echo "$c:$rest"
   done
   for r in "${reefs[@]}"; do echo "$r"; done
-  [ $title -eq 1 ] && echo title; [ $loader -eq 1 ] && echo loader; [ $telemetry -eq 1 ] && echo telemetry; [ $gl -eq 1 ] && echo gl; [ $astc -eq 1 ] && echo astc
+  [ $title -eq 1 ] && echo title; [ $loader -eq 1 ] && echo loader; [ $telemetry -eq 1 ] && echo telemetry; [ $gl -eq 1 ] && echo gl; [ $astc -eq 1 ] && echo astc; [ $touch -eq 1 ] && echo touch
   exit 0
 fi
 
-if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ] && [ $telemetry -eq 0 ] && [ $gl -eq 0 ] && [ $astc -eq 0 ]; then
+if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ] && [ $telemetry -eq 0 ] && [ $gl -eq 0 ] && [ $astc -eq 0 ] && [ $touch -eq 0 ]; then
   echo "nothing to check: no change to a city, a reef site, the game, the renderer or the title"
   stamp "$@"
   exit 0
@@ -312,6 +316,13 @@ run_gl() {   # the map as an ordinary device opens it (issue 485; tools/gl_error
       else echo "FAIL units  $c: $(grep '^FAIL' "$OUT/units-$c.log" | head -1 | cut -c6-200)   (see $OUT/units-$c.log)"; fi ) &
   done
   wait
+}
+# the game played by touch (tools/touch_check.js): a phone's page of the lead map, where no key can be pressed
+run_touch() {
+  local c=${CHECK_TOUCH:-shibuya}
+  if PORT=$PORT timeout 1500 $X node tools/touch_check.js "$c" "$OUT/touch" >"$OUT/touch.log" 2>&1; then
+    echo "ok   touch  $c: $(grep -c '^ok' "$OUT/touch.log") steps on a phone's page: no key named, the kerb, the wheel and the zoom by touch"
+  else echo "FAIL touch  $c: $(grep '^FAIL' "$OUT/touch.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/touch.log)"; fi
 }
 run_telemetry() {   # the visitor and SLO events end to end, and the game's save on leaving (tools/telemetry_check.js)
   if TPORT=$((PORT + 21)) timeout 1500 $X node tools/telemetry_check.js sydney "$OUT/telemetry" >"$OUT/telemetry.log" 2>&1; then
@@ -431,6 +442,7 @@ EOF
   [ $title -eq 1 ] && run_title
   [ $telemetry -eq 1 ] && run_telemetry
   [ $astc -eq 1 ] && run_astc
+  [ $touch -eq 1 ] && run_touch
   [ $gl -eq 1 ] && run_gl
 } | tee "$OUT/summary.txt"
 grep -q '^FAIL' "$OUT/summary.txt" && exit 1
