@@ -977,7 +977,7 @@ def hall(K, c, R, g, e, t, w_door, d_front, d_back, Z):
         LAMPS.append((*c, g + z, power))
     GLOWS.append([round(float(c[0]), 1), round(float(c[1]), 1), round(apo + 2, 1), "#ffe2b4", 0.6])
     BARE.append(shapely.union_all([octo.buffer(0.7), box_(uf - 0.8, u_end, hw + 0.5)]))
-    return BARE[-1], box_(d_back - 0.5, u_end, hw), u_end
+    return BARE[-1], box_(d_back - 0.5, u_end + 2.0, hw), u_end   # (the way through the block behind, to past the viaduct's face)
 
 
 def closed():
@@ -987,8 +987,9 @@ def closed():
     import shapely
     if not WALLED:
         meshes()
-    # (a walker is 0.35 m in the shoulder: a footway that runs within reach of a wall is across it too)
-    area = shapely.union_all(WALLED).buffer(0.8).difference(shapely.union_all(BARE).buffer(-0.4)).buffer(0)
+    # (a walker is 0.35 m in the shoulder and the plinth and the pent roof's posts stand out from the wall: a footway
+    # that runs within their reach is across them too)
+    area = shapely.union_all(WALLED).buffer(1.4).difference(shapely.union_all(BARE).buffer(-0.4)).buffer(0)
     return [[[round(float(x), 2), round(float(y), 2)] for x, y in p.exterior.coords] for p in getattr(area, "geoms", [area]) if p.geom_type == "Polygon" and p.area > 1]
 
 

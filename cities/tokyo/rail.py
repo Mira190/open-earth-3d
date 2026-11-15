@@ -59,7 +59,7 @@ STATIONS = [
     # hall onto its passage): "passages" [(where along the reference, which way its flights climb: 1 southward)], and
     # no fascia on the west, where the passage runs on into the building
     {"key": "tokyo", "name": "Tokyo", "native": "東京", "kana": "とうきょう", "romaji": "Tōkyō", "s": (590.0, 945.0), "refs": ("3;4", "5;6", "7;8", "9;10"),
-     "passages": [(695.0, (1,)), (889.0, (-1,))], "fascia": (1,),
+     "passages": [(695.0, (1,)), (776.0, ()), (889.0, (-1,))], "fascia": (1,),   # (the central passage between them: open, without stairs)
      # the way in on foot, for the game's check: from the plaza before the south dome's doors, through its hall and the
      # passage (station.py: the dome's centre, 26 m and 33 m along its axis either way), to the stairs to platforms 5 and 6
      "way": {"hall": (610.2, 1167.6), "axis": (0.943, -0.333), "out_m": 26.0, "in_m": 33.0, "platform": 5},
@@ -579,7 +579,7 @@ def meshes(Mesh):
     edge = deck.exterior
     bays = 0
     for g in getattr(under, "geoms", [under]):
-        if g.geom_type != "Polygon" or g.area < 6:
+        if g.geom_type != "Polygon" or g.area < 40:   # (a sliver left between two passages is no pier: it stood in the crowd's way)
             continue
         for ring in [g.exterior, *g.interiors]:
             c = list(ring.coords)
