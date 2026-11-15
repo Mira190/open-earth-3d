@@ -3119,6 +3119,10 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
           // facing it, could have backed out all along, #454)
           const o = (c.narrowTries > 1 || room <= 2) && front && front.line === c.line && front.dir !== c.dir && !front.rev && front.v < 0.3 ? front : null;
           if (o && reverse(o)) { c.narrowTries = 0; /* it backs out of the way */ }
+          // (the third time, with neither able to back out and no room to turn round in: it comes back elsewhere, in view
+          // too. Shibuya's car 84 stood 60 s nose to nose with car 93 on piece 1709, 4 m apart, neither with a way back:
+          // 93 not asked again for a minute after it gave up backing out, 84 turned round every 6 s into 93 and held so)
+          else if (c.narrowTries >= 3) { c.narrowTries = 0; respawn(c, cx, cy, radius * 0.6); continue; }
           else { dir = -dir; c.stuck = 0; } // (with no junction behind near enough to back out to, it turns round, in view too: Fushimi Inari's car 36 stood 180 s)
         }
         if (c.stuck > (tangled > 0 ? 2 : why === 'narrow' ? 10 : STUCK)) { // a jam that won't clear: turn round, or out of sight on a one-way street, come back elsewhere
