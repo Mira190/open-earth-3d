@@ -3051,6 +3051,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const k of ['OEStyle', 'OEBonds', 'OEJobs', 'OEKeeps', 'OEPhone', 'OEFares', 'OEFx']) if (window[k]) window[k].create(life);
     fetch('data/life.json', { signal: ac.signal }).then(r => r.json()).then(ix => (ix.maps.includes(cityId) ? fetch(`data/${cityId}/life.json`, { signal: ac.signal }).then(r => r.json()) : null)).then(d => life.load(d)).catch(() => {});
   }
+  let postCame = null; // the postcards asked for, once a visit (postcards.js brings nothing sooner than six hours after the last)
   function renderPassport() {
     $('#gp-stamps').innerHTML = LINES.flatMap(l => l.quests).map(q => {
       const got = qs.stamps.find(s => s.id === q.id);
@@ -3063,22 +3064,29 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         + `<span><b>Trig stations</b><span class="note">${n ? VP.filter(v => trigDone()[v.id]).map(v => v.name).join(', ') : 'Survey the view from each one'}</span></span></li>`; })() : '');
     $('#g-pass-count').textContent = `${qs.stamps.filter(s => Q.some(q => q.id === s.id) || spotStamps().some(sp => s.id === `spot:${sp.id}`)).length}/${Q.length + spotStamps().length}`;
     if (life && life.passport) life.passport($('#g-pass .g-panel')); // the skills, under the stamps (jobs.js)
-    // the postcards that have come from this map (postcards.js), newest first
-    if (window.OEPostcards) OEPostcards.album(CITY.id, window.OE_CITIES || []).then(cards => {
-      const box = $('#gp-post');
-      if (!box) return;
-      box.hidden = !cards.length;
-      const list = box.querySelector('ol');
-      list.textContent = '';
-      for (const k of cards) {
-        const li = document.createElement('li'), img = new Image(240, 160), b = document.createElement('b'), n = document.createElement('span');
-        img.src = k.src; img.alt = ''; img.loading = 'lazy';
-        b.textContent = k.spot.name; n.className = 'note'; n.textContent = `${k.date} · ${k.time}`;
-        li.append(img, b, n); list.append(li);
-      }
-    }).catch(() => {});
-  }
-  // labels: landmarks, wharves, the helipad, NPC names
+    // the postcards (postcards.js), newest first: those that have come from this map, then the album's others, each
+    // with its map's name. What has come since the last visit is added first: a link straight into a game never
+    // passes the title screen, which is where they were added before, so a player who came that way got none.
+    if (window.OEPostcards) {
+      const all = window.OE_CITIES || [];
+      if (!postCame) postCame = OEPostcards.collect(all.filter(c => c.built && c.game)).then(came => { const T = window.OETelemetry; if (came.length && T && T.track) T.track('postcards_came', { new: came.length }); }).catch(() => {});
+      postCame.then(() => OEPostcards.album(null, all)).then(cards => {
+        for (const [id, here] of [['#gp-post', true], ['#gp-post-else', false]]) {
+          const box = $(id), mine = cards.filter(k => (k.card.c === CITY.id) === here);
+          if (!box) continue;
+          box.hidden = !mine.length;
+          const list = box.querySelector('ol');
+          list.textContent = '';
+          for (const k of mine) {
+            const li = document.createElement('li'), img = new Image(240, 160), b = document.createElement('b'), n = document.createElement('span');
+            img.src = k.src; img.alt = ''; img.loading = 'lazy';
+            b.textContent = k.spot.name; n.className = 'note'; n.textContent = `${here ? '' : `${k.where} · `}${k.date} · ${k.time}`;
+            li.append(img, b, n); list.append(li);
+          }
+        }
+      }).catch(() => {});
+    }
+  }  // labels: landmarks, wharves, the helipad, NPC names
   const labelsEl = $('#g-labels'), labels = [];
   const addLabel = (text, get, maxD, cls = '') => { const el = document.createElement('div'); el.className = `lbl ${cls}`; el.innerHTML = text; el.hidden = true; labelsEl.appendChild(el); const l = { el, get, maxD }; labels.push(l); return l; };
   // a landmark's name stands where the landmark is seen: 6 m up its foot when that is in sight, over its top when
