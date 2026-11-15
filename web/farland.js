@@ -136,6 +136,7 @@ window.OEFarLand = (function () {
     col.needsUpdate = true;
     col.colorSpace = THREE.SRGBColorSpace;
     col.anisotropy = 16; // three.js holds it to what the GPU allows: the land is mostly seen at a low angle
+    if (window.OETex) window.OETex.pack(col); // (a phone: in ASTC blocks, tex.js)
     // the photograph past the frame: its box (x0, y0, width, height in local metres; 0 wide for none)
     let photo = null;
     const pbox = new THREE.Vector4(0, 0, 0, 0);
@@ -144,6 +145,7 @@ window.OEFarLand = (function () {
       photo.needsUpdate = true; photo.colorSpace = THREE.SRGBColorSpace; photo.anisotropy = 16;
       const b = meta.photo.box;
       pbox.set(b[0], b[1], b[2] - b[0], b[3] - b[1]);
+      if (window.OETex) window.OETex.pack(photo);
     }
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.96, metalness: 0, emissive: lin('#ffd9a8'), emissiveIntensity: 0 });
     mat.defines = { OE_FAR: '' };

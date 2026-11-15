@@ -238,6 +238,8 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
   async function load(base, { onMsg } = {}) {
     if (!THREE.GLTFLoader || !THREE.SkeletonUtils) throw new Error('GLTFLoader is not available');
     const L = new THREE.GLTFLoader();
+    L.oeTex = false; // (a phone's pictures in ASTC blocks, tex.js: packed below, once an NPC's have been made smaller)
+    const packed = root => (window.OETex && OETex.stats.on ? OETex.packObject(root) : null);
     const get = u => new Promise((res, rej) => L.load(base + u, res, null, rej));
     const info = await fetchJSON(base + 'people.json');
     // the far crowd's copies of the scanned cast (pipeline/crowd_cast.py, issue 475): none, and the far crowd is the dolls
@@ -268,6 +270,7 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
       return createImageBitmap(im, { resizeWidth: im.width >> 1, resizeHeight: im.height >> 1, resizeQuality: 'high' })
         .then(bm => { t.image = bm; t.needsUpdate = true; if (im.close) im.close(); }).catch(() => {});
     }));
+    if (fc && window.OETex && OETex.stats.on) await Promise.all(Object.values(lib.far).map(F => OETex.pack(F.map)));
     lib.require = name => lib.loading[name] || (lib.loading[name] = get(`${name}.glb`).then(g => {
       let mesh = null;
       g.scene.traverse(o => { if (o.isSkinnedMesh) mesh = o; });
@@ -390,7 +393,7 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
         if (/_opacity$/.test(o.material.name || '') && !/glasses/.test(o.material.name)) { hair = o; roundHair(o); } else if (/_head$/.test(o.material.name || '')) head = o;
       });
       if (hair && head) matchHair(hair, head);
-      return (lean && npc ? smaller(tpl) : Promise.resolve()).then(() => (lib.warm ? lib.warm(tpl.scene).catch(() => {}) : null)).then(() => {
+      return (lean && npc ? smaller(tpl) : Promise.resolve()).then(() => packed(tpl.scene)).then(() => (lib.warm ? lib.warm(tpl.scene).catch(() => {}) : null)).then(() => {
         lib.tpl[name] = tpl;
         if (onMsg) onMsg(name);
         return tpl;
