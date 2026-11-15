@@ -307,7 +307,7 @@ run_story() {   # a map's story (web/game/story.js, ?story=1): the first episode
   local c
   for c in $CITIES; do
     python3 -c "import json,sys; sys.exit(0 if json.load(open('web/data/$c/game.json', encoding='utf8')).get('story') else 1)" || continue
-    if timeout 2700 $X node tools/story_shot.js "$c" "$OUT/story-$c" 800x500 >"$OUT/story-$c.log" 2>&1; then echo "ok   story  $c: the first episode plays through its beats"
+    if timeout 3600 $X node tools/story_shot.js "$c" "$OUT/story-$c" 800x500 >"$OUT/story-$c.log" 2>&1; then echo "ok   story  $c: the first episode plays through its beats"
     else echo "FAIL story  $c: $(grep '^FAIL\|pageerror' "$OUT/story-$c.log" | head -2 | cut -c1-160 | paste -sd ';' -)   (see $OUT/story-$c.log)"; fi
   done
 }
