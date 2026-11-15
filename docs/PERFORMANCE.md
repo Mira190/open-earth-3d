@@ -1477,6 +1477,66 @@ scenery ring past it and the skyline as far geometry: "Far geometry" above).
 at the load's peak is under WebKit's 1.5 GB soft limit by Chromium's count, which is not iOS's; the owner's phone
 says, through `crash` (`prev_lv`, `prev_stage`) and `held`.
 
+### A phone's pictures in ASTC blocks (issue 443)
+
+After the district, the largest thing left that an iPhone charges to the tab was the pictures: 148 to 160 MB of
+RGBA8 textures, four bytes a texel. ASTC 4x4 is one byte a texel and every iPhone decodes it.
+
+**Encoded on the device, not shipped.** The trial above stands: as KTX2 a photograph is three and a half times
+its JPEG, and this project's pictures are WebP, AVIF and JPEG inside models and beside them. So the files stay
+what they are, and each picture is encoded after it is decoded and before it is first sent to the GPU
+(`web/astc.js`, in a Worker, `web/astc-worker.js`; `web/tex.js` holds a texture back until its blocks are there, so
+the uncompressed copy never reaches the GPU). The download does not change.
+
+| What is packed | Where |
+|---|---|
+| every model's colour pictures (people, vehicles, trees, trains, the hero level) | a GLTFLoader plugin, registered on every loader (`web/gltf.js`); the characters' and the hero level's after they have been made smaller (`people.js`, `hero.js`) |
+| a landmark's signs, screens and plaques | `world.js` `leanDown` |
+| the ground: the overview, the tiles of their own, the land past the frame | `world.js`, `farland.js` |
+| the roofs' photograph and the streets painted on the near tiles | `buildings.js` `loadPhoto`, `game.js` `streetTexture` |
+
+Not packed: normal maps and the packed roughness, metalness and occlusion (their channels do not move together,
+which a block's one line of colours cannot follow), data textures and masks read by the pixel, canvases that are
+drawn again, render targets.
+
+**The encoder** writes two of ASTC's layouts, one partition and a 4x4 weight grid each: opaque blocks with RGB
+endpoints at eight bits and a three-bit weight a texel; blocks with alpha in two planes of two-bit weights, the
+second for alpha alone, their endpoints at 48 levels packed as ASTC packs trits. A block of a cut-out that has no
+alpha in it takes the opaque layout. Endpoints are the ends of the block's principal axis, refined once by least
+squares. It counts its own error, and a picture that would fall under 33 dB (27 for alpha) is left as it was: one
+64 x 96 far figure in each map. `tools/astc_check.js` encodes this project's own pictures on a page, hands the
+blocks to a real decoder (SwiftShader's; Mesa's llvmpipe offers none) and compares what comes back: 35.6 to 47.8 dB
+opaque (an aerial tile 39.6), 33 to 46 with alpha, the encoder's own count within a fifth of a decibel of the
+decoder's, no block rejected; `tools/check.sh astc` runs it when the encoder changes. Five to fourteen million
+texels a second in the software renderer's page. No code was taken: the layout is the Khronos data format
+specification's, the method the textbook one.
+
+| Phone's first load in its district (`tools/mem_check.js` without `xvfb-run`, so on SwiftShader) | Peak GPU, RGBA8 -> ASTC | Pictures packed | Their blocks |
+|---|---|---|---|
+| Shibuya | 215 -> 143 MB | 82 | 31.6 MB |
+| Tokyo | 239 -> 187 MB | 80 | 29.0 MB |
+| Sydney | 213 -> 156 MB | 91 | 27.7 MB |
+
+The blocks stay on the page (a texture let go and worn again is sent from them), 20 to 30 MB of array buffers in
+place of the decoded pictures the browser held. What is left on the GPU is not pictures: the render targets, the
+sun's shadow map, the night's light map, the hole and clip masks, the buildings' and landmarks' vertices.
+
+**Stills** at 390 x 844 on SwiftShader, `?tex=raw` beside the default: Shibuya's spawn by day and night, Hachiko,
+Center Gai at dusk; Sydney's spawn by day and night, the trees on the quay, the harbour at dusk. Signs read the
+same, faces and leaves are the same; the pairs differ by the crowd's and the screens' moment.
+
+**Not checked: a real iPhone.** The blocks are valid to SwiftShader's decoder, which is ARM's reference code; that
+Safari's WebGL takes them from a Worker-encoded buffer the same way is expected and unproven. `?tex=raw` turns the
+packing off, and the telemetry's events carry `astc: 1` where it is on, so a phone that does worse with it shows.
+
+### The surface model in sixteen bits, the rasters by tile: cut
+
+Both were on round 4's list by what they held on the whole map: the surface model 34 MB, the inland rasters 29 MB
+and an 11 MB mask. In a district the surface model is 8 MB (4 of heights, 4 of ids), and sixteen bits would save
+4 of them for an accessor in front of every reader of `DSM.data` (the walking model, the sun's rays, the camera,
+the far shadows). The inland water is clipped to the district, and its hole mask is 6 MB in Shibuya alone. Neither
+is worth its risk now; the masks' page copies already go once the GPU has them.
+
 ### The last CPU of the city build (issue 404), measured
 
 With the console's new `nav:` and `footways:` lines (desktop tier, llvmpipe): Kyoto's walking model 844 ms, of which

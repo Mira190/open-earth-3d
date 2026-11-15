@@ -730,6 +730,9 @@ vec3 steepRock(vec3 c, float k) {
     // uploads it, and what is drawn here for the GPU (the roofs' photo, the water's cover) is drawn no larger
     const QW = window.OEQuality ? OEQuality.city() : null, LEAN = !!(QW && QW.lean);
     if (QW && QW.tex < renderer.capabilities.maxTextureSize) renderer.capabilities.maxTextureSize = QW.tex;
+    // a phone's pictures as ASTC blocks, a quarter of the GPU's memory (tex.js, issue 443): the game's, where the GPU decodes them
+    const ASTC = !!(window.OETex && OETex.on(renderer, LEAN && game));
+    if (ASTC && window.OETelemetry && OETelemetry.set) OETelemetry.set({ astc: 1 }); // (rides on the view's events: which phones run packed)
     const SHADOW = Math.min(renderer.capabilities.maxTextureSize, shadow || (renderer.capabilities.maxTextureSize >= 8192 && !small ? 4096 : 2048));
 
     const world = new THREE.Scene();
@@ -1315,14 +1318,16 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       if (img) tex.needsUpdate = true;
       return tex;
     };
-    const lo = scene.ground_lo, loTex = pics.overview && photoTex(null);
-    if (loTex) pics.overview.then(img => { if (img) { loTex.image = img; loTex.needsUpdate = true; } });
+    const lo = scene.ground_lo, loTex = pics.overview && photoTex(null), loParts = [];
+    // (in blocks on a phone: the overview first, then its parts, which are clones of it and take the same blocks)
+    if (loTex) pics.overview.then(img => { if (img) { loTex.image = img; loTex.needsUpdate = true; if (ASTC) { OETex.pack(loTex); loParts.forEach(t => OETex.pack(t)); } } });
     const shown = []; // (every tile's own picture on screen: pics.shown, which the film and still tools wait for)
     // the overview's part under a tile (one image on the GPU for them all)
     const loPart = t => {
       const tex = loTex.clone();
       tex.repeat.set((t.x1 - t.x0) / (lo.x1 - lo.x0), (t.y1 - t.y0) / (lo.y1 - lo.y0));
       tex.offset.set((t.x0 - lo.x0) / (lo.x1 - lo.x0), (t.y0 - lo.y0) / (lo.y1 - lo.y0));
+      loParts.push(tex);
       return tex;
     };
     // On a phone (quality.js lean) only the tiles nearest the camera keep their own picture on the GPU (budget.groundTiles,
@@ -1376,7 +1381,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         if (want.has(i) && !own && stream.img[i]) {
           const tex = stream.own[i] = photoTex(stream.img[i]);
           stream.sent[i] = false;
-          idle().then(() => {
+          (ASTC ? OETex.pack(tex) : Promise.resolve()).then(idle).then(() => {
             if (stream.own[i] !== tex) return;
             try { renderer.initTexture(tex); stream.sent[i] = true; } catch (e) { /* sent on its first draw */ }
             m.material.map = tex;
@@ -1988,6 +1993,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const LEAN_CAP = 1024 >> (QW && QW.lighter >= 3 ? 1 : 0); // (half on the lightest set, quality.js level: at 512 a shop's name across the Scramble no longer reads, so a phone's first set keeps 1024; at a quarter no sign does)
     const leanDown = tex => {
       if (!LEAN || !tex || !tex.image) return tex;
+      if (ASTC) { tex.userData.max = LEAN_CAP; OETex.pack(tex); return tex; } // (drawn at that size and encoded in the Worker: tex.js)
       const im = tex.image, side = Math.max(im.width || 0, im.height || 0);
       if (side <= LEAN_CAP) return tex;
       const k = LEAN_CAP / side, cv = document.createElement('canvas');

@@ -358,6 +358,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     g.setLineDash([3 / PX, 6 / PX]);
     for (const r of roads) if ((ROADW[r.c] || 0) >= 9) { path(r.p); g.strokeStyle = '#e6e2d6'; g.lineWidth = 0.15 / PX; g.stroke(); }
     g.setLineDash([]);
+    if (window.OETex && OETex.stats.on && typeof createImageBitmap === 'function') {
+      // a phone (tex.js): the overlay in ASTC blocks, a quarter of the GPU's memory; the aerial photo shows until it is in (groundLod)
+      const tex = new THREE.Texture();
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      tex.userData.pending = true;
+      createImageBitmap(cv).then(bm => { cv.width = cv.height = 1; tex.image = bm; tex.needsUpdate = true; return OETex.pack(tex); }, () => { tex.image = cv; tex.needsUpdate = true; })
+        .catch(() => {}).then(() => { tex.userData.pending = false; });
+      return tex;
+    }
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -383,7 +393,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const ud = Wd.groundMeshes[i].material.userData;
       if (near && ud.street && !ud.street.value) ud.street.value = streetTexture(i);
       else if (d > 700 && ud.street && ud.street.value) { ud.street.value.dispose(); ud.street.value = null; } // (drawn again if you come back: 24 MB a tile)
-      if (ud.streetOn) ud.streetOn.value = near && player.mode !== 'heli' ? 1 : 0;
+      if (ud.streetOn) ud.streetOn.value = near && player.mode !== 'heli' && !(ud.street && ud.street.value && ud.street.value.userData.pending) ? 1 : 0;
       Wd.groundMeshes[i].visible = !near;
     });
   }
@@ -5226,7 +5236,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (and the passes the title doesn't draw: the opening shot's depth of field and motion blur, atmosphere.js)
   try { performance.mark('oe:built', { detail: { view: 'game', city: cityId } }); } catch (e) { /* no User Timing */ } // the scene built (telemetry.js)
   loadMsg('Compiling the shaders for this view', 1);
-  const warm = Promise.all([earlyWarm.then(() => compileFor(world)), atmos && atmos.warm ? atmos.warm() : null, OEWorld.uploadSliced ? OEWorld.uploadSliced(renderer, world) : null, Wd.ready]) // (and its textures sent, in slices too, and the far trees' atlas drawn)
+  const warm = Promise.all([earlyWarm.then(() => compileFor(world)), atmos && atmos.warm ? atmos.warm() : null, OEWorld.uploadSliced ? (window.OETex ? OETex.settled() : Promise.resolve()).then(() => OEWorld.uploadSliced(renderer, world)) : null, Wd.ready]) // (and its textures sent, in slices too, and the far trees' atlas drawn)
     .then(() => OEWorld.uploadBuffers && OEWorld.uploadBuffers(renderer, world, camera, { target: atmos && atmos.composer ? atmos.composer.renderTarget1 : null })); // (then its vertex buffers, in slices)
   // and behind the loader the rain's passes are drawn once too (its streaks, the occlusion map from
   // above and the wet street's mirror), so that the first rain of a visit comes on without a stall; the
