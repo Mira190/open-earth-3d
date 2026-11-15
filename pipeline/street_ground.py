@@ -45,7 +45,8 @@ floor exported again, pipeline/hero_floor.py); the ground under a landmark's fla
 plinth, a planter: within LANDMARK_M of it; a wall's face holds no ground); the ground under a building's part that
 stands over it (its clearance); a city's fine patches; any node a street would move more than MAX_MOVE_M (an
 underpass, a cutting the data maps on the ground). A line that runs onto such ground fades out over EDGE_M along it;
-one that runs beside it (at an embankment's foot, along a quay) is levelled up to it. The heights stay to the
+one that runs beside it (at an embankment's foot) is levelled up to it; towards the water everything fades, and a
+shore stays as surveyed. The heights stay to the
 decimetre, as game_data.py writes them: in centimetres the game's pack grew by a third for creases of 2 % that no
 one feels.
 
@@ -333,7 +334,7 @@ def nodes_of(G, xy):
             np.clip(np.round((xy[:, 0] - G.x0) / G.cell).astype(int), 0, G.nx - 1))
 
 
-def level(T, G, game, keep, on=None, laid=None):
+def level(T, G, game, keep, on=None, laid=None, water=None):
     """The grid with its streets graded, and the per-node weight of the change (0 where nothing moved). T is the survey;
     `on` the ground the lines lie on now (the survey's own, or an earlier grading's); `laid` the nodes of `keep` that
     only a landmark's flat faces keep."""
@@ -401,6 +402,10 @@ def level(T, G, game, keep, on=None, laid=None):
     # much disagreement is a junction's, blended; more is two levels)
     two = spread > SPREAD_M + gmax * JUNCTION_M
     alpha[~has | keep | ((move > MAX_MOVE_M) & ~freed) | ((umin > 0) & (move > BANK_M)) | two] = 0
+    # towards the water the grading fades over EDGE_M whichever way the street runs: a shore falls to the water as
+    # surveyed (a street along a quay would otherwise lift the beach beside it to its own level)
+    if water is not None and water.any():
+        alpha *= np.clip(ndimage.distance_transform_edt(~water) * cell / EDGE_M - 0.2, 0, 1)
     new = T + alpha * (target - T)
     # a pit by a street, a node or two wide and more than PIT_M under the nodes round it (a hole in the survey, a trench
     # dug when it flew: a construction site's, Sakuragaoka's south of Shibuya Station, 3 m deep under a street that runs
@@ -491,7 +496,9 @@ def run(cid, measure=False, force=False, radius=300.0):
            "map_now": report(Tc, G, game, centre, 1e9, keep, Gc)}
     if measure or (t.get("levelled") == VERSION and not force):
         return rep
-    new, alpha = level(T, G, game, keep, Gc, laid)
+    wm = game["water"]
+    water = np.unpackbits(np.frombuffer(base64.b64decode(wm["bits"]), np.uint8))[:T.size].reshape(T.shape).astype(bool)
+    new, alpha = level(T, G, game, keep, Gc, laid, water)
     new = np.round(new / t["scale"]) * t["scale"]  # (as it is written, so that what is measured is what is walked)
     rep["nodes"] = int((np.abs(new - T) >= 0.005).sum())
     rep["moved_max_m"] = round(float(np.abs(new - T).max()), 2)
