@@ -100,13 +100,13 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
     vec2 oeR = (vec2(oeMirN(oeP.xz * 9.0 + uMirrorTime * 4.0), oeMirN(oeP.zx * 8.0 - uMirrorTime * 3.5)) - 0.5) * uRainM * oePd;
     vec4 oeC = uMirrorMat * vec4(oeP, 1.0);
     vec2 oeUv = oeC.xy / max(oeC.w, 1e-4) + oeR * 0.004;
-    float oeJ = mix(oeMirN(oeP.xz * 23.0), 0.5, smoothstep(6.0, 22.0, length(vViewPosition))); // (the grain is the street's: it stays where it lies as the camera moves, and never flickers)
+    float oeJ = mix(oeMirN(oeP.xz * 23.0), 0.5, smoothstep(4.0, 13.0, length(vViewPosition))); // (the grain is the street's: it stays where it lies as the camera moves, and never flickers)
     float oeLen = mix(0.45, 0.008, oePd);
     vec3 oeM = vec3(0.0); float oeWs = 0.0;
     for (int i = 0; i < 12; i++) {
       float ft = (float(i) + oeJ) / 12.0, fw = 1.0 / (1.0 + 9.0 * ft * ft); // (a long tail, as a rough film's lobe has)
       float fs = ft * ft * oeLen;
-      vec2 oeO = vec2((oeMirN(oeP.zx * 19.0 + float(i) * 3.1) - 0.5) * 5.0 * uMirrorPx.x * (1.0 - oePd) * (1.0 - smoothstep(6.0, 22.0, length(vViewPosition))), fs);
+      vec2 oeO = vec2((oeMirN(oeP.zx * 19.0 + float(i) * 3.1) - 0.5) * 3.0 * uMirrorPx.x * (1.0 - oePd) * (1.0 - smoothstep(4.0, 13.0, length(vViewPosition))), fs);
       // (up the picture only as far as it goes: past its edge there is nothing to take)
       vec2 oeA = oeUv + oeO, oeB = oeUv - oeO;
       oeM += texture2D(uMirror, vec2(oeA.x, min(oeA.y, 0.995))).rgb * fw + texture2D(uMirror, vec2(oeB.x, max(oeB.y, 0.005))).rgb * fw;
@@ -114,7 +114,8 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
     }
     // (a streak holds a light's energy over its length: the lights are far brighter than the picture keeps them,
     // so the film's share is lifted where the puddle's is not)
-    oeM *= mix(1.7 + 1.3 * uMirrorNight, 1.0 + 0.6 * uMirrorNight, oePd) / oeWs;
+    oeM *= mix(1.7 + 0.5 * uMirrorNight, 1.0 + 0.25 * uMirrorNight, oePd) / oeWs;
+    oeM = oeM / (1.0 + 0.22 * max(oeM.r, max(oeM.g, oeM.b))); // (a soft knee: a shop front's image in a puddle keeps its colour instead of burning to white)
     float oeIn = smoothstep(0.0, 0.03, oeUv.x) * smoothstep(1.0, 0.97, oeUv.x) * smoothstep(0.0, 0.03, oeUv.y) * smoothstep(1.0, 0.9, oeUv.y) * step(0.0, oeC.w);
     outgoingLight *= 1.0 - 0.45 * oeUp * uWetM * uMirrorDark;   // (darkened here only where no weather does it)
     // after dark a wet street is near black between its lights (water fills the grain that scattered the light back),

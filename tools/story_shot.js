@@ -17,7 +17,7 @@ const [,, city = 'shibuya', out = '/tmp/story', size = '1440x900'] = process.arg
   const p = await b.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 1 });
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
   const errors = [];
-  p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
+  p.on('pageerror', e => { errors.push(String(e).slice(0, 300)); console.log('pageerror:', String(e).slice(0, 300), (e.stack || '').split('\n').slice(1, 4).join(' | ').slice(0, 400)); });
   require('fs').mkdirSync(out, { recursive: true });
   const state = () => p.evaluate(() => { const g = window.__game, s = g.story && g.story.state; return s ? { phase: s.phase, beat: s.beat, t: +s.t.toFixed(1), left: s.left, ghost: !!s.ghost, player: [+g.player.x.toFixed(1), +g.player.y.toFixed(1)], mode: g.player.mode } : null; });
   const until = async (what, fn, arg, timeout = 900000) => { try { await p.waitForFunction(fn, arg, { timeout, polling: 500 }); return true; } catch (e) { console.log(`FAIL ${what}: not reached`, JSON.stringify(await state())); return false; } };

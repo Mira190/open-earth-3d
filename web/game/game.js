@@ -3059,7 +3059,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
           transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { uT: { value: 0 } },
           vertexShader: 'varying float vH; void main() { vH = uv.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
           fragmentShader: 'uniform float uT; varying float vH; void main() { float a = (1.0 - vH) * (1.0 - vH) * (0.5 + 0.12 * sin(uT * 2.6 - vH * 9.0)); gl_FragColor = vec4(vec3(0.62, 0.78, 1.0) * a * 2.2, a); }' }));
-        col.position.y = 13;
+        col.position.y = 13 + 2.6; // (from over a head upward: whoever stands under it is seen, not lost in it)
         const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.05, 48), new THREE.MeshBasicMaterial({ color: 0x9fc4ff, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
         ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06;
         storyBeacon = new THREE.Group(); storyBeacon.add(col, ring); storyBeacon.userData = { col, ring };
@@ -3075,8 +3075,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     aim: at => { const v = W(at[0], at[1], 0).sub(camera.position), f = camera.getWorldDirection(new THREE.Vector3()); v.y = 0; f.y = 0; if (v.lengthSq() < 1e-6 || f.lengthSq() < 1e-6) return 0; return Math.acos(Math.max(-1, Math.min(1, v.normalize().dot(f.normalize())))) * 180 / Math.PI; },
     // the frame as it is drawn now, small, for the episode's print (drawn and read back in one task: the canvas keeps no copy)
     snap: () => {
+      // (what the camera in your hands sees: not yourself, and not the goal's light)
+      const me = player.rig.root.visible, bc = storyBeacon && storyBeacon.visible;
+      player.rig.root.visible = false; if (storyBeacon) storyBeacon.visible = false;
       mirrorTick();
       if (atmos) atmos.render(world, camera); else renderer.render(world, camera);
+      player.rig.root.visible = me; if (storyBeacon) storyBeacon.visible = bc;
       const out = document.createElement('canvas'), h = Math.min(480, canvas.height);
       out.height = h; out.width = Math.round(h * 1.5);
       const sw = Math.min(canvas.width, canvas.height * 1.5), sh = sw / 1.5;
@@ -5462,7 +5466,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // faces it sees are the lit ones; off in the air (from a helicopter's height it would light nothing)
   function placeNightFill() {
     const n = U.uNight.value, air = player.mode === 'heli';
-    nightFill.intensity = air ? 0 : nightFill.userData.cd * n;
+    // (a hero level is lit by its own signs and shop fronts, baked: there the fill is the share it asks for, hero.fill,
+    // or it washes the people and the paving at your feet to a flat white the street's own light never gives them)
+    let heroFill = 1;
+    for (const h of G.hero || []) if (h.fill != null && Math.hypot(h.at[0] - player.x, h.at[1] - player.y) < (h.r || 100)) heroFill = Math.min(heroFill, h.fill);
+    nightFill.intensity = air ? 0 : nightFill.userData.cd * n * heroFill;
     if (!nightFill.intensity) return;
     const v = player.mode === 'ferry' && player.vehicle ? player.vehicle : player, z = player.mode === 'ferry' ? 5 : player.z;
     const p = W(v.x, v.y, z + 3), dx = camera.position.x - p.x, dz = camera.position.z - p.z, d = Math.hypot(dx, dz) || 1, k = Math.min(2.5, d * 0.4) / d;

@@ -1032,6 +1032,7 @@
         "lift": 0.05,
         "posts": [[294.0, -1001.0], [277.2, -989.3], [309.1, -986.8], [370.6, -971.9], [376.5, -946.6], [382.3, -921.2], [395.1, -997.1], [421.7, -930.0], [420.4, -956.0], [419.3, -982.0], [431.8, -998.4], [457.8, -997.1], [414.0, -1009.8], [348.7, -1061.0], [357.9, -1036.7], [328.6, -1063.2], [332.4, -1041.8], [340.4, -1007.8]],
         "bake": 0.7,
+        "fill": 0.3,
         "street": 0.45,
         "glow": [0.24, 1.5],
         "hide": ["scramble_x_skin", "p5_plaza", "scramble_x_paint", "scramble_x_asphalt", "scramble_x_tactile", "scramble_x_tactile_dot", "scramble_x_guard"],
@@ -1066,13 +1067,13 @@
             "guides": [],
             "wet": 0,
             "show": true,
-            "anime": null,
-            "crowd_near": 0.35,
+            "anime": {"paint": 0, "grade": 0, "rays": 0, "haze": 0, "rim": 0, "streak": 0},
+            "crowd_near": 0,
             "grade": {"tint": [0.97, 0.99, 1.07], "sat": 1.12, "ev": 1.0, "flare": 0, "sky_sat": 1.0, "clouds": 1, "bloom": 1.5},
             "score": {"root": 49, "scale": [0, 2, 3, 5, 7, 8, 10], "chords": [[0, 2, 4], [5, 7, 9], [3, 5, 7], [4, 6, 8]], "motif": [4, 2, 1, 0, 2], "tempo": 60, "voice": "piano", "air": "none", "arp": false, "chirp": false, "title_shot": "above", "title_at": 0.2, "finale_shot": "kerb", "finale_at": 0.75, "hush_shot": "wet", "hush_at": [0.0, 0.7], "clean": true},
             "shots": [
-              {"id": "wet", "dur": 5.5, "type": "move", "from": ["@scramble", 13.0, -21.0, 0.4], "to": ["@scramble", 11.2, -18.2, 0.5], "lookFrom": ["label:QFRONT", 0, 0, 12], "lookTo": ["label:QFRONT", 0, 0, 20], "fov": 30, "ease": "inOut", "drift": 0, "fadeIn": 1.6, "cues": [[0.0, "red"]], "caption": {"eyebrow": "SHIBUYA · 10 OCTOBER · AFTER SUNSET", "text": "Every evening, for a few minutes after the sun goes down, this crossing holds its breath.", "at": 0.1, "until": 0.92}},
-              {"id": "above", "dur": 5.0, "type": "orbit", "at": ["@scramble"], "az": [205, 220], "dist": [16, 14], "h": [62, 48], "fov": 40, "ease": "linear", "drift": 0, "title": {"at": 0.12, "until": 0.9}},
+              {"id": "wet", "dur": 5.5, "type": "move", "from": ["end", -1.0, 1.5, 0.55], "to": ["end", -1.5, 2.3, 0.75], "lookFrom": ["label:QFRONT", 0, 0, 5], "lookTo": ["label:QFRONT", 0, 0, 11], "fov": 34, "ease": "inOut", "drift": 0, "fadeIn": 1.6, "cues": [[0.0, "red"]], "caption": {"eyebrow": "SHIBUYA · 10 OCTOBER · AFTER SUNSET", "text": "Every evening, for a few minutes after the sun goes down, this crossing holds its breath.", "at": 0.1, "until": 0.92}},
+              {"id": "above", "dur": 5.0, "type": "orbit", "at": ["@scramble"], "az": [205, 220], "dist": [24, 19], "h": [46, 38], "fov": 40, "ease": "linear", "drift": 0, "title": {"at": 0.12, "until": 0.9}},
               {"id": "kerb", "dur": 4.5, "type": "move", "from": ["end", 3.4, -5.2, 2.6], "to": ["end", 2.3, -3.5, 2.1], "lookFrom": ["@scramble", -4, 6, 1.6], "lookTo": ["@scramble", -6, 9, 1.6], "fov": [44, 50], "ease": "inOut", "drift": 0, "cues": [[0.12, "green"]], "caption": {"text": "Nobody has ever noticed. Tonight, you will.", "at": 0.1, "until": 0.9}}
             ]
           }
