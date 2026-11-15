@@ -365,9 +365,11 @@ and a flat card where the crowd's shadows and night lights need a body), and the
 every walker (a skeleton a person: the cost the instancing exists to avoid).
 
 **The same person in other clothes** (`web/game/people.js` `DRESS`). A cast of a dozen fills a crossing, so two of
-one character meet, and side by side in the one red shirt they read as a copy. Each walker wears one of eight
-turns of the clothes' colours (and a lighter or darker tone for a dark suit), the same far and near; the skin is
-left as scanned, found by its colour, and the head has its own material. No new pictures and no new programs
+one character meet, and side by side in the one red shirt, or three in the one taupe suit, they read as copies.
+Each walker wears one of eight: a coloured cloth turned round the wheel and quietened (a dark one nearly to
+charcoal: the first pass put a crossing in green and purple suits), a neutral one lighter or darker with a little
+dye (navy, sand, brown, grey), as Tokyo dresses. The same far and near; the skin is left as scanned, found by its
+colour and lightness, and the head has its own material. No new pictures and no new programs
 beyond one.
 
 ### The crossing's sound (`web/game/audio.js`, `game.look.sound`)
