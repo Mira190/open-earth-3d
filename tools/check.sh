@@ -309,7 +309,7 @@ run_gl() {   # the map as an ordinary device opens it (issue 485; tools/gl_error
 run_touch() {
   local c=${CHECK_TOUCH:-shibuya}
   if PORT=$PORT timeout 1500 $X node tools/touch_check.js "$c" "$OUT/touch" >"$OUT/touch.log" 2>&1; then
-    echo "ok   touch  $c: $(grep -c '^ok' "$OUT/touch.log") steps on a phone's page: no key named, the kerb, the wheel and the zoom by touch"
+    echo "ok   touch  $c: $(grep -c '^ok' "$OUT/touch.log") steps on a phone's page: no key named, the kerb, a taxi ridden, the wheel and the zoom by touch"
   else echo "FAIL touch  $c: $(grep '^FAIL' "$OUT/touch.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/touch.log)"; fi
 }
 run_telemetry() {   # the visitor and SLO events end to end, and the game's save on leaving (tools/telemetry_check.js)
