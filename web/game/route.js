@@ -488,6 +488,71 @@ window.OERoute = (function () {
         if (a) join(n, a.j, F.back(a.cell).reverse());
         await tick(0.98, 'joining the lifts');
       }
+      // a loose end the network joins to what is close to it only by a long way round: a footway that stops at the edge of
+      // a square OpenStreetMap maps as an area, with no line across it (Circular Quay's promenade between the wharves and
+      // the station, where the way from the west of the quay to the Opera House went 2 km round by the Domain, for 530 m
+      // as the crow flies): straight over the open ground to the nearest point of the network within SHORT_M whose way
+      // round is more than ROUND times as long and SLACK_M longer, where a walker can go straight and not out across a
+      // street's carriageway (that is what the crossings are for)
+      const SHORT_M = 100, ROUND = 2.5, SLACK_M = 30, RW = { motorway: 14, trunk: 12, primary: 12, secondary: 10, tertiary: 9, residential: 7, unclassified: 6 };
+      const acrossRoad = (ax, ay, az, bx, by, bz) => {
+        const m = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 2));
+        for (let k = 0; k <= m; k++) {
+          const t = k / m, q = roadNet.nearest(ax + (bx - ax) * t, ay + (by - ay) * t, 8, az + (bz - az) * t, 2);
+          if (q && RW[roadNet.L[q.line].c] && q.d < RW[roadNet.L[q.line].c] / 2) return true;
+        }
+        return false;
+      };
+      let shortcuts = 0, floodMs = 0, floods = 0;
+      const cutOff = Uint8Array.from({ length: NX.length }, (_, n) => (sizeOf(n) < top * 0.5 ? 1 : 0)); // (as the pieces were before)
+      for (let n = 0; n < NX.length; n++) {
+        if (ADJ0[n + 1] - ADJ0[n] !== 1 || EM[ADJ[ADJ0[n]]] === LIFT) continue; // (a loose end of a piece cut off too: every point of the main network is a long way round from it)
+        const D = new Map([[n, 0]]), h = new Heap(), LIM = ROUND * SHORT_M + SLACK_M;
+        h.push(0, n);
+        while (h.size) {
+          const a = h.pop(), d = h.top;
+          if (d > D.get(a)) continue;
+          if (d > LIM) break;
+          for (let k = ADJ0[a]; k < ADJ0[a + 1]; k++) {
+            const e = ADJ[k], b = EA[e] === a ? EB[e] : EA[e], nd = d + along(e, 0, lastOf(e));
+            if (nd < (D.get(b) ?? Infinity)) { D.set(b, nd); h.push(nd, b); }
+          }
+        }
+        const cand = new Map();
+        near(NX[n], NY[n], SHORT_M, (j, d) => {
+          if (d < 3 || Math.abs(SP[3 * j + 2] - NZ[n]) >= LEVEL) return;
+          const e = SE[j], k = SK[j];
+          if (EM[e] === LIFT) return;
+          const round = Math.min((D.get(EA[e]) ?? Infinity) + along(e, 0, k), (D.get(EB[e]) ?? Infinity) + along(e, k, lastOf(e)));
+          if (round < ROUND * d + SLACK_M) return;
+          const q = cand.get(e);
+          if (!q || d < q[0]) cand.set(e, [d, j, round]);
+        });
+        // (the nearest two that can be walked to, in ways at least 60 degrees apart: on along a promenade both ways)
+        const took = [];
+        for (const [, j] of [...cand.values()].sort((a, b) => a[0] - b[0]).slice(0, 16)) {
+          const dx = SP[3 * j] - NX[n], dy = SP[3 * j + 1] - NY[n], a = Math.atan2(dy, dx);
+          if (took.some(t => Math.abs(Math.atan2(Math.sin(a - t), Math.cos(a - t))) < Math.PI / 3)) continue;
+          if (!segOK(NX[n], NY[n], NZ[n], SP[3 * j], SP[3 * j + 1], SP[3 * j + 2]) || acrossRoad(NX[n], NY[n], NZ[n], SP[3 * j], SP[3 * j + 1], SP[3 * j + 2])) continue;
+          join(n, j, null); shortcuts++; took.push(a);
+          if (took.length === 2) break;
+        }
+        // none straight (a building's corner in the way: the colonnade at the end of East Circular Quay): round it over
+        // the ground, a way no more than half as long again as the straight line, to the nearest of them
+        // (only where the way round is very long, and the gap short: a flood is dear, and a city has thousands of loose ends)
+        const close = [...cand.entries()].filter(([, q]) => q[0] < 30 && q[2] > 4 * q[0] + 100);
+        if (!took.length && close.length && cutOff[n]) { // (and from a piece cut off from the main network)
+          const [, [d, j]] = close.sort((p, q) => p[1][0] - q[1][0])[0], goal = { x: SP[3 * j], y: SP[3 * j + 1], z: SP[3 * j + 2] };
+          const t1 = performance.now(), F = flood(NX[n], NY[n], NZ[n], { goal, aim: true, limit: 1.5 * d + 5, extra: 0, cells: 1200, want: () => false });
+          floodMs += performance.now() - t1; floods++;
+          if (F && F.reached >= 0 && F.G[F.reached] < 1.5 * d + 5) {
+            const path = F.back(F.reached).reverse();
+            if (!path.some((q, i) => i && acrossRoad(path[i - 1][0], path[i - 1][1], path[i - 1][2], q[0], q[1], q[2]))) { join(n, j, path); shortcuts++; }
+          }
+        }
+        if (n % 200 === 0) await tick(0.985, 'short cuts');
+      }
+      phases.shortcuts = [shortcuts, floods, Math.round(floodMs)]; // (how many, how many searched round a corner for, and the milliseconds those took)
       // split the edges at the points joined, from the far end back, and name each point's node
       const nodeOf = new Map();
       for (const [e, ks] of cut) {
@@ -587,7 +652,17 @@ window.OERoute = (function () {
     const noWay = new Set();
     // a route on foot from a ({x, y, z}) to b ({x, y, z}; z optional): { pts: [[x, y, z]], len,
     // end: [x, y, z] (where it stops: at b, or the nearest place to stand to it) } or null
+    // (a place given without a level, a waypoint clicked on the map or a quest's spot: the top of what stands there first,
+    // as SHIBUYA SKY's roof is meant, and where no walk reaches that (a station's roof over its platforms, a viaduct over
+    // the street the place is meant on) the floor a walker on the ground there stands on)
     function walk(a, b) {
+      const r = walkTo(a, b);
+      if (r || b.z != null || !ready) return r;
+      const t = nav.terrain(b.x, b.y), f = nav.floorAt(b.x, b.y, t + 0.5), z = f ? f.z : t;
+      return Math.abs(z - topOf(b)) > 1 ? walkTo(a, { x: b.x, y: b.y, z }) : null;
+    }
+    const topOf = b => { const f = nav.floorAt(b.x, b.y, Math.max(300, nav.terrain(b.x, b.y) + 1)); return f && f.kind !== 'deck' ? f.z : nav.terrain(b.x, b.y); };
+    function walkTo(a, b) {
       if (!ready) return null;
       const bz = b.z != null ? b.z : (() => { const f = nav.floorAt(b.x, b.y, Math.max(300, nav.terrain(b.x, b.y) + 1)); return f && f.kind !== 'deck' ? f.z : nav.terrain(b.x, b.y); })();
       const tk = `${Math.round(b.x)},${Math.round(b.y)},${Math.round(bz)}`;
@@ -669,10 +744,27 @@ window.OERoute = (function () {
         edgePts(q.e, EA[q.e] === plan.via ? 0 : lastOf(q.e), SK[q.t.j]);
         toEnd(q.t.cell);
       }
-      const out = mend(simplify(pts));
+      const out = unhook(mend(simplify(pts)));
       let len = 0;
       for (let i = 1; i < out.length; i++) len += Math.hypot(out[i][0] - out[i - 1][0], out[i][1] - out[i - 1][1]);
       return { pts: out, len, end: [T.start.x, T.start.y, T.start.z] };
+    }
+    // a point the way goes out to and straight back from (a spur of a few metres: onto a join's end and off it again, a
+    // stub of footway at a corner), left out where the way can go past it straight; the line drawn has no hook in it
+    function unhook(P) {
+      for (let again = true; again;) {
+        again = false;
+        for (let i = 1; i + 1 < P.length; i++) {
+          const [ax, ay, az] = P[i - 1], [bx, by] = P[i], [cx, cy, cz] = P[i + 1];
+          if (P[i][3] || P[i + 1][3]) continue; // (a lift's stop)
+          const ux = bx - ax, uy = by - ay, vx = cx - bx, vy = cy - by, lu = Math.hypot(ux, uy), lv = Math.hypot(vx, vy);
+          if (lu < 1e-3 || lv < 1e-3 || Math.min(lu, lv) > 8 || (ux * vx + uy * vy) / (lu * lv) > -0.87) continue; // (turning back by more than 150 degrees)
+          if (!segOK(ax, ay, az, cx, cy, cz)) continue;
+          P.splice(i, 1); again = true;
+          break;
+        }
+      }
+      return P;
     }
     // fewer points, each straight stretch still walkable and within 1.5 m of the way found (each
     // floor on its own, either side of a ride in a lift)
@@ -905,7 +997,7 @@ window.OERoute = (function () {
       for (let e = 0; e < EA.length; e++) { const r = find(EA[e]); size.set(r, (size.get(r) || 0) + along(e, 0, lastOf(e))); }
       return { of: n => find(n), size };
     }
-    const debug = { pieces, flood, node: i => [NX[i], NY[i], NZ[i]], edge: e => ({ a: EA[e], b: EB[e], pts: EP[e] }), SE: () => SE, SK: () => SK };
+    const debug = { pieces, flood, segOK, node: i => [NX[i], NY[i], NZ[i]], degree: i => ADJ0[i + 1] - ADJ0[i], near: (x, y, r) => { const o = []; near(x, y, r, (j, d) => o.push([j, SE[j], +d.toFixed(1)])); return o; }, edge: e => ({ a: EA[e], b: EB[e], pts: EP[e] }), SE: () => SE, SK: () => SK };
     return { debug, build, get ready() { return ready; }, walk, flight, landing, underSpan, blockedMetres, drive, stats: () => ({ ms: Math.round(busy), nodes: NX.length, edges: EA.length, points: SE ? SE.length : 0, phases, undrivable: drive.reduce((a, b) => a + b, 0), roads: roadNet.L.length }) };
   }
 

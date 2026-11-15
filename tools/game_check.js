@@ -39,6 +39,7 @@ const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
 const { trainStep, trainChecks } = require('./train_step');
 const { reverseStep } = require('./reverse_step');
+const { tipStep, tipChecks } = require('./car_tip_step');
 const { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks, kerbStep, kerbChecks } = require('./autopilot_step');
 const npcNight = require('./npc_night');
 const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
@@ -646,7 +647,7 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
   // (a straight walk that rises 1.5 m or more in steps of 30 cm or less) and get to its top; and
   // walk at a wall (a rise of 80 cm or more in half a metre) and stay at its foot
   const levels = await p.evaluate(() => {
-    const g = window.__game, pl = g.player, P = (g.G.patches || [])[0];
+    const g = window.__game, pl = g.player, P = (g.G.patches || []).find(q => !q.smooth); // (not a hero level's drawn ground, pipeline/hero_floor.py: a surface, no walls or flights)
     if (!P) return { none: true };
     const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw };
     const b = typeof P.data === 'string' ? Uint8Array.from(atob(P.data), c => c.charCodeAt(0)) : P.data, Z = new Int16Array(b.buffer, b.byteOffset, P.nx * P.ny);
@@ -982,7 +983,7 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
     for (const L of g.lifts || []) for (let i = 0; i < L.stops.length; i++) {
       const j = (i + 1) % L.stops.length, a = L.stops[i].at, b = L.stops[j].at;
       [pl.x, pl.y, pl.z] = a; pl.mode = 'foot'; g.advance(0.3);
-      const act = g.currentAction && g.currentAction(), offered = !!(act && /lift/i.test(act.text || ''));
+      const act = g.currentAction && g.currentAction(), offered = !!(act && (L.verb ? (act.text || '').startsWith(L.verb) : /lift/i.test(act.text || ''))); // (a flight of stairs: its own verb)
       g.rideLift(L, i, j);
       // a lift ridden in its car (lifts[].car, Queenstown's): through the ride the player stands in the car's
       // middle on its floor, and the car ends at the far stop's floor with that stop's doors shut again
@@ -1475,6 +1476,41 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
   check(car.none || (car.stopped < 0.5 && car.out), car.none ? 'no car' : `brakes to a stop and gets out beside it${car.out ? '' : ` (${car.stopped.toFixed(1)} m/s, ${car.mode}: ${car.said})`}`);
   await shot('car');
   tight(await swing('car'), 'at the wheel');
+
+  // your car kept on its wheels: driven at a ledge by its kerb (a planter's coping) and into the kerb, upright at the
+  // street's level, and R puts it back on the road the right way up (tools/car_tip_step.js)
+  tipChecks(check, car.none ? { none: true } : await p.evaluate(tipStep));
+
+  // every quest giver and quest step's place, and every place on the travel map, reached by the gold line on foot from the
+  // start (route.js walk; a place across the water by the ferry's wharf instead), no more than three times the straight
+  // line (tools/route_quality.js has the detail)
+  const reach = await p.evaluate(async () => {
+    const g = window.__game, G = g.G, ways = g.ways, out = [];
+    for (let i = 0; i < 600 && !ways.ready; i++) await new Promise(r => setTimeout(r, 500));
+    if (!ways.ready) return null;
+    const s = (G.start && G.start.at) || [g.player.x, g.player.y], f = g.nav.floorAt(s[0], s[1], g.nav.terrain(s[0], s[1]) + 1), a = { x: s[0], y: s[1], z: f ? f.z : g.nav.terrain(s[0], s[1]) };
+    const T = [];
+    for (const q of G.quests || []) {
+      const n = q.giver && g.npcs.find(m => m.id === q.giver);
+      if (n) T.push({ name: `${q.id}'s giver ${n.name}`, x: n.x, y: n.y, z: n.z });
+      (q.steps || []).forEach((st, k) => { const m = st.npc && g.npcs.find(o => o.id === st.npc), at = m ? [m.x, m.y, m.z] : st.at; if (at) T.push({ name: `${q.id} step ${k + 1}`, x: at[0], y: at[1], z: at[2] ?? null }); });
+    }
+    for (const t of G.travel || []) if (t.at) T.push({ name: `travel ${t.id}`, x: t.at[0], y: t.at[1], z: t.at[2] ?? null });
+    const seen = new Set();
+    for (const t of T) {
+      const k = `${Math.round(t.x)},${Math.round(t.y)}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const r = ways.walk(a, t), d = Math.hypot(t.x - a.x, t.y - a.y);
+      out.push({ name: t.name, d, len: r ? r.len : null });
+    }
+    return out;
+  });
+  if (reach) {
+    const none = reach.filter(r => r.len == null), far = reach.filter(r => r.len != null && r.d > 50 && r.len > 3 * r.d);
+    check(!none.length, `every quest and travel place is reached on foot from the start (${reach.length - none.length} of ${reach.length}${none.length ? `; none to ${none.map(r => r.name).join(', ')}` : ''})`);
+    check(!far.length, `no walk to them goes more than three times the straight line${far.length ? ` (${far.map(r => `${r.name} ${Math.round(r.len)} m for ${Math.round(r.d)}`).join(', ')})` : ''}`);
+  }
 
   // a taxi: a hand up at the kerb, the nearest one pulls in, in the back, the driver asks where to,
   // the heads clear the roof, it drives off, the trip is skipped to the kerb there, out; then a ride
@@ -2415,6 +2451,27 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
           const f0 = g.nav.floorAt(L.h.at[0], L.h.at[1], g.nav.terrain(L.h.at[0], L.h.at[1]) + 0.5);
           r.lift = L.h.lift ? (f0 && f0.kind === 'ground' ? +(f0.z - g.nav.terrain(L.h.at[0], L.h.at[1])).toFixed(3) : L.h.lift) : null;
           r.liftWant = L.h.lift || null;
+          // and on the ground it draws (its "ground" materials, a ray down): along the crowd's lines every 4 m, the floor
+          // walked within 6 cm of it (pipeline/hero_floor.py; tools/hero_ground_probe.js has every metre)
+          const T = window.THREE, gm = [];
+          if (L.root) { L.root.updateMatrixWorld(true); L.root.traverse(o => { if (o.isMesh && /ground/i.test([].concat(o.material).map(m => m && m.name).join(' '))) gm.push(o); }); }
+          if (gm.length) {
+            const ray = new T.Raycaster(), dn = new T.Vector3(0, -1, 0), o3 = new T.Vector3();
+            let n = 0, off = 0, worst = null;
+            for (let li = 0; li < net.L.length; li++) for (let d = 0; d <= net.L[li].len; d += 4) {
+              net.at(li, d, tmp);
+              if (Math.hypot(tmp.x - L.h.at[0], tmp.y - L.h.at[1]) > (L.h.r || 100) - 3) continue;
+              const f = g.nav.floorAt(tmp.x, tmp.y, tmp.z + 0.6);
+              if (!f || f.kind !== 'ground') continue;
+              o3.set(tmp.x, f.z + 1.5, -tmp.y); ray.set(o3, dn); ray.far = 3;
+              const hit = ray.intersectObjects(gm, false)[0];
+              if (!hit) continue;
+              n++;
+              const e = hit.point.y - f.z;
+              if (Math.abs(e) > 0.06) { off++; if (!worst || Math.abs(e) > Math.abs(worst[2])) worst = [Math.round(tmp.x), Math.round(tmp.y), +e.toFixed(2)]; }
+            }
+            r.feet = { n, off, worst };
+          }
         }
         if (L.h.fine) {
           for (let k = 0; k < 600 && H.tier !== 'low' && !H.state().find(s => s.id === L.h.id).fineShown; k++) await frames(1);
@@ -2456,6 +2513,7 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
     check(r.again, `the hero level ${r.id} is shown again where you came back to it`);
     check(!r.solid.length && !r.shut.length, `the hero level ${r.id}'s buildings are solid and its ways open (${r.solid.length ? 'a walker can stand inside at ' + JSON.stringify(r.solid) : 'none stood in'}${r.shut.length ? '; shut at ' + JSON.stringify(r.shut) : ''})`);
     check(r.barred.length <= (BARRED_KNOWN[city] || 0), `nothing solid stands on the crowd's lines in the hero level ${r.id} (${r.barred.length ? 'barred near ' + JSON.stringify(r.barred.slice(0, 8)) : 'none barred'})`);
+    if (r.feet && r.feet.n) check(r.feet.off <= Math.max(2, r.feet.n * 0.01), `in the hero level ${r.id} the floor walked is the ground it draws (${r.feet.n - r.feet.off} of ${r.feet.n} points along the crowd's lines within 6 cm${r.feet.worst ? `; worst ${r.feet.worst[2] * 100} cm at ${r.feet.worst[0]}, ${r.feet.worst[1]}` : ''})`);
     if (r.liftWant) check(Math.abs(r.lift - r.liftWant) < 0.011, `in the hero level ${r.id} you stand on its paving, ${r.liftWant * 100} cm over the game's ground (${r.lift * 100} cm)`);
     if (r.fine) check(r.fine.tier === 'low' ? r.fine.state === 'idle' && !r.fine.meshes : r.fine.state === 'ready' && r.fine.shown > 0 && r.fine.shown <= r.fine.meshes,
       `the hero level ${r.id}'s finest parts are ${r.fine.tier === 'low' ? 'not fetched on the low tier' : `drawn near you (${r.fine.shown} of ${r.fine.meshes} squares)`} (${r.fine.state})`);

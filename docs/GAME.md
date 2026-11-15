@@ -165,7 +165,11 @@ Every city's game has the same three ways to go by road:
   It pulls through five gears, to 100 km/h in about 5 s and on to 150. It stops
   from 100 km/h in about 30 m, and holding <kbd>S</kbd> at a standstill reverses.
   It hits buildings, the landmarks and other cars, stops for people, won't go over
-  the water's edge, and follows kerbs, ramps and bridge decks. In the driver's
+  the water's edge, and follows kerbs, ramps and bridge decks. It mounts a kerb of
+  25 cm at most (`cars.js` `CAR_STEP`): a planter's coping, a plinth or a low wall
+  that a walker steps onto is a wall to it, so it is never driven up onto one and
+  left tipped on its edge, and it is never parked wedged against one (`game.js`
+  `wedged`). <kbd>R</kbd> puts it back on the road the right way up. In the driver's
   seat (<kbd>V</kbd>) you see the dashboard and the wheel turning. The phone
   brings it to the nearest kerb if you have walked far from it.
 - **The autopilot** (<kbd>J</kbd> at the wheel, **Auto** on a phone): the car drives
@@ -2736,6 +2740,26 @@ drop or into the water.
     nearest other piece within 12 m by a straight line a walker can walk, or round
     whatever is in the way over the ground (a tunnel cut out of the data, the end of
     a deck);
+  - a loose end the rest of the network reaches only by a long way round (a footway
+    that stops at the edge of a square OpenStreetMap maps as an area, with no line
+    across it: Circular Quay's promenade, where the way from the west of the quay to
+    the Opera House went 2 km round by the Domain) is joined to the nearest two such
+    points within 100 m whose way round is more than two and a half times as long,
+    straight over the open ground, or for a piece cut off, round a corner over the
+    ground; never out across a street's carriageway, which is what the crossings are
+    for (950 m now). A point the line goes out to and straight back from is left out
+    where the way can go past it, so the line has no hooks. `tools/route_quality.js`
+    plans the way to every quest step and travel place from the start and the car,
+    and reports detours, walls, U-turns, jumps and places no walk reaches;
+  - a place given without a level (a waypoint clicked on the map, a quest's spot) is
+    taken at the top of what stands there first, as SHIBUYA SKY's roof is meant, and
+    where no walk reaches that (Circular Quay Station's roof over its platforms, a
+    viaduct over the street a place is meant on), at the floor a walker on the ground
+    there stands on;
+  - a climb the game does not draw is a lift in game.json `lifts` with its own verb
+    (`verb`: "Climb the stairs to"): Sydney's Bridge Stairs from Cumberland Street up to
+    the Harbour Bridge's footway, and the Cahill Walk's lift from the quay. Every quest
+    and travel place in the live maps is reached on foot (`tools/game_check.js`);
   - from where you stand onto the network, and from it to the target, an A*
     search over a 1.25 m grid of the ground, walked as the walker walks (no step
     higher than a kerb, no drop either way). A target inside a building is reached
