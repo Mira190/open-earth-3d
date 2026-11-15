@@ -65,10 +65,13 @@ const [,, city = 'shibuya', out = '/tmp/story', size = '1440x900'] = process.arg
   // her task: the shutter is offered; away from the subject it asks to turn, towards it the frame is spent
   ok = await until('the camera is offered', () => window.__game.story.state.beat === 'shoot' && document.querySelector('#g-story-shutter.on')) && ok;
   const face = to => p.evaluate(to => { const g = window.__game, T = g.G.story.episodes[0].task.subject, pl = g.player, a = Math.atan2(T[0] - pl.x, T[1] - pl.y) + (to ? 0 : Math.PI); pl.h = a; if (g.cam) { g.cam.yaw = a; if ('pitch' in g.cam) g.cam.pitch = to ? -0.25 : 0.1; } }, to);
-  await face(false); await p.waitForTimeout(3000);
+  await face(false);
+  ok = await until('the lens turned away from the subject', () => !document.querySelector('#g-story-shutter.ready'), null, 240000) && ok; // (the chase camera comes round in its own time)
   await p.keyboard.press('KeyF'); await p.waitForTimeout(800);
   if ((await state()).left !== 7) { console.log('FAIL a picture taken with its back to the subject spent a frame'); ok = false; }
-  await face(true); await p.waitForTimeout(4000);
+  await face(true);
+  ok = await until('the lens on the subject', () => !!document.querySelector('#g-story-shutter.ready'), null, 240000) && ok;
+  await p.waitForTimeout(3000); // (the line about turning has gone)
   await shot('5-finder');
   await p.keyboard.press('KeyF');
   ok = await until('the frame is spent', () => window.__game.story.state.left === 6 && !!window.__game.story.state.print, null, 60000) && ok;
