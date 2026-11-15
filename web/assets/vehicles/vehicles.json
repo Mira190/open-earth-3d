@@ -558,6 +558,50 @@
     "triangles": 23708,
     "lod1_triangles": 5214,
     "lod2_triangles": 1039
+   },
+   "Car_Super": {
+    "player": true,
+    "name": "supercar",
+    "top_ms": 92,
+    "pull_ms2": 12.5,
+    "lamp_glow": 0.5,
+    "finish": {
+     "metalness": 0.3,
+     "roughness": 0.26,
+     "flip": "#12205f",
+     "rim": "#8a6a45"
+    },
+    "length_m": 4.7,
+    "width_m": 2.04,
+    "height_m": 1.16,
+    "axles_m": [
+     1.32,
+     -1.42
+    ],
+    "wheel_r_m": 0.355,
+    "track_m": 1.67,
+    "steering": [
+     -0.37,
+     0.7,
+     0.36
+    ],
+    "steering_tilt": 0.42,
+    "seats": {
+     "driver": [
+      -0.37,
+      0.34,
+      -0.14
+     ],
+     "passenger": [
+      0.37,
+      0.34,
+      -0.14
+     ]
+    },
+    "leg_rake": 2.6,
+    "cabin": "Car_Super_Cabin",
+    "triangles": 79131,
+    "cabin_triangles": 3768
    }
   },
   "liveries": {
@@ -605,7 +649,13 @@
    "Sign": 12,
    "Light_Amber": 13,
    "Seam": 8,
-   "Dash": 8
+   "Dash": 8,
+   "Carbon": 8,
+   "Alloy": 10,
+   "Disc": 9,
+   "Caliper": 1,
+   "Screen": 8,
+   "Light_Accent": 8
   },
   "file": "cars.glb",
   "far_file": "cars_far.glb",
