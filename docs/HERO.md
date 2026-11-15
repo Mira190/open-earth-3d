@@ -386,6 +386,12 @@ landmarks' meshes, which went on being solid and being stood on where they had b
   `web/game/nav.js` `lift`), and the ground meshes a level hides are not stood on (`navcells.js` `unwalkedOf`):
   at the spawn the hidden tactile strip had the player 20 cm up, and elsewhere the crowd's soles were 5 cm under
   the paving drawn.
+- And on the ground it draws, where its builder laid its own levels: the level's drawn ground (its `ground*`
+  materials) is sampled every metre in the game (`tools/hero_ground_probe.js <city> 1 export
+  cities/<id>/hero_floor.json`) and walked as one smooth patch (`pipeline/hero_floor.py`, game.json `patches` with
+  `smooth` and `hero`). Before, Shibuya's road by the station was drawn 0.36 m over the floor walked and Sydney's
+  paving by the quay 0.41 m (rms 2.3 and 3.9 cm, 106 and 132 points of a metre's grid off by over 15 cm); now both
+  are within a centimetre (0.5 cm rms, none over 15 cm). Run the probe again after a level is rebuilt.
 - `tools/unseen_walls.js <city>` audits a level against the picture (a wall with nothing drawn at it, a footway
   with something solid on it, the floor's height over the ground drawn), and `tools/game_check.js` fails a level
   with a wall on one of the crowd's lines or a floor off its lift. Sydney's level had no unseen wall and no

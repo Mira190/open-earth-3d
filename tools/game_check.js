@@ -2435,6 +2435,27 @@ const npcNight = require('./npc_night');
           const f0 = g.nav.floorAt(L.h.at[0], L.h.at[1], g.nav.terrain(L.h.at[0], L.h.at[1]) + 0.5);
           r.lift = L.h.lift ? (f0 && f0.kind === 'ground' ? +(f0.z - g.nav.terrain(L.h.at[0], L.h.at[1])).toFixed(3) : L.h.lift) : null;
           r.liftWant = L.h.lift || null;
+          // and on the ground it draws (its "ground" materials, a ray down): along the crowd's lines every 4 m, the floor
+          // walked within 6 cm of it (pipeline/hero_floor.py; tools/hero_ground_probe.js has every metre)
+          const T = window.THREE, gm = [];
+          if (L.root) { L.root.updateMatrixWorld(true); L.root.traverse(o => { if (o.isMesh && /ground/i.test([].concat(o.material).map(m => m && m.name).join(' '))) gm.push(o); }); }
+          if (gm.length) {
+            const ray = new T.Raycaster(), dn = new T.Vector3(0, -1, 0), o3 = new T.Vector3();
+            let n = 0, off = 0, worst = null;
+            for (let li = 0; li < net.L.length; li++) for (let d = 0; d <= net.L[li].len; d += 4) {
+              net.at(li, d, tmp);
+              if (Math.hypot(tmp.x - L.h.at[0], tmp.y - L.h.at[1]) > (L.h.r || 100) - 3) continue;
+              const f = g.nav.floorAt(tmp.x, tmp.y, tmp.z + 0.6);
+              if (!f || f.kind !== 'ground') continue;
+              o3.set(tmp.x, f.z + 1.5, -tmp.y); ray.set(o3, dn); ray.far = 3;
+              const hit = ray.intersectObjects(gm, false)[0];
+              if (!hit) continue;
+              n++;
+              const e = hit.point.y - f.z;
+              if (Math.abs(e) > 0.06) { off++; if (!worst || Math.abs(e) > Math.abs(worst[2])) worst = [Math.round(tmp.x), Math.round(tmp.y), +e.toFixed(2)]; }
+            }
+            r.feet = { n, off, worst };
+          }
         }
         if (L.h.fine) {
           for (let k = 0; k < 600 && H.tier !== 'low' && !H.state().find(s => s.id === L.h.id).fineShown; k++) await frames(1);
@@ -2476,6 +2497,7 @@ const npcNight = require('./npc_night');
     check(r.again, `the hero level ${r.id} is shown again where you came back to it`);
     check(!r.solid.length && !r.shut.length, `the hero level ${r.id}'s buildings are solid and its ways open (${r.solid.length ? 'a walker can stand inside at ' + JSON.stringify(r.solid) : 'none stood in'}${r.shut.length ? '; shut at ' + JSON.stringify(r.shut) : ''})`);
     check(r.barred.length <= (BARRED_KNOWN[city] || 0), `nothing solid stands on the crowd's lines in the hero level ${r.id} (${r.barred.length ? 'barred near ' + JSON.stringify(r.barred.slice(0, 8)) : 'none barred'})`);
+    if (r.feet && r.feet.n) check(r.feet.off <= Math.max(2, r.feet.n * 0.01), `in the hero level ${r.id} the floor walked is the ground it draws (${r.feet.n - r.feet.off} of ${r.feet.n} points along the crowd's lines within 6 cm${r.feet.worst ? `; worst ${r.feet.worst[2] * 100} cm at ${r.feet.worst[0]}, ${r.feet.worst[1]}` : ''})`);
     if (r.liftWant) check(Math.abs(r.lift - r.liftWant) < 0.011, `in the hero level ${r.id} you stand on its paving, ${r.liftWant * 100} cm over the game's ground (${r.lift * 100} cm)`);
     if (r.fine) check(r.fine.tier === 'low' ? r.fine.state === 'idle' && !r.fine.meshes : r.fine.state === 'ready' && r.fine.shown > 0 && r.fine.shown <= r.fine.meshes,
       `the hero level ${r.id}'s finest parts are ${r.fine.tier === 'low' ? 'not fetched on the low tier' : `drawn near you (${r.fine.shown} of ${r.fine.meshes} squares)`} (${r.fine.state})`);

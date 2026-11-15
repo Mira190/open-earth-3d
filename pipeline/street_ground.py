@@ -20,8 +20,8 @@ as the survey allows. So, for each road and footway where it lies on the ground 
 The levelling is kept only where it makes the whole map's streets more even (fewer cross-falls of over 15 %, no more
 creases of over 15 %); otherwise the survey stays as it is (see run()).
 
-Left as they are: the water, the hero levels (docs/HERO.md: each is draped on the ground the game had when it was
-built, and is rebuilt on its own), the ground under a landmark laid on it (paving, a plinth, a planter: a mesh within
+Left as they are: the water, the hero levels that draw ground (docs/HERO.md: each is draped on the ground the game had
+when it was built, and walked as drawn, pipeline/hero_floor.py; Tokyo's draws a building only, and its ground is levelled), the ground under a landmark laid on it (paving, a plinth, a planter: a mesh within
 1.5 m of the ground), a city's fine patches, and any node a street would move more than MAX_MOVE_M (an underpass, a
 cutting the data maps on the ground), and any node where the lines that reach it disagree on its level by more
 than SPREAD_M (two levels, a footbridge over a street). The heights stay to the decimetre, as game_data.py writes
@@ -144,7 +144,19 @@ def smooth(z):
     return z
 
 
-def protected(game, scene, landmarks, G):
+def draws_ground(out, h):
+    """Does a hero level draw ground (a material named ground*, docs/HERO.md)? Tokyo's Marunouchi draws the station's
+    building only: the ground round it is the game's own, levelled with the rest."""
+    import struct
+    path = os.path.join(out, h.get("glb", ""))
+    if not h.get("glb") or not os.path.exists(path):
+        return True
+    b = open(path, "rb").read(1 << 22)
+    n = struct.unpack("<I", b[12:16])[0]
+    return any("ground" in (m.get("name") or "").lower() for m in json.loads(b[20:20 + n]).get("materials", []))
+
+
+def protected(game, scene, landmarks, G, out=""):
     """The nodes the streets leave as they are (see the module's note)."""
     ny, nx, cell = G.ny, G.nx, G.cell
     wm = game["water"]
@@ -152,9 +164,11 @@ def protected(game, scene, landmarks, G):
     gy, gx = np.mgrid[0:ny, 0:nx]
     X, Y = G.x0 + gx * cell, G.y1 - gy * cell
     for h in game.get("hero", []):
-        if h.get("at") and h.get("r"):
+        if h.get("at") and h.get("r") and draws_ground(out, h):
             keep |= np.hypot(X - h["at"][0], Y - h["at"][1]) < h["r"] + 2 * cell
     for p in game.get("patches", []):
+        if p.get("hero"):
+            continue  # (a hero level's drawn ground, pipeline/hero_floor.py: the level's, kept by the line above)
         x1, y1 = p["x0"] + p["nx"] * p["cell"], p["y0"] + p["ny"] * p["cell"]
         keep |= (X > p["x0"] - cell) & (X < x1 + cell) & (Y > p["y0"] - cell) & (Y < y1 + cell)
     # the landmarks laid on the ground: their triangles near it, drawn on the node grid (a pixel a node) and grown a node
@@ -257,7 +271,7 @@ def run(cid, measure=False, force=False, radius=300.0):
     t = game["terrain"]
     T = grid(t)
     G = Ground(T, scene["frame"]["x"][0], scene["frame"]["y"][1], t["cell"])
-    keep = protected(game, scene, landmarks, G)
+    keep = protected(game, scene, landmarks, G, out)
     centre = game["start"]["at"]
     rep = {"city": cid, "done": bool(t.get("levelled")), "before": evenness(T, G, game, centre, radius, keep)}
     if measure or (t.get("levelled") and not force):
