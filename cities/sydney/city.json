@@ -657,7 +657,7 @@
         "stamp": "Hyde Park",
         "talk": ["Priya sent you? Sit down a minute. Governor Macquarie named Hyde Park in 1810, and the colony ran its first horse races here that same year. It's the oldest public park in the country.", "The fig avenue runs right down the middle. And across College Street is St Mary's: they only finished its spires in 2000, a hundred and thirty years after they started.", "Go and stand under them."],
         "steps": [
-          {"type": "visit", "at": [173.0, -1018.8], "radius": 70, "text": "Cross College Street to St Mary's Cathedral"}
+          {"type": "visit", "at": [165.0, -1088.0], "radius": 70, "text": "Cross College Street to St Mary's Cathedral"}
         ]
       },
       {

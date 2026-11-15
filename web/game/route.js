@@ -734,10 +734,27 @@ window.OERoute = (function () {
         edgePts(q.e, EA[q.e] === plan.via ? 0 : lastOf(q.e), SK[q.t.j]);
         toEnd(q.t.cell);
       }
-      const out = mend(simplify(pts));
+      const out = unhook(mend(simplify(pts)));
       let len = 0;
       for (let i = 1; i < out.length; i++) len += Math.hypot(out[i][0] - out[i - 1][0], out[i][1] - out[i - 1][1]);
       return { pts: out, len, end: [T.start.x, T.start.y, T.start.z] };
+    }
+    // a point the way goes out to and straight back from (a spur of a few metres: onto a join's end and off it again, a
+    // stub of footway at a corner), left out where the way can go past it straight; the line drawn has no hook in it
+    function unhook(P) {
+      for (let again = true; again;) {
+        again = false;
+        for (let i = 1; i + 1 < P.length; i++) {
+          const [ax, ay, az] = P[i - 1], [bx, by] = P[i], [cx, cy, cz] = P[i + 1];
+          if (P[i][3] || P[i + 1][3]) continue; // (a lift's stop)
+          const ux = bx - ax, uy = by - ay, vx = cx - bx, vy = cy - by, lu = Math.hypot(ux, uy), lv = Math.hypot(vx, vy);
+          if (lu < 1e-3 || lv < 1e-3 || Math.min(lu, lv) > 8 || (ux * vx + uy * vy) / (lu * lv) > -0.87) continue; // (turning back by more than 150 degrees)
+          if (!segOK(ax, ay, az, cx, cy, cz)) continue;
+          P.splice(i, 1); again = true;
+          break;
+        }
+      }
+      return P;
     }
     // fewer points, each straight stretch still walkable and within 1.5 m of the way found (each
     // floor on its own, either side of a ride in a lift)

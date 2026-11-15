@@ -31,7 +31,7 @@ const [,, city = 'shibuya', OUT] = process.argv;
       const n = s.npc && npcAt(s.npc), at = n ? [n.x, n.y, n.z] : s.at;
       if (at) targets.push({ name: `${q.id}.${i + 1} ${s.type || ''}${s.npc ? ` ${s.npc}` : ''}`, x: at[0], y: at[1], z: at[2] ?? null, npc: !!n });
     });
-    for (const t of G.travel || []) if (t.at) targets.push({ name: `travel ${t.id}`, x: t.at[0], y: t.at[1], z: null });
+    for (const t of G.travel || []) if (t.at) targets.push({ name: `travel ${t.id}`, x: t.at[0], y: t.at[1], z: t.at[2] ?? null });
     const ang = (ax, ay, bx, by) => { const d = Math.atan2(ax * by - ay * bx, ax * bx + ay * by); return Math.abs(d); };
     const shape = pts => {
       let turn = 0, uturns = 0, jumps = 0, len = 0, longest = 0;
@@ -52,7 +52,14 @@ const [,, city = 'shibuya', OUT] = process.argv;
     for (const [from, o] of origins) for (const t of targets) {
       if (from !== 'start' && !/giver|\.1 /.test(t.name)) continue; // (from the car: to the quest givers and first steps)
       const t0 = performance.now(), rt = ways.walk(o, t), ms = performance.now() - t0, d = Math.hypot(t.x - o.x, t.y - o.y);
-      if (!rt) { out.walk.push({ from, to: t.name, d: Math.round(d), none: true, ms: Math.round(ms) }); continue; }
+      if (!rt) {
+        out.walk.push({ from, to: t.name, d: Math.round(d), none: true, ms: Math.round(ms) });
+        // (the level route.js takes for a place given without one is the highest there: a viaduct's or a building's top
+        // over a place meant at the street, which no walk reaches)
+        const top = t.z == null && nav.floorAt(t.x, t.y, Math.max(300, nav.terrain(t.x, t.y) + 1)), g0 = nav.floorAt(t.x, t.y, nav.terrain(t.x, t.y) + 0.3);
+        if (from === 'start') out.places.push({ name: t.name, at: [Math.round(t.x), Math.round(t.y)], stand: false, why: top && top.kind === 'roof' ? `on a roof ${(top.z - nav.terrain(t.x, t.y)).toFixed(0)} m up` : 'no route', solid: g0 ? nav.solid(t.x, t.y, g0.z, 0.2) : null });
+        continue;
+      }
       const s = shape(rt.pts), where = [];
       out.walk.push({ from, to: t.name, d: Math.round(d), len: Math.round(rt.len), ratio: +(rt.len / Math.max(d, 1)).toFixed(2), blocked: +ways.blockedMetres(rt.pts, where).toFixed(1), run: +(where.run || 0).toFixed(1),
         where: where.slice(0, 3).map(q => q.map(v => (typeof v === 'number' ? Math.round(v) : v))), uturns: s.uturns, wiggle: Math.round(s.wiggle), jumps: s.jumps, short: +Math.hypot(rt.end[0] - t.x, rt.end[1] - t.y).toFixed(1), ms: Math.round(ms), pts: rt.len > 1.8 * Math.max(d, 1) ? rt.pts.map(q => q.slice(0, 3).map(v => Math.round(v))) : undefined });
