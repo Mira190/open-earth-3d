@@ -47,7 +47,8 @@ const [,, city = 'shibuya', out = '/tmp/story', size = '1440x900'] = process.arg
     await startPlay(p, { asIs: true });
   }
   if (process.env.OVERTURE || process.env.FROM_GLOBE || process.env.AUTO) for (let i = 0; i < 10 && !(await p.evaluate(() => !!(window.__game && window.__game.story && !['idle', 'dressed'].includes(window.__game.story.state.phase)))); i++) { await p.waitForTimeout(25000); await snap(`0-overture-${i}`); }
-  ok = await until('the episode begins', () => window.__game.story && window.__game.story.state.phase !== 'idle' && window.__game.story.state.phase !== 'dressed') && ok;
+  // (the opening crane over a wet street at night is the slowest stretch on a software renderer: a CI runner took over 15 minutes for it)
+  ok = await until('the episode begins', () => window.__game.story && window.__game.story.state.phase !== 'idle' && window.__game.story.state.phase !== 'dressed', null, 1800000) && ok;
   ok = await until('the Stop', () => window.__game.story.state.phase === 'stop') && ok;
   await shot('1-stopped');
   // a new player is told what to do: the goal's line, its beacon's mark and the keys
