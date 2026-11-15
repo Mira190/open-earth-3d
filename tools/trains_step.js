@@ -157,6 +157,26 @@ module.exports = async function trainsStep(p, part = 'all') {
         checks.push([drawn > 0 && inBox === 0 && offTrack === 0, `the trains run on the open line between the stations (${drawn} cars drawn over ten minutes, ${inBox} inside a station's building, ${offTrack} off their track)`]);
       }
     }
+    // ---- the way in on foot, where a station gives one (a station's "way": Tokyo Station's, from the plaza through the
+    // south dome's hall and the passage under the tracks, up the stairs to the platform): walked point to point, with
+    // nothing in the way and no drop, and it ends on the platform's level
+    for (const st of part !== 'ride' ? T.stations.filter(s => s.way) : []) {
+      const back = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw }, P = st.way.pts;
+      Object.assign(pl, { x: P[0][0], y: P[0][1], z: g.nav.terrain(P[0][0], P[0][1]), ground: true, vz: 0, speed: 0, mode: 'foot', vehicle: null });
+      g.advance(0.5);
+      let at = 0, stuck = '', low = pl.z, tt = 0;
+      for (let k = 1; k < P.length && !stuck; k++) {
+        let t = 0, d0 = Math.hypot(P[k][0] - pl.x, P[k][1] - pl.y);
+        while (Math.hypot(P[k][0] - pl.x, P[k][1] - pl.y) > 1.0 && t < 12 + d0 / 1.2) { pl.h = g.cam.yaw = Math.atan2(P[k][0] - pl.x, P[k][1] - pl.y); g.advance(0.05, ['KeyW']); t += 0.05; low = Math.min(low, pl.z); }
+        tt += t;
+        if (Math.hypot(P[k][0] - pl.x, P[k][1] - pl.y) > 1.0) stuck = `stopped ${Math.hypot(P[k][0] - pl.x, P[k][1] - pl.y).toFixed(1)} m short of point ${k + 1} of ${P.length}, at ${pl.x.toFixed(1)}, ${pl.y.toFixed(1)}, ${pl.z.toFixed(1)}`;
+        else at = k;
+      }
+      checks.push([!stuck && Math.abs(pl.z - st.at[2]) < 0.2 && low > g.nav.terrain(P[0][0], P[0][1]) - 0.6 && pl.mode === 'foot',
+        `${st.name} Station is walked into ${st.way.name} (${stuck || `${P.length} points in ${tt.toFixed(0)} s, up to ${pl.z.toFixed(2)} m of the platform's ${st.at[2].toFixed(1)} m`})`]);
+      Object.assign(pl, { x: back.x, y: back.y, z: back.z, h: back.h, mode: 'foot', vehicle: null }); g.cam.yaw = back.yaw;
+      g.advance(0.3);
+    }
     // ---- a ride, where the line has a second station: from a platform, wait for a train that stops at the next
     // station, see its doors and the platform doors open, board it, ride, and get off onto the next station's platform
     const Rd = T.ride;

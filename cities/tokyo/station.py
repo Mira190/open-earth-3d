@@ -911,7 +911,7 @@ def hall(K, c, R, g, e, t, w_door, d_front, d_back, Z):
             white.box((*W(ua, -hw), g + VEST_H - 0.12), (*W(ua, hw), g + VEST_H - 0.12), 0.3, 0.24)
             um = (ua + ub) / 2
             K["tks_hall_light"].box((*W(um, -hw + 1.2), g + VEST_H - 0.03), (*W(um, hw - 1.2), g + VEST_H - 0.03), 0.22, 0.05)
-            LAMPS.append((*W(um, 0), g + VEST_H - 0.1, 26.0))
+            LAMPS.append((*W(um, 0), g + VEST_H - 0.7, 22.0))
         white.box((*W(u1, -hw), g + VEST_H - 0.12), (*W(u1, hw), g + VEST_H - 0.12), 0.3, 0.24)
         GLOWS.append([round(float(W((u0 + u1) / 2, 0)[0]), 1), round(float(W((u0 + u1) / 2, 0)[1]), 1), round(abs(u1 - u0) / 2 + 3, 1), "#ffe2b4", 0.5])
         # over the way into the hall, from the vestibule's ceiling up to the hall's opening: nothing (the opening is
@@ -962,6 +962,8 @@ def hall(K, c, R, g, e, t, w_door, d_front, d_back, Z):
         pos = W(apo * 0.86 * math.cos(q), apo * 0.86 * math.sin(q))
         LAMPS.append((*pos, g + H_GROUND + 0.8, 60.0))
         LAMPS.append((*pos, g + H_ENT + 1.4, 45.0))
+    for z, power in ((3.2, 240.0), (9.5, 260.0), (15.5, 260.0), (22.0, 220.0)):   # and the hall's own air: what its lamps and windows fill it with
+        LAMPS.append((*c, g + z, power))
     GLOWS.append([round(float(c[0]), 1), round(float(c[1]), 1), round(apo + 2, 1), "#ffe2b4", 0.6])
     BARE.append(shapely.union_all([octo.buffer(0.7), box_(uf - 0.8, u_end, hw + 0.5)]))
     return BARE[-1], box_(d_back - 0.5, u_end, hw), u_end
@@ -1505,7 +1507,7 @@ def assets(out_dir):
 
 # ---------------------------------------------------------------- entry
 
-GROUND = ("tks_hall_floor_a", "tks_hall_floor_b", "tks_hall_floor_c", "tks_chuo", "tks_chuo_roof",
+GROUND = ("tks_chuo", "tks_chuo_roof",
           "tks_asphalt", "tks_pavers", "tks_lawn", "tks_joint", "tks_groundcover", "tks_granite_a", "tks_granite_b", "tks_granite_c", "tks_paint",
           "tks_kerb", "tks_hedge")   # what lies on the ground: the landmark model's at every distance
 

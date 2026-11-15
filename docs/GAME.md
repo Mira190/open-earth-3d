@@ -986,7 +986,9 @@ pipeline writes. The only city-specific code is landmark geometry in
     station with another station ahead of it on the map; you stand in its third car by the doors.
     A station on a viaduct (`deck`) is only its platforms' level, not the street under it.
     `tools/trains_step.js` rides one stop, checks the doors open and that the ride is charged its fare
-    (Yurakucho to Tokyo, 155 yen); `tools/trains_ride.js <city>` runs that ride alone.
+    (Yurakucho to Tokyo, 155 yen); `tools/trains_ride.js <city>` runs that ride alone. A station's `way`
+    (`{name, pts}`: points from the street to a platform) is walked by the same step: Tokyo Station's, from
+    the plaza through the south dome's hall and up the stairs.
   - **Stations under the ground** (a station's `under`: `{text}`): a station off the drawn line, its
     `at` the street entrance, where it is boarded and left (`r`, a few metres). A ride to or from one
     runs in tunnel past the course's `hide_m`, where the cars are not drawn: the game veils the view

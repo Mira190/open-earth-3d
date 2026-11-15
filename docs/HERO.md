@@ -908,11 +908,54 @@ balusters), and `hero`, the streamed level `web/game/hero.js` draws within 420 m
 | Edges | `station.slab` chamfers a block's front towards each side that is built (22 mm): frames, sills, pediments, pilasters, balusters |
 | Surfaces | ambientCG CC0 at 1K: `Bricks059` (even facing brick, 0.85 m a repeat) and `RoofingTiles014A` with its fired red taken out for slate; cast stone is its colour alone (a scanned concrete's mottling read as blotches) |
 | Props | a pole with its sign and timetable at each mapped bus and taxi stand, granite benches under the shelters |
-| By device | high and medium tiers: all of it, the fine model (52,000 triangles: frames, sashes, balusters, props) within 110 m; low tier: the 29,000-triangle model with halved colour maps and no normal maps, never the fine model; a phone's lean tier no side over 1024 |
+| By device | high and medium tiers: all of it, the fine model (69,000 triangles: frames, sashes, balusters, props, the halls' reliefs) within 110 m; low tier: the 53,000-triangle model with halved colour maps and no normal maps, never the fine model; a phone's lean tier no side over 1024 |
 
-The level is 1.6 MB and its fine model 1.8 MB. Stills: `tools/scramble_shot.js tokyo tools/views/tokyo-marunouchi.json`.
+The level is 2.5 MB and its fine model 2.6 MB with the halls (1.6 and 1.8 MB before them). Stills: `tools/scramble_shot.js tokyo tools/views/tokyo-marunouchi.json`.
 Still short: the occlusion is where the generator marks it, not traced; ornament is chamfered blocks, not carved;
 the forecourt's ground is still the landmark model's (no baked contact with the walls).
+
+### The dome halls and the way to the trains (`station.py` `hall`, issues 412 and 490)
+
+Under each dome the station's hall is built and walked through: from the plaza, through the pavilion's three
+doorways (now open, their transoms glazed) and a vestibule, across the hall, and out of its far side through a
+passage under the block the Chuo Line's viaduct stands on to the passage under the tracks, where a flight and an
+escalator climb to each platform (`cities/tokyo/rail.py`). The spawn faces the south dome's doors, so the first
+hundred metres of the game now lead to a train.
+
+| | In the hall |
+|---|---|
+| Plan and section | an octagon on the mapped dome's outline (11.2 m to its corners, 19 m across its faces inside: about 19 m is the published figure), the inner dome's crown at 29.6 m (published as about 28 m, and as over 30 m) |
+| Ground storey | pale stone, an opening 6 m wide a face: the two on the axis are the ways through, the other six glazed fronts |
+| Above | yolk-yellow plaster between white pilasters: the first-floor gallery's three windows a face, the second floor's great arch with its keystone, balcony and iron rail, the entablature, and the drum with the outer wall's three windows a face |
+| The dome | eight gores of plaster between dark red-brown ribs, three rings, coffers with a white flower in each, the red-brown disc at the crown with its wheel and the ring of clematis |
+| Reliefs | the eight eagles, 2.1 m across the wings, under the entablature at the corners; the zodiac's eight roundels, grey-green, in the corners at the arches' height. The animals themselves and the keystones' helmets are not carved |
+| Floor | granite in the figure the real floor has: a pale disc and three rings of sixteen stones, dark beside pale, growing outward (the real floor repeats the post-war dome's ceiling in four marbles) |
+| Light | baked: lamps on the first cornice and under the drum, and down the vestibules' ceilings. A room's materials (`room*`, `web/game/hero.js`) take their baked light by day as well, and less of the sky's |
+| By device | the reliefs, the coffers and the balusters are in the fine model: a phone goes without them, and keeps the walls, the dome, the ribs and the floor |
+
+The collision is the hall's own walls: the two domes' and pavilions' solids come down (`landmarks.json`
+`demolished`), as does the plain block behind the building, which is redrawn as one mass with the two passages
+through it (`station.py` `chuo`; the Chuo Line's platforms on it are issue 480). No lamp post of the map's stands
+inside (`landmarks.json` `treeless`, `web/streets.js`; `city.json` `night.clear`).
+
+Sources: Jiji Press (the hall about 19 m across and 28 m high); Architectural Institute of Japan, *AIJ Journal of
+Technology and Design* 19 (43), 2013 (the restored plaster's colours, the reliefs, the gallery); JBpress and Nikkei
+(the floor); Kajima (eaves 16.7 m). Photographs looked at (Wikimedia Commons; none reproduced, no texture taken):
+
+| File | Author | Licence | Used for |
+|---|---|---|---|
+| Tokyo sta DOME.jpg | Kei365 | CC BY-SA 3.0 | the section from the floor to the crown |
+| 2014-12-24 Ceiling of Tokyo Station Marunouchi Building.jpg | Wei-Te Wong | CC BY-SA 2.0 | the dome's ribs, rings, coffers and disc; the light at night |
+| Relief of North and South domes in Tokyo station.JPG | 名無し野電車区 | CC BY-SA 3.0 | the eagles and the roundels |
+| Tokyo Station Innen 1.jpg | Zairon | CC BY-SA 4.0 | the floor's rings |
+| JR Tokyo Station (50762242212).jpg | Kzaral | CC BY 2.0 | the storeys' heights |
+
+Short of the bar still: the ground storey's six side bays are plain glazed fronts (the real hall has the ticket
+gates, the ticket office and the hotel's and gallery's doors there: issue 480); the zodiac animals, the helmets and
+the capitals are not carved; the plaster is a colour, not a scanned surface.
+
+**Traced occlusion.** The level's occlusion is now ray-cast (`hero_kit.sky_occlusion`, `sky_rays` 12 over 4 m), with
+the generator's marks kept where it knows better (a reveal at the glass).
 
 **Tokyo's own daylight** (`cities/tokyo/city.json` `game.look`). The cool cast on pale surfaces was not the
 materials: the map took the default look preset, whose blue shade turned cream stone, white granite and

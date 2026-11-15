@@ -35,6 +35,7 @@ MAT = {
     # (room*: lit by its own lamps by day as well, web/game/hero.js)
     "tks_hall_wall": "room_plaster", "tks_hall_white": "room_white", "tks_hall_relief": "room_relief", "tks_hall_stone": "room_stone",
     "tks_hall_green": "room_green", "tks_hall_rib": "room_rib", "tks_hall_ceiling": "room_ceiling", "tks_hall_light": "room_tube", "tks_hall_day": "room_day",
+    "tks_hall_floor_a": "room_floor_a", "tks_hall_floor_b": "room_floor_b", "tks_hall_floor_c": "room_floor_c",
 }
 FINE_OK = ("stone_plain", "paint_sash", "metal_iron", "stone_bench", "room_relief")   # plain materials: what the fine model may carry
 REPEAT = {"wall_brick": 0.85, "roof_slate": 2.2}
@@ -67,6 +68,9 @@ def materials(K):
         "room_stone": {"color": (0.6, 0.54, 0.44), "rough": 0.6},
         "room_green": {"color": (0.27, 0.36, 0.28), "rough": 0.8},
         "room_rib": {"color": (0.14, 0.04, 0.022), "rough": 0.7},
+        "room_floor_a": {"color": (0.6, 0.56, 0.48), "rough": 0.35},
+        "room_floor_b": {"color": (0.27, 0.26, 0.24), "rough": 0.35},
+        "room_floor_c": {"color": (0.045, 0.045, 0.05), "rough": 0.3},
         "room_ceiling": {"color": (0.86, 0.81, 0.7), "rough": 0.8, "emissive": (1.0, 0.8, 0.52), "glow": 0.5},
         "room_tube": {"color": (0.92, 0.86, 0.74), "rough": 0.4, "emissive": (1.0, 0.76, 0.46), "glow": 2.0},
         "room_day": {"color": (0.58, 0.67, 0.72), "rough": 0.2, "emissive": (0.6, 0.72, 0.82), "glow": 0.25},
@@ -110,6 +114,10 @@ def build(K):
         tri = np.asarray(m.i, int).reshape(-1, 3)
         # normals: each face's own, summed at the vertices it shares (a quad's two triangles, a lathe's rings)
         fn = np.cross(P[tri[:, 1]] - P[tri[:, 0]], P[tri[:, 2]] - P[tri[:, 0]])
+        keep = np.linalg.norm(fn, axis=1) > 1e-7   # (a sliver left where a floor's figure was cut on the ground's triangles has no face)
+        tri, fn = tri[keep], fn[keep]
+        if not len(tri):
+            continue
         N = np.zeros_like(P)
         for k in range(3):
             np.add.at(N, tri[:, k], fn)
@@ -129,9 +137,11 @@ def build(K):
         n = np.array([-nx * 0.5, -ny * 0.5, 0.87])
         geo.emitters.append((np.array([x, y, z]), n / np.linalg.norm(n), 0.5, np.array([1.0, 0.7, 0.42]) * 150.0))
     # the halls' lamps: on the first cornice and under the drum, and down the vestibules' ceilings
+    # (each shines every way: down on the floor, up into the dome, and across onto the walls, as a cove's light does
+    # once it has bounced)
     for x, y, z, power in ST.LAMPS:
-        geo.emitters.append((np.array([x, y, z]), np.array([0.0, 0.0, -1.0]), 0.6, np.array([1.0, 0.78, 0.5]) * power))
-        geo.emitters.append((np.array([x, y, z]), np.array([0.0, 0.0, 1.0]), 0.6, np.array([1.0, 0.78, 0.5]) * power * 0.6))   # (and up: the dome is lit from its cornices)
+        for d, k in (((0.0, 0.0, -1.0), 1.0), ((0.0, 0.0, 1.0), 0.6), ((1.0, 0.0, 0.0), 0.5), ((-1.0, 0.0, 0.0), 0.5), ((0.0, 1.0, 0.0), 0.5), ((0.0, -1.0, 0.0), 0.5)):
+            geo.emitters.append((np.array([x, y, z]), np.array(d), 0.6, np.array([1.0, 0.8, 0.56]) * power * k))
     # the transport plazas at real sizes: a pole with its round sign and timetable at each mapped stand, and granite
     # benches under the shelters (plain materials, in the fine model: a phone goes without them)
     F = geo.fine

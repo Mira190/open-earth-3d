@@ -157,7 +157,10 @@ name or class: a vent's or a stair's cover. It was drawn as a one-storey house w
 it is drawn plain now, and so is the M8 exit's own cover (`pipeline/arcades.py`, low structures). Not
 checked against a photograph: Wikimedia Commons refused this session's requests. (#290: Commons answered, but its photographs of the Marunouchi north side
 show the station's dome and the plaza from far off; none shows the block. GSI's aerial photograph has a pale
-rectangle there, consistent with a low cover. Left plain.) (#323: M8 is the stair up to the north bus and taxi stands of the Marunouchi plaza, beside the
+rectangle there, consistent with a low cover. Left plain.) (#323, cut on 15 November 2026: a last look found one street-level frame that probably shows the exit, KartaView
+sequence 3442085, 2019, CC BY-SA 4.0: a flat dark steel roof on slim posts over glass sides, its number not
+legible; nothing shows the slab itself, so it stays plain and the item is closed.)
+(M8 is the stair up to the north bus and taxi stands of the Marunouchi plaza, beside the
 Shin-Marunouchi Building (Yahoo! transit's exit list); Commons and Openverse have no photograph of it. Left plain.)
 
 ### The Imperial Palace
@@ -222,8 +225,15 @@ stations on it, and the courses of the trains.
     laid, wired and numbered, with no train of this timetable on them.
   - The Keihin-Tohoku Line's rapid trains (10:30 to 15:30) stop at Tokyo and run through Yurakucho
     and Shimbashi (a service's `rapid_at`, `web/game/trains.js`).
-  - The passages OpenStreetMap maps under the tracks (north, central, south) are the openings in the
-    viaduct, with two flights and an escalator up to each platform from the central one.
+  - The passages OpenStreetMap maps under the tracks (north, central, south) are openings in the
+    viaduct. The two on the Marunouchi building's domes carry the stairs: a flight and an escalator
+    up to each platform from each, and each runs on west into its dome's hall
+    (`cities/tokyo/station.py`, docs/HERO.md), so the platforms are walked to from the plaza.
+    `tools/trains_step.js` walks it (a station's `way`) and then rides from Yurakucho to Tokyo.
+  - For a phone: the overhead line, the canopies' brackets and the platform doors' glass are
+    `detail` (never unpacked on the low tier), lamps are one lit face, the roofs are 8 m panels, and
+    what nobody can walk into (rails, lamps, signs, parapets beside the tracks) is not solid, so the
+    collision world holds as many boxes as before the station was built (522,781 against 522,635).
   - The fare: 155 yen by IC card from Tokyo to Yurakucho or Shimbashi (`cities/tokyo/life.json`).
   - Not built here: the Chuo Line's platforms 1 and 2 on their higher viaduct and the Shinkansen's
     platforms, which stay the city model's solids, and the gates and crowds (issue 480).

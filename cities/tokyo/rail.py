@@ -60,6 +60,9 @@ STATIONS = [
     # no fascia on the west, where the passage runs on into the building
     {"key": "tokyo", "name": "Tokyo", "native": "東京", "kana": "とうきょう", "romaji": "Tōkyō", "s": (590.0, 945.0), "refs": ("3;4", "5;6", "7;8", "9;10"),
      "passages": [(695.0, (1,)), (889.0, (-1,))], "fascia": (1,),
+     # the way in on foot, for the game's check: from the plaza before the south dome's doors, through its hall and the
+     # passage (station.py: the dome's centre, 26 m and 33 m along its axis either way), to the stairs to platforms 5 and 6
+     "way": {"hall": (610.2, 1167.6), "axis": (0.943, -0.333), "out_m": 26.0, "in_m": 33.0, "platform": 5},
      "codes": {"yamanote": "JY 01", "keihin": "JK 26", "tokaido": "JT 01"}, "prev": ("有楽町", "Yūrakuchō"), "next": ("神田", "Kanda"),
      "prev_line": {"tokaido": ("新橋", "Shimbashi")}, "next_line": {"tokaido": ("上野", "Ueno")}},
 ]
@@ -1028,6 +1031,13 @@ def trains():
         c = np.mean(fs, axis=0)
         stations.append({"id": S["key"], "name": S["name"], "native": S["native"], "kana": S["kana"], "at": [round(float(c[0]), 1), round(float(c[1]), 1), RAIL_Z + PLAT],
                          "hear_m": 150, "r": round(max(p["frames"][-1][0] - p["frames"][0][0] for p in S["plats"]) / 2 + 8, 1)})
+        if S.get("way"):   # from the street to a platform on foot: the points a walker makes for, the last on the platform
+            w = S["way"]
+            h, e = np.array(w["hall"]), np.array(w["axis"])
+            st = min((q for q in L["stairs"] if any(p["key"] == q["plat"] and w["platform"] in p["nums"] for p in S["plats"])),
+                     key=lambda q: float(np.linalg.norm(q["a"] - h)))
+            pts = [h - e * w["out_m"], h, h + e * w["in_m"], st["a"] - st["t"] * 1.6, st["a"] + st["t"] * 1.0, st["b"] + st["t"] * 2.5]
+            stations[-1]["way"] = {"name": "from the Marunouchi South Entrance to platforms 5 and 6", "pts": [[round(float(q[0]), 1), round(float(q[1]), 1)] for q in pts]}
     for t in L["tracks"]:
         pts = t["pts"] if t["south"] else t["pts"][::-1]    # in the direction of travel
         g = LineString(pts)
