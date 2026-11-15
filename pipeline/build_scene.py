@@ -1711,6 +1711,13 @@ def write_index():
             f = lambda n: n + (".bin" if n in c["packed"] else ".json")
             model = size([f("scene"), f("buildings"), f("places"), f("landmarks"), f("terrain"), "uncertainty.json"])
             c["load_bytes"] = {"model": model, "game": model + size([f("game")])}
+            # a map whose game has a story (web/game/story.js): its title, for the globe to open on from a story's link (title.js)
+            gp = os.path.join(data, "game.json")
+            st = json.load(open(gp, encoding="utf8")).get("story") if os.path.exists(gp) else None
+            if st and st.get("title"):
+                c["story"] = st["title"]
+            else:
+                c.pop("story", None)
             # a phone's district of the map (pipeline/district.py): its packs, cut round the start, and what a phone's
             # game downloads with them
             dm = os.path.join(data, "d", "district.json")

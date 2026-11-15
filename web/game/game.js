@@ -2918,30 +2918,24 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
 
   // ------------------------------------------------------------ quests, in parallel lines
-  // A city's quests come in lines (game.json "lines", from city.json): each line is a
-  // chain of quests that runs on its own, and a line opens once the lines it comes
-  // after are finished. A prologue opens the others and a finale waits for them. Every
-  // open line's current step can complete, tracked or not; the HUD, the route and the
-  // beam follow the tracked line. Without "lines", all the quests make one line.
-  const Q = G.quests || [];
-  const LINES = (G.lines && G.lines.length ? G.lines : [{ id: 'main', title: '' }]).map(l => Object.assign({ after: [] }, l));
-  for (const l of LINES) l.quests = Q.filter(q => (q.line || LINES[0].id) === l.id);
-  const lineById = id => LINES.find(l => l.id === id);
-  const freshQs = () => ({ lines: {}, track: LINES[0].id, stamps: [], visited: {}, docked: false });
-  let qs = freshQs();
-  const ls = l => qs.lines[l.id] || (qs.lines[l.id] = { qi: 0, started: false, si: -1, inspected: [], rideFrom: null });
-  const lineDone = l => ls(l).qi >= l.quests.length;
-  const lineOpen = l => l.after.every(id => lineById(id) && lineDone(lineById(id)));
-  const openLines = () => LINES.filter(l => lineOpen(l) && !lineDone(l));
-  function tracked() { // the tracked line, or the first open one when it is finished or shut
-    let l = lineById(qs.track);
-    if (!l || !lineOpen(l) || lineDone(l)) { l = openLines()[0] || null; if (l) qs.track = l.id; }
-    return l;
-  }
-  const questOf = l => (l ? l.quests[ls(l).qi] : null);
-  const stepOf = l => (l && ls(l).started && questOf(l) ? questOf(l).steps[ls(l).si] : null);
-  const quest = () => questOf(tracked());
-  const step = () => stepOf(tracked());
+  // The lines, what is done of them and the rules a step is met by are goals.js (OEGoals), which knows no
+  // city and draws nothing; here is what the game shows when they move on, and where each step leads.
+  const goals = OEGoals.create(G, {
+    when: () => `${clock.d} ${MONTHS[clock.m - 1]} ${fmtMin(clock.min)}`,
+    save: () => save(),
+    next: s => H.toast(`<b>Next:</b> ${said(s.text)}`),
+    begun: q => H.toast(`<b>${q.title}</b><span>${said(q.steps[0].text)}</span>`),
+    done: (q, l, opened) => {
+      A.chime(); A.thump();
+      H.stamp(q.stamp, q.title);
+      if (life) { life.note(`Stamp: ${q.stamp}`, 'stamp'); life.emit('stamp', { id: q.id, stamp: q.stamp }); }
+      for (const x of opened) if (x.on_open) setTimeout(() => H.toast(x.on_open), 2600);
+      renderPassport();
+    },
+    met: s => { if (s.type === 'sun' && life) life.emit('sun', { place: s.place }); },
+    tracking: (l, asked) => { guide.key = ''; if (asked) H.toast(`Tracking <b>${l.title || questOf(l).title}</b>`); },
+  });
+  const { Q, LINES, qs, ls, lineById, lineDone, lineOpen, openLines, tracked, questOf, stepOf, quest, step, completeStep, completeQuest, startQuest } = goals;
   function objective(l = tracked()) {
     const q = questOf(l);
     if (!q) return null;
@@ -2961,46 +2955,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (s.type === 'inspect' || s.type === 'gable') out.text += ` (${ls(l).inspected.length}/${(s.sources || s.kinds).length})`;
     return out;
   }
-  function completeStep(l) {
-    const st = ls(l);
-    st.si++;
-    if (st.si >= questOf(l).steps.length) completeQuest(l);
-    else { H.toast(`<b>Next:</b> ${said(questOf(l).steps[st.si].text)}`); save(); }
-  }
-  function completeQuest(l = tracked()) {
-    const q = questOf(l), wasOpen = new Set(openLines());
-    qs.stamps.push({ id: q.id, stamp: q.stamp, title: q.title, at: `${clock.d} ${MONTHS[clock.m - 1]} ${fmtMin(clock.min)}` });
-    A.chime(); A.thump();
-    H.stamp(q.stamp, q.title);
-    if (life) { life.note(`Stamp: ${q.stamp}`, 'stamp'); life.emit('stamp', { id: q.id, stamp: q.stamp }); }
-    Object.assign(ls(l), { qi: ls(l).qi + 1, started: false, si: -1, inspected: [], rideFrom: null });
-    if (lineDone(l)) { // lines this one was holding back open now
-      const opened = openLines().filter(x => !wasOpen.has(x));
-      for (const x of opened) if (x.on_open) setTimeout(() => H.toast(x.on_open), 2600);
-      if (opened.length === 1) qs.track = opened[0].id;
-    }
-    renderPassport();
-    save();
-  }
-  function startQuest(l, q) {
-    Object.assign(ls(l), { started: true, si: 0 });
-    qs.track = l.id;
-    if (!q.steps.length) completeQuest(l);
-    else { H.toast(`<b>${q.title}</b><span>${said(q.steps[0].text)}</span>`); save(); }
-  }
   function talkTo(n) {
     n.talking = true;
     const finish = () => { n.talking = false; };
-    // a line waiting to talk to this person moves on, and may hand over its next quest
-    for (const l of openLines()) {
-      const s = stepOf(l);
-      if (!s || s.type !== 'talk' || s.npc !== n.id) continue;
-      completeStep(l);
-      const nq = questOf(l);
-      if (nq && nq.giver === n.id && !ls(l).started && lineOpen(l)) return giveQuest(n, l, nq);
-    }
-    const ready = openLines().find(l => questOf(l).giver === n.id && !ls(l).started);
-    if (ready) return giveQuest(n, ready, questOf(ready));
+    const given = goals.talked(n.id); // a line waiting to talk to this person moves on, and may hand over its next quest
+    if (given) return giveQuest(n, given.line, given.quest);
     if (life && life.talk(n)) return; // someone you are getting to know, when they are free (bonds.js)
     dlg.show(n, [said(n.idle[Math.floor(srnd() * n.idle.length)]) || smalltalk(n.x, n.y)], null, finish);
   }
@@ -3021,26 +2980,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // arriving at a district: track the open line whose next quest is given by someone standing there (#359: Haru at
   // Sangenjaya), not the map's first line, whose giver may be across the map
-  function trackNear(at, within = 250) {
-    let best = null, bd = within;
-    for (const l of openLines()) {
-      const q = questOf(l), n = q && !ls(l).started ? npcById(q.giver) : null;
-      const d = n ? Math.hypot(n.x - at[0], n.y - at[1]) : Infinity;
-      if (d < bd) { bd = d; best = l; }
-    }
-    if (best) { qs.track = best.id; guide.key = ''; }
-  }
-  // track the next open line (T, or a tap on its name in the quest card)
-  function cycleTrack(id) {
-    const open = openLines();
-    if (!open.length) return;
-    const cur = tracked(), next = id ? lineById(id) : open[(open.indexOf(cur) + 1) % open.length];
-    if (!next || !open.includes(next)) return;
-    qs.track = next.id;
-    guide.key = '';
-    if (open.length > 1 || id) H.toast(`Tracking <b>${next.title || questOf(next).title}</b>`);
-    save();
-  }
+  function trackNear(at, within = 250) { if (goals.trackNear(at, id => { const n = npcById(id); return n ? [n.x, n.y] : null; }, within)) guide.key = ''; }
+  const cycleTrack = id => goals.cycle(id); // track the next open line (T, or a tap on its name in the quest card)
   // the gait on foot, shown beside the sun chip with its keys (hidden off foot)
   let gaitShown = '', gaitRest = 0;
   function gaitChip(g) {
@@ -3057,25 +2998,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     el.innerHTML = touch ? `<b>${{ walk: 'Walking', run: 'Running', sprint: 'Sprinting' }[want]}</b>`
       : `<b>${{ walk: 'Walking', run: 'Running', sprint: 'Sprinting' }[want]}</b><span><kbd>X</kbd> ${want === 'walk' ? 'run' : 'walk'} · <kbd>Shift</kbd> sprint</span>`;
   }
-  function checkSteps() {
-    for (const l of openLines()) {
-      const s = stepOf(l);
-      if (!s) continue;
-      if (s.type === 'surface' && player.mode === 'foot' && player.floor === s.surface) {
-        const st = nav.strips.find(x => x.name === s.surface), [u] = nav.stripUV(st, player.x, player.y);
-        if (u >= s.u[0] && u <= s.u[1]) completeStep(l);
-      } else if (s.type === 'land' && player.mode === 'heli' && heli.st.landed && inPlace(placeByName(s.place), heli.st.x, heli.st.y)) completeStep(l);
-      else if (s.type === 'sun' && player.mode === 'foot' && sunState === 'sun' && clock.m === s.date[0] && clock.d === s.date[1] &&
-        clock.min >= S.hm(s.window[0]) && clock.min <= S.hm(s.window[1]) && inPlace(placeByName(s.place), player.x, player.y)) { if (life) life.emit('sun', { place: s.place }); completeStep(l); }
-      else if (s.type === 'inspect' && s.sources.every(k => ls(l).inspected.includes(k))) completeStep(l);
-      else if (s.type === 'gable' && s.kinds.every(k => ls(l).inspected.includes(k))) completeStep(l);
-      else if (s.type === 'visit' && player.mode === 'foot' && (!s.after_dark || sun.altitude < -0.5) &&
-        (s.place ? inPlace(placeByName(s.place), player.x, player.y) : Math.hypot(player.x - s.at[0], player.y - s.at[1]) < (s.radius || 25))) completeStep(l);
-      else if (s.type === 'penguins' && player.mode === 'foot' && colonies.some(c => c.near(player.x, player.y, s.radius || 40) >= (s.count || 5))) completeStep(l);
-    }
-  }
+  // the world as the goals' rules read it (goals.js met)
+  const goalWorld = {
+    get mode() { return player.mode; }, get x() { return player.x; }, get y() { return player.y; }, get floor() { return player.floor; },
+    get sunState() { return sunState; }, get sunAlt() { return sun.altitude; }, clock,
+    get landed() { return heli.st.landed ? [heli.st.x, heli.st.y] : null; },
+    stripU: name => nav.stripUV(nav.strips.find(x => x.name === name), player.x, player.y)[0],
+    inPlace: (name, x, y) => inPlace(placeByName(name), x, y),
+    colonyNear: r => colonies.reduce((m, c) => Math.max(m, c.near(player.x, player.y, r)), 0),
+  };
+  const checkSteps = () => goals.check(goalWorld);
   // who an open line wants to talk to, and where the lines you are not tracking lead
-  const wantsTalk = n => openLines().some(l => { const s = stepOf(l); return ls(l).started ? s && s.type === 'talk' && s.npc === n.id : questOf(l).giver === n.id; });
+  const wantsTalk = n => goals.wantsTalk(n.id);
   const sideObjectives = () => openLines().filter(l => l !== tracked()).map(l => objective(l)).filter(o => o && o.at);
   // the quest card's row of open lines: tap one to track it
   let linesKey = '';
@@ -3088,20 +3022,6 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     el.hidden = open.length < 2;
     el.innerHTML = open.map(l => `<button data-line="${l.id}" aria-pressed="${l === cur}" title="Track this walk">${l.title || questOf(l).title}<span class="num">${ls(l).qi}/${l.quests.length}</span></button>`).join('')
       + (touch ? '' : '<span class="key"><kbd>T</kbd> switch</span>');
-  }
-  // a save from before the lines (one chain, qs.qi): the stamps say which quests are done
-  function migrate(old) {
-    if (!old || old.lines) return old;
-    const out = Object.assign(freshQs(), { stamps: old.stamps || [], visited: old.visited || {}, docked: !!old.docked, trig: old.trig, guesses: old.guesses });
-    const done = new Set(out.stamps.map(x => x.id)), cur = Q[old.qi];
-    for (const l of LINES) {
-      const st = out.lines[l.id] = { qi: 0, started: false, si: -1, inspected: [], rideFrom: null };
-      while (st.qi < l.quests.length && done.has(l.quests[st.qi].id)) st.qi++;
-      const q = l.quests[st.qi];
-      if (q && cur && cur.id === q.id && old.started) Object.assign(st, { started: true, si: Math.min(old.si, q.steps.length - 1), inspected: old.inspected || [], rideFrom: old.rideFrom || null });
-      if (q && cur && cur.id === q.id) out.track = l.id;
-    }
-    return out;
   }
 
   // ------------------------------------------------------------ save (this browser only)
@@ -3139,6 +3059,41 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const k of ['OEStyle', 'OEBonds', 'OEJobs', 'OEKeeps', 'OEPhone', 'OEFares', 'OEFx']) if (window[k]) window[k].create(life);
     fetch('data/life.json', { signal: ac.signal }).then(r => r.json()).then(ix => (ix.maps.includes(cityId) ? fetch(`data/${cityId}/life.json`, { signal: ac.signal }).then(r => r.json()) : null)).then(d => life.load(d)).catch(() => {});
   }
+  // ------------------------------------------------------------ the story (story.js): a map's episodes, and the Stop, in which
+  // the world is given no time while the player walks on. Asked for with ?story=1 while it is being made.
+  const story = window.OEStory && G.story && new URLSearchParams(location.search).has('story') ? OEStory.create({
+    story: G.story, stage, player, toast: t => H.toast(t),
+    walking: () => { const j = junctions.J.find(q => q.scramble && Math.hypot(q.x - player.x, q.y - player.y) < 80); return j && j.ph === 3 && j.st === 'g' ? j.t : -1; },
+    say: (who, lines, done) => dlg.show(Object.assign({ color: '#9fc4ff' }, who), lines.map(l => fill(l)), null, done),
+    hush: on => { if (A.hush) A.hush(on); },
+    dress: (date, light, wx) => {
+      const [m, d] = date || [clock.m, clock.d];
+      setClock(clock.y, m, d, S.presetTime(light, clock.y, m, d));
+      if (wx && weather) weather.set(wx);
+    },
+    walkIn: secs => {
+      const j = junctions.J.find(q => q.scramble && Math.hypot(q.x - player.x, q.y - player.y) < 80);
+      if (j) { junctions.walkIn(j, secs); cars.clearBox(j.x, j.y, 45); musterScramble(); }
+    },
+    // an afterimage: someone of another year, pale and half there, who alone moves in the stopped world
+    figure: (a, at) => {
+      const rig = makeRig({ character: a.character, scale: 1 }), z = Math.max(0, nav.terrain(at[0], at[1]));
+      const tint = new THREE.Color(0x9fc4ff);
+      rig.root.traverse(o => {
+        if (!o.isMesh || !o.material) return;
+        o.castShadow = false;
+        o.material = o.material.clone();
+        Object.assign(o.material, { transparent: true, opacity: 0.82 });
+        if (o.material.color) o.material.color.lerp(tint, 0.7);
+        if (o.material.emissive) { o.material.emissive.set(0x6f9cff); o.material.emissiveIntensity = 1.5; }
+      });
+      rig.root.position.copy(W(at[0], at[1], z));
+      world.add(rig.root);
+      let t = 0;
+      return { x: at[0], y: at[1], z, face: (x, y) => { rig.root.rotation.y = Math.PI - Math.atan2(x - at[0], y - at[1]); },
+        animate: dt => { t += dt; rig.animate(dt, 0, 'ground', t); }, remove: () => world.remove(rig.root) };
+    },
+  }) : null;
   let postCame = null; // the postcards asked for, once a visit (postcards.js brings nothing sooner than six hours after the last)
   function renderPassport() {
     $('#gp-stamps').innerHTML = LINES.flatMap(l => l.quests).map(q => {
@@ -3595,7 +3550,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const v of fer.vessels) if (v.stops.includes(wid) && (!toward || v.stops.includes(toward))) { const t = fer.eta(v, wid); if (!best || t < best.t) best = { v, t }; }
     return best;
   }
-  const rideSteps = () => [tracked(), ...openLines()].filter(Boolean).map(l => [l, stepOf(l)]).filter(([, s]) => s && s.type === 'ride');
+  const rideSteps = goals.rideSteps;
   const rideTarget = wid => { const r = rideSteps().find(([, s]) => s.from === wid); return r ? r[1].to : null; };
   function nearWharf(x, y, r = 30) {
     let best = null, bd = r;
@@ -3701,7 +3656,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const spotStamps = () => (G.spots || []).filter(sp => sp.stamp);
   function spotDone(sp) {
     if (life) life.emit('spot', { id: sp.id, name: sp.name });
-    for (const l of openLines()) { const s = stepOf(l); if (s && s.type === 'spot' && s.spot === sp.id) completeStep(l); }
+    goals.spotSeen(sp.id);
     if (sp.stamp && !qs.stamps.some(s => s.id === `spot:${sp.id}`)) {
       qs.stamps.push({ id: `spot:${sp.id}`, stamp: sp.stamp, title: sp.name, at: `${clock.d} ${MONTHS[clock.m - 1]} ${fmtMin(clock.min)}` });
       A.chime();
@@ -3755,9 +3710,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
 
   function board(v, w) {
     player.mode = 'ferry'; player.vehicle = v; v.rider = true; lastBoard = w.id;
-    qs.visited[w.id] = true;
     if (life) life.emit('board', { kind: 'ferry', from: w.id, name: w.name, route: v.route }); // (the tap on: fares.js)
-    for (const [l, s] of rideSteps()) if (s.from === w.id) ls(l).rideFrom = w.id;
+    goals.boarded(w.id);
     cam.yaw = v.h + 0.9; cam.dist = 42; cam.pitch = 0.32;
     blendFrom(1, true); // (out over the deck from your shoulder, not a cut)
     H.toast(`Aboard ${v.name}, ${v.route}. Next stop: ${wharfById(fer.nextStop(v)).name}. <kbd>F</kbd> to skip ahead, <kbd>H</kbd> to take the helm.`);
@@ -3784,10 +3738,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     [player.x, player.y, player.z] = p;
     cam.distTo = 7.5; blendFrom(0.8, true); // (in from the train's 30 m to over your shoulder, eased: on foot it was left out there)
     if (life && car.moved) life.emit('ride', { kind: 'rail', from: car.from, to: here.id, name: here.name, route: car.line || railRide().name || '', m: car.fromAt ? Math.hypot(here.x - car.fromAt[0], here.y - car.fromAt[1]) : 0 });
-    for (const l of [tracked(), ...openLines()].filter(Boolean)) {
-      const s = stepOf(l);
-      if (s && s.type === 'rail' && car.from === s.from && here.id === s.to) { completeStep(l); break; }
-    }
+    goals.railed(car.from, here.id);
     save();
   }
   // a walkable spot close to (x, y), on the floor reached from z0 (the ground there if not given),
@@ -3811,7 +3762,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     cam.distTo = 7.5; blendFrom(0.8, true); // (in from the ferry's 42 m to over your shoulder, eased: on foot it was left out there)
     qs.visited[here] = true;
     if (life && lastBoard && lastBoard !== here) { const w0 = wharfById(lastBoard); life.emit('ride', { kind: 'ferry', from: lastBoard, to: here, name: w.name, route: v.route, m: w0 ? Math.hypot(w.berth[0] - w0.berth[0], w.berth[1] - w0.berth[1]) : 0 }); }
-    for (const [l, s] of new Map(rideSteps())) if (ls(l).rideFrom === s.from && here === s.to) completeStep(l);
+    goals.landedAt(here);
     A.engine(0);
     save();
   }
@@ -5128,7 +5079,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (life) life.reset();
     if ((player.mode === 'car' || player.mode === 'ride') && !stepOut(player.vehicle, player.mode === 'car' ? 'driver' : kerbSeat)) { player.vehicle.C.body.remove(player.rig.root); world.add(player.rig.root); player.rig.root.scale.setScalar(1); player.mode = 'foot'; player.vehicle = null; }
     if (ride) rideAway();
-    qs = freshQs(); renderPassport(); spawn(); H.toast('A fresh start: a new passport.'); $('#g-menu').hidden = true;
+    goals.reset(); renderPassport(); spawn(); H.toast('A fresh start: a new passport.'); $('#g-menu').hidden = true;
   });
 
   // ------------------------------------------------------------ start
@@ -5226,7 +5177,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   overture = window.OEOverture && G.overture ? OEOverture.create({ G, scene, CITY, W, world, camera, stage, cine, get live() { return live; }, handOver: (k, f) => handOver(k, f),
     junctions, crowd, footNet, crowdNet, nav, clock, setClock: (y, m, d, min) => setClock(y, m, d, min, !clock.own), player, spawn, tier: QC.name, reduced, sun: () => sun, U, DSM, Wd, weather, show, get atmos() { return atmos; },
     walkIn: (j, inS) => { junctions.walkIn(j, inS); if (inS > 0) { cars.clearBox(j.x, j.y, 45); musterScramble(); } } }) : null;
-  if (overture && OEOverture.due(CITY.id)) overture.prepareScore();
+  if (overture && (story || OEOverture.due(CITY.id))) overture.prepareScore();
   if (overture) $('#gm-overture').hidden = false;
   fillTimes($('#gt-timechoice'));
   if (DISTRICT && DISTRICT.postcard) { // a postcard's light, offered first: the place as the photograph has it
@@ -5247,7 +5198,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     playing = true;
     const was = [player.x, player.y, player.z];
     if (cont && saved) {
-      qs = Object.assign(qs, migrate(saved.qs));
+      goals.load(saved.qs);
       // back on the deck or roof where you left off; at the start if that is no longer in the map (a map split in two)
       const F = scene.frame, inMap = p => Array.isArray(p) && p[0] > F.x[0] + 20 && p[0] < F.x[1] - 20 && p[1] > F.y[0] + 20 && p[1] < F.y[1] - 20;
       if (inMap(saved.pos)) spawn(saved.pos, saved.pos[2] != null ? saved.pos[2] + 0.5 : undefined);
@@ -5268,9 +5219,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const dv = W(player.x, player.y, player.z).sub(W(...was));
     if (dv.lengthSq() > 1) { camera.position.add(dv); titleLook.add(dv); }
     const skip = OEOnboard.done() && $('#gt-skip-on').checked;
-    const then = () => (cont ? OEOnboard.markDone(CITY.id) : skip ? welcome(true) : startTour(() => welcome(false)));
+    const then = () => (story && !cont ? story.begin() : cont ? OEOnboard.markDone(CITY.id) : skip ? welcome(true) : startTour(() => welcome(false)));
+    if (story && !cont) story.dress(); // (the evening its first episode is set in, before the opening shot)
     // the map's overture (overture.js) the first time here, unless you continue or arrive at a district; else the opening shot
-    if (overture && !cont && !arrive && !reduced && OEOverture.due(CITY.id) && overture.play(then)) { renderPassport(); return; }
+    // (a story opens on the overture every time, in the evening its first episode is set in; ?overture=0 goes straight to the street)
+    if (overture && !cont && !arrive && !reduced && (story ? !/[?&]overture=0\b/.test(location.search) : OEOverture.due(CITY.id)) && overture.play(then)) { renderPassport(); return; }
     if (openingHere()) { // (#110: the opening shot, the scramble's walk turning green as it comes down)
       const j = junctions.J.find(q => q.scramble && Math.hypot(q.x - player.x, q.y - player.y) < 80);
       if (j) { junctions.walkIn(j, OPENING.walkIn); cars.clearBox(j.x, j.y, 45); musterScramble(); }
@@ -5369,6 +5322,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     setTimeout(afterPlayable, reduced ? 0 : 700); // (once the loader has faded)
     preTitle = false;
     $('#g-title').hidden = false;
+    // come from a story's link on the globe (title.js): no card to press, the story starts
+    { let auto = false; try { auto = !!story && sessionStorage.getItem('oe-story-auto') === cityId; if (auto) sessionStorage.removeItem('oe-story-auto'); } catch (e) { /* storage blocked */ }
+      if (auto) { stage.classList.add('story-auto'); setTimeout(() => startGame(false), 0); } }
     $('#g-loader').classList.add('out');
     setTimeout(() => {
       $('#g-loader').hidden = true; OEPlate.stop($('#g-loader'));
@@ -5494,7 +5450,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     gov.raf(now);
     if (!gov.due(now)) { requestAnimationFrame(frame); return; } // (the frame-rate cap on a faster display: this frame is not drawn)
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); // the first frame can be stamped before the loop started
-    last = now; if (!simHold) clockT += dt; // (a harness's hold: only advance() moves the world's clock)
+    last = now; if (!simHold && !(story && story.stopped)) clockT += dt; // (the Stop holds the world's clock; a harness's hold: only advance() moves the world's clock)
     U.uTime.value = clockT;
     const titleOn = preTitle || !hud('#g-title').hidden, paused = titleOn || !hud('#g-menu').hidden || (window.OEMetro && OEMetro.isOpen()) || photo.on || simHold;
     stage.classList.toggle('titled', titleOn);
@@ -5520,7 +5476,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (!paused) checkSteps();
     }
     if (!paused) simulate(dt);
-    if (!paused) { crossingSound(dt); if (!(overture && overture.active)) walkCalls.update(dt, camera); } // (the overture's score has the birds' calls in it)
+    if (!paused && !(story && story.stopped)) { crossingSound(dt); if (!(overture && overture.active)) walkCalls.update(dt, camera); } // (the overture's score has the birds' calls in it)
     else { if (places) places.hush(); if (trains) trains.hush(); } // a paused game (the title, the menu, photo mode) shows no caption
     if (player.mode !== 'heli' && !simHold) nav.prefetch(player.x, player.y); // the landmarks' fine collision ahead of the walker or the car, a few ms a frame (held by a harness: advance() lays them, below)
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
@@ -5535,11 +5491,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (hero) hero.update(camera, dt);
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) applyDensity();
     if (atmos) atmos.update(clockUtc, now / 1000, U);
-    weatherTick(simHold ? 0 : dt, titleOn, titleOn || paused || photo.on); // (held by a harness: the weather eases on only with advance(), which ticks it; stepped by the frames too, it eased by however many the machine drew, #420)
+    weatherTick(simHold || (story && story.stopped) ? 0 : dt, titleOn, titleOn || paused || photo.on); // (held by a harness: the weather eases on only with advance(), which ticks it; stepped by the frames too, it eased by however many the machine drew, #420)
     if (show) show.tick(now);
     if (window.OEKit) OEKit.setNight(U.uNight.value); // cabin windows and navigation lights
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
     if (life && !simHold) life.tick(dt, paused, titleOn); // (held by a harness: the day moves on only with advance())
+    if (story && !paused) story.tick(dt);
     if (!simHold) dlg.tick(dt); // (held by a harness: a conversation goes on only as it asks, dlg.tick, so that one closing on the real clock starts nothing at another step of its run)
     // HUD
     const ob = titleOn ? null : objective();
@@ -5551,7 +5508,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     beam.visible = !!target && !titleOn && Math.hypot(target[0] - (player.mode === 'heli' ? heli.st.x : player.x), target[1] - (player.mode === 'heli' ? heli.st.y : player.y)) > 45;
     if (target) { const f = nav.floorAt(target[0], target[1], Math.max(300, nav.terrain(target[0], target[1]) + 1)); beam.position.copy(W(target[0], target[1], f ? f.z : 0)); beam.scale.set(1, player.mode === 'heli' ? 4 : 1, 1); }
     const me = player.mode === 'heli' ? heli.st : player.mode === 'ferry' ? player.vehicle : player;
-    put('#gq-title', ob ? ob.title : (Q.length && LINES.every(lineDone) ? 'Free roam' : ''));
+    put('#gq-title', ob ? ob.title : (Q.length && goals.allDone() ? 'Free roam' : ''));
     if (!titleOn) renderLines();
     let trigLeft = 0;
     { const done = trigDone(); for (const v of VP) if (!done[v.id]) trigLeft++; }
@@ -5676,7 +5633,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         if (!inFrame(hs.x, hs.y, -DISTRICT_AIR + 2)) districtEdge();
       }
       for (const ev of events) {
-        if (ev.type === 'under_bridge') { H.toast(`<b>Under the ${ev.name || 'bridge'}!</b> ${G.under_bridge_note || ''}`); A.chime(); for (const l of openLines()) { const s = stepOf(l); if (s && s.type === 'under_bridge' && (!s.surface || s.surface === ev.surface)) completeStep(l); } }
+        if (ev.type === 'under_bridge') { H.toast(`<b>Under the ${ev.name || 'bridge'}!</b> ${G.under_bridge_note || ''}`); A.chime(); goals.flewUnder(ev.surface); }
         if (ev.type === 'bump' && clockT - bumpT > 2) { bumpT = clockT; H.toast('Careful! That was a building.'); }
       }
       A.rotor(heli.st.rotor, Math.abs(lift) + Math.abs(fwd) * 0.5);
@@ -5697,6 +5654,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       A.engine(0.3 + Math.min(1, Math.abs(v.speed) / 9) * 0.7);
       player.rig.animate(dt, 0, 'ground', clockT);
     }
+    if (story && story.stopped) dt = 0; // the Stop: you have moved; from here on the world is given no time
     if (fish) fishTick(dt, held ? 0 : Math.max(-1, Math.min(1, side)));
     if (coachHeli) coachHeli.update(dt); // (on into the step out, once landed)
     if (player.mode !== 'heli') { heli.update(dt, {}, []); A.rotor(heli.st.rotor * Math.max(0, 1 - Math.hypot(heli.st.x - player.x, heli.st.y - player.y) / 300)); }
@@ -6731,7 +6689,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   window.__game = { life, hero: () => hero, trips: () => junctions.trips(), pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
     afoot: () => player.mode !== 'car' || stepOut(myCar, 'driver', [player.x, player.y, player.z]), // (for a harness: out of the car where it stands, when no door has room)
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
-     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, glFound, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, boardRail, alightRail, railStation, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, framePhoto, trackNear, care, weather, crowdDraw: () => crowdDraw, life };
+     story, held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, glFound, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, boardRail, alightRail, railStation, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, framePhoto, trackNear, care, weather, crowdDraw: () => crowdDraw, life };
   return {
     stop() { if (window.OEMetro) OEMetro.close(); if (window.OEVis) OEVis.dispose(); keep(); if (fish && fish.api) fish.api.dispose(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

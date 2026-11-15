@@ -21,6 +21,8 @@
 #   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
 #   - checks each map's daily life (pipeline/life.py --check: people, ranks, places, sourced events, built);
 #   - prices rides by each map's fares (tools/fares_check.js: the rules, and every live table stop to stop);
+#   - plays each live map's lines and quests to the last stamp without a browser (tools/goals_check.js: the rules of
+#     web/game/goals.js, the data sound, a save kept and loaded, and which steps a phone cannot reach);
 #   - reads every line the games' characters say, in every city and reef site, for talk about the
 #     data or how the map was built (tools/voice_check.py: open data, PLATEAU, LiDAR, "rebuilt from"...);
 #   - runs each reef site's scripted test (reef/index.html?gametest=1);
@@ -43,6 +45,7 @@
 #   tools/check.sh telemetry            # the visitor and SLO events, and the game's save, only
 #   tools/check.sh astc                 # the device-side ASTC encoder against a real decoder, only
 #   tools/check.sh touch                # the game played by touch on a phone's page (tools/touch_check.js), only
+#   tools/check.sh story                # each live map's first story episode played through (tools/story_shot.js)
 #   tools/check.sh gl                   # the map opened as a device with its extras shed opens it: no refused WebGL call
 #   tools/check.sh all                  # every city, every reef site and the title
 #   tools/check.sh static               # the checks that open no browser only (packs, voice, life, rings...)
@@ -80,7 +83,7 @@ PARKED=$(tools/live_cities.sh --parked)
 REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || [ ! -f "web/data/$d/scene.json" ] || echo "$d"; done)   # a reef site: its scene built, no city game
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
 
-cities=() reefs=() title=0 loader=0 voice=0 telemetry=0 gl=0 shared= fish=0 astc=0 touch=0
+cities=() reefs=() title=0 loader=0 voice=0 telemetry=0 gl=0 shared= fish=0 story=0 astc=0 touch=0
 declare -A want=()   # the kinds to run for each city
 add_city() {   # a city, and the kinds of its checks to run (all of them when none is named)
   local c=$1 k
@@ -116,6 +119,7 @@ if [ $# -gt 0 ]; then
       astc) astc=1 ;;
       touch) touch=1 ;;
       gl) gl=1 ;;
+      story) story=1 ;;
       *) if is_in "$t" "$CITIES" || is_in "$t" "$PARKED"; then add_city "$t"
          elif is_in "$t" "$REEFS"; then add_reef "$t"
          else echo "unknown target: $t (cities: $(echo $CITIES); reef sites: $(echo $REEFS))"; exit 2; fi ;;
@@ -159,6 +163,8 @@ else
       tools/governor_unit.js) voice=1 ;;   # the governor's modelled devices, in the static checks
       web/world.js|web/glcare.js|web/mirror.js|web/water.js|web/surface.js|web/lens.js|web/game/atmosphere.js|web/game/ao.js|web/game/weather.js) shared_change; gl=1 ;;   # what draws into a target of its own: the passes a device's governor turns on and off
       tools/gl_error_probe.js|tools/sampler_probe.js) gl=1 ;;
+      web/game/story.js|tools/story_shot.js) shared_change; story=1 ;;   # a map's story and the Stop (tools/story_shot.js plays the first episode)
+      web/night.js|web/neon.js) shared_change; gl=1 ;;   # what adds a texture to the shared shaders (the units check)
       web/game/fishing.js|tools/fishing_*|pipeline/fishing.py)   # the cities with fishing spots only (docs/FISHING.md)
         if [ "$TIER" = full ]; then for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && add_city "$id"; done; else fish=1; fi ;;
       tools/game_check.js|tools/*_step.js|tools/*_walk.js|tools/npc_night.js|tools/ride_queue.js) shared_change game ;;   # a check's own script: that kind of check
@@ -193,11 +199,11 @@ if [ $plan -eq 1 ]; then   # the targets of this run, each one an argument to th
     [ -n "$rest" ] && echo "$c:$rest"
   done
   for r in "${reefs[@]}"; do echo "$r"; done
-  [ $title -eq 1 ] && echo title; [ $loader -eq 1 ] && echo loader; [ $telemetry -eq 1 ] && echo telemetry; [ $gl -eq 1 ] && echo gl; [ $astc -eq 1 ] && echo astc; [ $touch -eq 1 ] && echo touch
+  [ $title -eq 1 ] && echo title; [ $loader -eq 1 ] && echo loader; [ $telemetry -eq 1 ] && echo telemetry; [ $gl -eq 1 ] && echo gl; [ $story -eq 1 ] && echo story; [ $astc -eq 1 ] && echo astc; [ $touch -eq 1 ] && echo touch
   exit 0
 fi
 
-if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ] && [ $telemetry -eq 0 ] && [ $gl -eq 0 ] && [ $astc -eq 0 ] && [ $touch -eq 0 ]; then
+if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ] && [ $telemetry -eq 0 ] && [ $gl -eq 0 ] && [ $story -eq 0 ] && [ $astc -eq 0 ] && [ $touch -eq 0 ]; then
   echo "nothing to check: no change to a city, a reef site, the game, the renderer or the title"
   stamp "$@"
   exit 0
@@ -295,6 +301,16 @@ run_loader() {
     else echo "FAIL loader $m   ($(grep '^FAIL' "$OUT/load-$m.log" | head -1); see $OUT/load-$m.log)"; fi
   done
 }
+run_story() {   # a map's story (web/game/story.js, ?story=1): the first episode played beat by beat, on a small page (a software
+  # renderer draws the stopped world's grade slowly): the street runs, the Stop comes with the crossing full, the afterimage speaks
+  # as you reach her, and the world runs on
+  local c
+  for c in $CITIES; do
+    python3 -c "import json,sys; sys.exit(0 if json.load(open('web/data/$c/game.json', encoding='utf8')).get('story') else 1)" || continue
+    if timeout 2700 $X node tools/story_shot.js "$c" "$OUT/story-$c" 800x500 >"$OUT/story-$c.log" 2>&1; then echo "ok   story  $c: the first episode plays through its beats"
+    else echo "FAIL story  $c: $(grep '^FAIL\|pageerror' "$OUT/story-$c.log" | head -2 | cut -c1-160 | paste -sd ';' -)   (see $OUT/story-$c.log)"; fi
+  done
+}
 run_gl() {   # the map as an ordinary device opens it (issue 485; tools/gl_error_probe.js): the governor's extras shed from the
   # first frame, the scene multisampled, the ladder walked in play, and every WebGL call asked for its error. Shibuya,
   # the heaviest map, before landing; every live map in the full tier
@@ -370,6 +386,10 @@ EOF
   # between every pair of its stops. A second.
   if node tools/fares_check.js >"$OUT/fares.log" 2>&1; then tail -1 "$OUT/fares.log"
   else echo "FAIL fares  $(grep '^FAIL' "$OUT/fares.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/fares.log)"; fi
+  # each live map's goals (web/game/goals.js): the rules on a made-up map, and every map's lines and quests sound as
+  # data and played from the welcome to the last stamp with no browser. A second.
+  if node tools/goals_check.js >"$OUT/goals.log" 2>&1; then tail -1 "$OUT/goals.log"
+  else echo "FAIL goals  $(grep '^FAIL' "$OUT/goals.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/goals.log)"; fi
   # each city's packed buildings (buildings.bin, pipeline/pack.py) against its buildings.json: up to date,
   # and decoded by the browser's decoder (web/pack.js) to the same values. Ten seconds or so.
   if python3 pipeline/pack.py --check >"$OUT/pack.log" 2>&1 && node tools/pack_check.js >>"$OUT/pack.log" 2>&1; then
@@ -435,6 +455,7 @@ EOF
   [ $astc -eq 1 ] && run_astc
   [ $touch -eq 1 ] && run_touch
   [ $gl -eq 1 ] && run_gl
+  [ $story -eq 1 ] && run_story
 } | tee "$OUT/summary.txt"
 grep -q '^FAIL' "$OUT/summary.txt" && exit 1
 stamp "$@"
