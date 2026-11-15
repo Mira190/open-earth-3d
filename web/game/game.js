@@ -1027,7 +1027,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function kerbPose(pl, off) {
     roadNet.at(pl.line, pl.s, rq);
     const hx = rq.hx * pl.dir, hy = rq.hy * pl.dir, k = (off ?? OECars.kerbOf(roadNet.L[pl.line].c, roadNet.L[pl.line].cw)) * keepSign;
-    const x = rq.x - hy * k, y = rq.y + hx * k, f = nav.floorAt(x, y, rq.z + 1);
+    // (the floor a car's wheels take there, within a kerb of the road's own height: never a planter's or a plinth's top by it)
+    const x = rq.x - hy * k, y = rq.y + hx * k, f = nav.floorAt(x, y, rq.z + 0.3 + OECars.CAR_STEP - nav.STEP);
     return { x, y, z: f ? f.z : rq.z, h: Math.atan2(hx, hy) };
   }
   // a place on the roads moved along its street clear of a scramble: no stopping within 5 m of its
@@ -1075,6 +1076,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the kerb near (x, y) at about height z, a few metres along the road (so a car isn't put on top of
   // you), at a spot where your car is clear of the traffic, the lamp posts and the trees
   const scrambleJ = junctions.J.filter(j => j.scramble);
+  // would a car of half length hl and half width hw stand wedged at pose { x, y, z, h }: its body in a wall (the three
+  // circles down it that the walls push, cars.js drive), or part of it over a ledge higher than a kerb (cars.js ledgesUnder)
+  function wedged(pose, hl, hw) {
+    const fx = Math.sin(pose.h), fy = Math.cos(pose.h);
+    for (const o of [hl - hw, 0, hw - hl]) {
+      const cx = pose.x + fx * o, cy = pose.y + fy * o, q = nav.push(cx, cy, pose.z, hw + 0.04, 1.6);
+      if (Math.hypot(q.x - cx, q.y - cy) > 0.05) return true;
+    }
+    return OECars.ledgesUnder(nav, pose, hl, hw) > 0;
+  }
   function kerbNear(x, y, z, ahead = 9, within = 250) {
     const pl0 = offScramble(roads.place(x, y, within, keepSign, z), true);
     if (!pl0) return null;
@@ -1093,6 +1104,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         const pose = kerbPose(q);
         first = first || { pl: q, pose };
         if (nearJ(q.s) || cars.footprint(pose.x, pose.y, pose.z, pose.h, half, hw, 0.3) > 0) continue;
+        if (wedged(pose, half, hw)) continue; // (not into a wall nor half over a ledge a car cannot climb: it would stand there wedged)
         if (scrambleJ.some(j => Math.hypot(j.x - pose.x, j.y - pose.y) < 36)) continue; // (not at the mouth of a scramble, its crowd crossing every way)
         let hit = false;
         const fx = Math.sin(pose.h), fy = Math.cos(pose.h);

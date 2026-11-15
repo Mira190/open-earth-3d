@@ -466,13 +466,33 @@ window.OECars = (function () {
   // your own car's tyres in the weather: a little over half of what the grip loses is felt (0.87 wet, 0.73 on snow), so that
   // a bend runs wider and a stop takes longer without the car turning undrivable
   const GW = () => 0.55 + 0.45 * WX.grip;
+  // the highest kerb a car mounts (m). A walker steps up 0.75 m (nav.js STEP): onto a planter's coping, a plinth, a low
+  // wall's top, which a car's tyres meet as a wall. Driven with a walker's step, your car went up onto Hachiko Square's
+  // planter (0.72 m) from the kerb beside it and stood there on its edge, nose and side up against the wall behind
+  const CAR_STEP = 0.25;
+  // the floor a car's wheels at height z stand on at (x, y): the highest surface no more than CAR_STEP over them
+  const carFloor = (nav, x, y, z) => nav.floorAt(x, y, z - (nav.STEP - CAR_STEP));
+  // is there a ledge at (x, y) under a car at height z: a surface over its floor there by more than a kerb, and low enough
+  // for a walker to step onto (so not a wall, which nav.push keeps the body out of)
+  function ledgeAt(nav, x, y, z) {
+    const lo = carFloor(nav, x, y, z), hi = nav.floorAt(x, y, z + 0.1);
+    return !!(lo && hi && hi.z > lo.z + CAR_STEP);
+  }
+  // how many of nine points over a car's footprint (its corners, the middles of its sides and ends, its centre) are over a
+  // ledge, for a car at pose { x, y, z, h } of half length hl and half width hw
+  function ledgesUnder(nav, p, hl, hw) {
+    const fx = Math.sin(p.h), fy = Math.cos(p.h);
+    let n = 0;
+    for (const u of [hl - 0.1, 0, 0.1 - hl]) for (const w of [hw - 0.05, 0, 0.05 - hw]) if (ledgeAt(nav, p.x + fx * u - fy * w, p.y + fy * u + fx * w, p.z)) n++;
+    return n;
+  }
   function drive(C, nav, at) {
     const [VMAX, A0] = PERF[C.name] || [52, 7.4];
     const st = { x: at.x, y: at.y, z: at.z, h: at.h, vx: 0, vy: 0, r: 0, steer: 0, vz: 0, air: false, v: 0, speed: 0, slip: 0, gear: 1, rpm: 0, brake: false,
       reverse: false, grip: 1, pitch: 0, roll: 0, wpx: 0, wpy: 0 };
     const rad = C.hw + 0.04, offs = [C.half - C.hw, 0, -(C.half - C.hw)];
-    // the floor under the car: what a walker would step onto (a kerb, a ramp, a deck), not a wall
-    const floor = (x, y, z) => { const f = nav.floorAt(x, y, z + 0.1); return f ? f.z : null; };
+    // the floor under the car: a kerb, a ramp, a deck, never more than a kerb over its wheels (CAR_STEP)
+    const floor = (x, y, z) => { const f = carFloor(nav, x, y, z); return f ? f.z : null; };
     // can the car stand here? (not over the water, not off a drop the walkers wouldn't take)
     const standable = (x, y, z) => { const f = floor(x, y, z); return f != null && f > z - 3.5; };
     // one step of dt: inp { fwd -1..1 (W/S), turn -1..1 (+ right), handbrake }; env { boxes, people, posts }; events []
@@ -492,8 +512,9 @@ window.OECars = (function () {
       const fx = Math.sin(st.h), fy = Math.cos(st.h), zc = st.z;
       const zf = floor(st.x + fx * C.wheelbase / 2, st.y + fy * C.wheelbase / 2, zc), zr = floor(st.x - fx * C.wheelbase / 2, st.y - fy * C.wheelbase / 2, zc);
       const zl = floor(st.x - fy * C.hw, st.y + fx * C.hw, zc), zrt = floor(st.x + fy * C.hw, st.y - fx * C.hw, zc);
-      const ok = v => v != null && Math.abs(v - zc) < 1.2;
-      const gp = ok(zf) && ok(zr) ? -Math.atan2(zf - zr, C.wheelbase) : 0, gr = ok(zl) && ok(zrt) ? Math.atan2(zl - zrt, 2 * C.hw) : 0;
+      // (within a kerb and a little of the body's height, and never more than a wheel up a kerb tilts it)
+      const ok = v => v != null && Math.abs(v - zc) < CAR_STEP + 0.2;
+      const gp = ok(zf) && ok(zr) ? clamp(-Math.atan2(zf - zr, C.wheelbase), -0.25, 0.25) : 0, gr = ok(zl) && ok(zrt) ? clamp(Math.atan2(zl - zrt, 2 * C.hw), -0.25, 0.25) : 0;
       st.pitch += (gp - st.pitch) * Math.min(1, dt * 8);
       st.roll += (gr - st.roll) * Math.min(1, dt * 8);
     }
@@ -547,6 +568,15 @@ window.OECars = (function () {
         const sp = Math.hypot(st.vx, st.vy);
         st.x = px; st.y = py; st.h = ph; st.vx *= -0.15; st.vy *= -0.15; st.r *= 0.3;
         if (sp > 2) events.push({ type: 'edge', speed: sp });
+      } else if (st.x !== px || st.y !== py || st.h !== ph) {
+        // a ledge higher than a kerb under any part of it (a planter, a plinth, a low wall): a wall to its tyres. Back to
+        // where it was, as off an edge, unless it was already over as much of one there (put down half on it: driven off)
+        const n1 = ledgesUnder(nav, st, C.half, C.hw);
+        if (n1 && n1 > ledgesUnder(nav, { x: px, y: py, z: st.z, h: ph }, C.half, C.hw)) {
+          const vn = Math.hypot(st.vx, st.vy);
+          st.x = px; st.y = py; st.h = ph; st.vx *= -0.15; st.vy *= -0.15; st.r *= 0.3;
+          if (vn > 1.5) events.push({ type: 'bump', what: 'wall', speed: vn });
+        }
       }
       // follow the ground: up kerbs and ramps at once, off an edge under gravity
       const f = floor(st.x, st.y, st.z);
@@ -1601,5 +1631,5 @@ window.OECars = (function () {
     return { st, update, finish, jump, leave, poseAt, path: P, box: () => boxOf(st, C.half, C.hw, C.top), remaining: () => st.end - st.s, timeLeft, total: () => timed().total };
   }
 
-  return { car, headlamp, drive, router, path, chauffeur, queueing, pushOut, sweep, boxOf, kerbOf, ROADW, LANE, PERF, weather: WX, setWeather, sprayStep, sprayState: () => SPRAY };
+  return { car, headlamp, drive, router, path, chauffeur, queueing, pushOut, sweep, boxOf, kerbOf, ledgesUnder, CAR_STEP, ROADW, LANE, PERF, weather: WX, setWeather, sprayStep, sprayState: () => SPRAY };
 })();

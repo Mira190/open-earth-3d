@@ -66,14 +66,14 @@ def main():
     water = np.unpackbits(np.frombuffer(base64.b64decode(gw["bits"]), np.uint8))[:nx * ny].reshape(ny, nx).astype(bool)
     g = grid(gt)
     cells = inside & ~water
-    new = np.round(dem * 10).astype(np.int16)
+    new = np.round(dem / gt["scale"]).astype(np.int16)  # (decimetres from game_data.py, centimetres once street_ground.py has run)
     # water above the sea at its own level (the city's game_ponds): water to the game, its basin a metre
     # under that level (game_data.py)
     ponds = C.hook("game_ponds")(json.load(open(os.path.join(C.out, "scene.json")))) if C.hook("game_ponds") else []
     pond = np.zeros((ny, nx), bool)
     for p in ponds:
         m = raster_mask([Polygon(p["ring"], p.get("holes") or [])], nx, ny, DEM_CELL, C.x0, C.y1)
-        new[m] = round((p["z"] - 1.0) * 10)
+        new[m] = round((p["z"] - 1.0) / gt["scale"])
         pond |= m
     newly_wet = int((pond & ~water).sum())
     water |= pond

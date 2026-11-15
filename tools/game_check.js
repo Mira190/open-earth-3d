@@ -39,6 +39,7 @@ const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
 const { trainStep, trainChecks } = require('./train_step');
 const { reverseStep } = require('./reverse_step');
+const { tipStep, tipChecks } = require('./car_tip_step');
 const { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks, kerbStep, kerbChecks } = require('./autopilot_step');
 const npcNight = require('./npc_night');
 (async () => {
@@ -1463,6 +1464,10 @@ const npcNight = require('./npc_night');
   check(car.none || (car.stopped < 0.5 && car.out), car.none ? 'no car' : `brakes to a stop and gets out beside it${car.out ? '' : ` (${car.stopped.toFixed(1)} m/s, ${car.mode}: ${car.said})`}`);
   await shot('car');
   tight(await swing('car'), 'at the wheel');
+
+  // your car kept on its wheels: driven at a ledge by its kerb (a planter's coping) and into the kerb, upright at the
+  // street's level, and R puts it back on the road the right way up (tools/car_tip_step.js)
+  tipChecks(check, car.none ? { none: true } : await p.evaluate(tipStep));
 
   // a taxi: a hand up at the kerb, the nearest one pulls in, in the back, the driver asks where to,
   // the heads clear the roof, it drives off, the trip is skipped to the kerb there, out; then a ride
