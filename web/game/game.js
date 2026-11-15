@@ -6753,6 +6753,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     camera.updateMatrixWorld();
     placeNightFill();
   }
+  // ?perf: this device's own frame, part by part (perf.js), a few seconds after the street is the player's
+  if (/[?&]perf\b/.test(location.search)) {
+    const ps = document.createElement('script');
+    ps.src = 'game/perf.js';
+    ps.onload = () => { const go = () => (!$('#g-title').hidden || arriving || (overture && overture.active) ? setTimeout(go, 1000) : setTimeout(() => OEPerf.run({ renderer, world, camera, atmos, gov, mirror, weather, stage, tick: mirrorTick }), 6000)); go(); };
+    document.head.appendChild(ps);
+  }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
   window.__game = { life, hero: () => hero, trips: () => junctions.trips(), pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
