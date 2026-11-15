@@ -7,7 +7,38 @@ window.OEPhone = (function () {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function create(L) {
     const ctx = L.ctx, c = ctx.clock;
-    const box = () => { const ci = L.city(); return ci.msgs || (ci.msgs = []); };
+    // ---- the box: one message for one thing said, in the order of the city's clock
+    // A message has a key (what it is about: a calendar event's run, a friend's hour) and the date and minute it came.
+    // tidy() keeps the box true to that whatever wrote it: a save from before a season was one message (a key for
+    // each day it was on) is keyed again by the event's run, a key is there once (the first time it came), the same
+    // words from the same sender once (the last time), and the box is in time order, oldest first, at most MAX long.
+    const MAX = 24, tidied = new WeakSet();
+    let loaded = false;
+    const when = m => { const [d, mo] = String(m.d).split('/').map(Number); return (((m.y || 0) * 12 + (mo || 0)) * 31 + (d || 0)) * 1440 + (m.t || 0); };
+    const OLD = /^(\d+)-(\d+)-(\d+)\|(soon\|)?([^|]+)$/; // a calendar key as it was: the day it was posted, and the event
+    function tidy(b) {
+      const evs = (L.data && L.data.events) || [], D = window.OEDay;
+      for (const m of b) {
+        const k = /^(\d+)-\d+-\d+\|/.exec(m.key || ''), [d, mo] = String(m.d).split('/').map(Number);
+        // the year it came in: written since, in an older key's date, or else the last time that day came round
+        if (!m.y) m.y = k ? +k[1] : (mo > c.m || (mo === c.m && d > c.d) ? c.y - 1 : c.y);
+        const o = m.from === 'Calendar' && OLD.exec(m.key || ''), e = o && evs.find(x => x.id === o[5]);
+        if (!e) continue;
+        const t = new Date(Date.UTC(+o[1], +o[2] - 1, +o[3] + (o[4] ? 1 : 0))), run = D.runOf(e, t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate());
+        if (run) m.key = `${o[4] ? 'soon' : 'on'}|${e.id}|${run}`;
+      }
+      const sorted = b.map((m, i) => [when(m), i, m]).sort((x, y) => x[0] - y[0] || x[1] - y[1]).map(x => x[2]);
+      const keys = new Set(), said = new Set(), out = [];
+      for (const m of sorted) { if (m.key && keys.has(m.key)) continue; if (m.key) keys.add(m.key); out.push(m); }
+      // (the same words are told apart from an old key's copies only once the calendar is read: until then they stay)
+      for (let i = out.length - 1; i >= 0 && loaded; i--) { const s = `${out[i].from}\n${out[i].text}`; if (said.has(s)) out.splice(i, 1); else said.add(s); }
+      b.splice(0, b.length, ...out.slice(-MAX));
+      tidied.add(b);
+      return b;
+    }
+    // (a save is tidied once the map's calendar is read: an old key needs its event's dates)
+    const raw = () => { const ci = L.city(); return ci.msgs || (ci.msgs = []); };
+    const box = () => { const b = raw(); return loaded && !tidied.has(b) ? tidy(b) : b; };
     const unread = () => box().filter(m => !m.read).length;
     function badge() {
       const b = ctx.$('#g-phone-btn');
@@ -21,8 +52,11 @@ window.OEPhone = (function () {
     function post(from, text, key) {
       const b = box();
       if (key && b.some(m => m.key === key)) return;
-      b.push({ from, text, key, d: `${c.d}/${c.m}`, t: Math.round(c.min) });
-      if (b.length > 24) b.splice(0, b.length - 24);
+      // the same words again from the same sender (a friend free at the same place the next evening): the one message, come again
+      const i = b.findIndex(m => m.from === from && m.text === text);
+      if (i >= 0) b.splice(i, 1);
+      b.push({ from, text, key, y: c.y, d: `${c.d}/${c.m}`, t: Math.round(c.min) });
+      tidy(b);
       ctx.H.toast(`<b>Message · ${esc(from)}</b><span>${esc(text)}</span>`);
       if (L.music) L.music.sting('message'); else if (ctx.A.beep) ctx.A.beep(520);
       badge();
@@ -44,12 +78,15 @@ window.OEPhone = (function () {
       // a friend who reads the weather: rain on its way within six hours, once a day
       const fa = L.ability('forecast'), f = fa && !day.weather().wet && day.forecast(6, 1);
       if (f && f.from != null) post(fa.from, `${fa.rain || 'Rain on the way'}: from about ${day.hm(f.from)}${f.to != null ? ` to ${day.hm(f.to)}` : ''}. ${fa.tip || 'Somewhere with a roof, then.'}`, `${o.date}|rain`);
-      for (const e of day.today()) if (day.onNow(e)) post('Calendar', `${e.title}${e.where ? `, ${e.where}` : ''}: on now.`, `${o.date}|${e.id}`);
-      if (o.newDay) for (const [n, e] of day.soon(1)) post('Calendar', `Tomorrow: ${e.title}${e.where ? `, ${e.where}` : ''}.`, `${o.date}|soon|${e.id}`);
+      // the calendar writes once for each run of an event (a season of four weeks is one message, not one a day),
+      // and once the day before it begins
+      const next = new Date(Date.UTC(c.y, c.m - 1, c.d + 1));
+      for (const e of day.today()) if (day.onNow(e)) post('Calendar', `${e.title}${e.where ? `, ${e.where}` : ''}: on now.`, `on|${e.id}|${day.runOf(e, c.y, c.m, c.d)}`);
+      if (o.newDay) for (const [n, e] of day.soon(1)) post('Calendar', `Tomorrow: ${e.title}${e.where ? `, ${e.where}` : ''}.`, `soon|${e.id}|${day.runOf(e, next.getUTCFullYear(), next.getUTCMonth() + 1, next.getUTCDate())}`);
     });
     const pages = []; // other modules' pages (fares.js): { id, title(), on(), row(item, show), render() }
     const Ph = {
-      unread, post, box,
+      unread, post, box, tidy,
       page(p) { pages.push(p); },
       // the home screen's rows, after the ride app's (item(text, note, act) makes a row; show(view) changes page)
       home(item, show) {
@@ -66,14 +103,16 @@ window.OEPhone = (function () {
       render(v) {
         const pg = pages.find(q => q.id === v);
         if (pg) return pg.render();
-        const b = box().slice().reverse();
-        for (const m of box()) m.read = 1;
+        // the newest first; what has not been read is marked as it is drawn, and is read from then on
+        const b = box().map((m, i) => [when(m), i, m]).sort((x, y) => y[0] - x[0] || y[1] - x[1]).map(x => x[2]);
+        const list = b.map(m => `<li class="${m.read ? '' : 'new'}"><b>${esc(m.from)}</b><span class="num">${m.d} ${String(Math.floor(m.t / 60)).padStart(2, '0')}:${String(m.t % 60).padStart(2, '0')}</span><p>${esc(m.text)}</p></li>`).join('');
+        for (const m of b) m.read = 1;
         badge();
-        return (b.length ? `<ul class="lf-msgs">${b.map(m => `<li class="${m.read ? '' : 'new'}"><b>${esc(m.from)}</b><span class="num">${m.d} ${String(Math.floor(m.t / 60)).padStart(2, '0')}:${String(m.t % 60).padStart(2, '0')}</span><p>${esc(m.text)}</p></li>`).join('')}</ul>` : '<p class="note">No messages yet. People write once you know them.</p>')
+        return (b.length ? `<ul class="lf-msgs">${list}</ul>` :'<p class="note">No messages yet. People write once you know them.</p>')
           + '<div class="row"><button class="btn" data-back>Back</button></div>';
       },
     };
-    L.use({ load: badge, reset: badge });
+    L.use({ load() { loaded = true; tidy(raw()); badge(); }, reset: badge });
     L.phone = Ph;
     badge();
     return Ph;

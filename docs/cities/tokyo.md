@@ -157,7 +157,10 @@ name or class: a vent's or a stair's cover. It was drawn as a one-storey house w
 it is drawn plain now, and so is the M8 exit's own cover (`pipeline/arcades.py`, low structures). Not
 checked against a photograph: Wikimedia Commons refused this session's requests. (#290: Commons answered, but its photographs of the Marunouchi north side
 show the station's dome and the plaza from far off; none shows the block. GSI's aerial photograph has a pale
-rectangle there, consistent with a low cover. Left plain.) (#323: M8 is the stair up to the north bus and taxi stands of the Marunouchi plaza, beside the
+rectangle there, consistent with a low cover. Left plain.) (#323, cut on 15 November 2026: a last look found one street-level frame that probably shows the exit, KartaView
+sequence 3442085, 2019, CC BY-SA 4.0: a flat dark steel roof on slim posts over glass sides, its number not
+legible; nothing shows the slab itself, so it stays plain and the item is closed.)
+(M8 is the stair up to the north bus and taxi stands of the Marunouchi plaza, beside the
 Shin-Marunouchi Building (Yahoo! transit's exit list); Commons and Openverse have no photograph of it. Left plain.)
 
 ### The Imperial Palace
@@ -174,12 +177,12 @@ The Kabuki-za's roof garden, with the white PLATEAU block hidden:
 
 ![Kabuki-za's roof garden](../images/tokyo/kabukiza-roof-garden.jpg)
 
-### The JR viaduct, Yurakucho Station and Shimbashi Station
+### The JR viaduct, Tokyo, Yurakucho and Shimbashi stations
 
 The railway from Tokyo Station to Shimbashi was a strip of track in the aerial photograph, flat on
 the ground, with the old station's rooms standing on it as grey boxes. `cities/tokyo/rail.py` builds
-it: 1.9 km of viaduct for eight tracks, Yurakucho and Shimbashi stations on it, and the courses of the
-trains.
+it: 2.4 km of viaduct for eight tracks, Tokyo Station's platforms 3 to 10, Yurakucho and Shimbashi
+stations on it, and the courses of the trains.
 
 - **Laid out on the map's own tracks.** `pipeline/rail_osm.py` reads OpenStreetMap's running lines
   above ground (the Yamanote, Keihin-Tohoku, Tokaido Main and Tokaido Shinkansen lines), the platform
@@ -210,9 +213,34 @@ trains.
   moving strip (`moving_ms`), so standing on it carries you up.
 - **The overhead line**: portal gantries every 48 m, and a contact wire under its messenger over each
   track, 5.0 m over the rail.
+- **Tokyo Station's platforms 3 to 10** (issue 490), so that the line can be ridden to and from Tokyo:
+  - OpenStreetMap maps each of them as a multipolygon of its two edges and its ends, which
+    `pipeline/rail_osm.py` now joins into an outline. The outlines are drawn a metre or two off the
+    rails either way, so each face is set 1.52 m from the middle of the track beside it and the
+    outline keeps only the platform's ends.
+  - 3 and 4 (Keihin-Tohoku and Yamanote towards Ueno) and 5 and 6 (towards Shinagawa) have platform
+    doors; 7 and 8 (the Ueno-Tokyo Line) and 9 and 10 (the Tokaido Line) have none. The Tokaido
+    Line's trains run on from tracks 7 and 10 as the Ueno-Tokyo Line, on the two tracks OpenStreetMap
+    names the Tohoku Main Line. Tracks 8 and 9 are service tracks in the map (`"sidings": true`):
+    laid, wired and numbered, with no train of this timetable on them.
+  - The Keihin-Tohoku Line's rapid trains (10:30 to 15:30) stop at Tokyo and run through Yurakucho
+    and Shimbashi (a service's `rapid_at`, `web/game/trains.js`).
+  - The passages OpenStreetMap maps under the tracks (north, central, south) are openings in the
+    viaduct. The two on the Marunouchi building's domes carry the stairs: a flight and an escalator
+    up to each platform from each, and each runs on west into its dome's hall
+    (`cities/tokyo/station.py`, docs/HERO.md), so the platforms are walked to from the plaza.
+    `tools/trains_step.js` walks it (a station's `way`) and then rides from Yurakucho to Tokyo.
+  - For a phone: the overhead line, the canopies' brackets and the platform doors' glass are
+    `detail` (never unpacked on the low tier), lamps are one lit face, the roofs are 8 m panels, and
+    what nobody can walk into (rails, lamps, signs, parapets beside the tracks) is not solid, so the
+    collision world holds as many boxes as before the station was built (522,781 against 522,635).
+  - The fare: 155 yen by IC card from Tokyo to Yurakucho or Shimbashi (`cities/tokyo/life.json`).
+  - Not built here: the Chuo Line's platforms 1 and 2 on their higher viaduct and the Shinkansen's
+    platforms, which stay the city model's solids, and the gates and crowds (issue 480).
 - **Each end** is a train shed's mouth, a roof over the tracks with a dark wall behind it, where the
-  trains come from and go to: north, short of Tokyo Station, whose platforms are solids of the city
-  model; south, past Shimbashi's platforms.
+  trains come from and go to: north of Tokyo Station's platforms, and south, past Shimbashi's. The
+  Tokaido Shinkansen has its own at the south end of its platforms at Tokyo, which stand east of
+  this stretch.
 - The low solids under the platforms and Shimbashi's shed come down (`landmarks.json` "demolished").
 
 ![Yurakucho's platforms by day: the stairs down to the concourse, a Yamanote train at track 2 and a Shinkansen passing](../images/tokyo/yurakucho-platform-day.jpg)

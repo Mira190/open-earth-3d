@@ -1,7 +1,8 @@
 """The railway through a city as OpenStreetMap maps it track by track: every running line above the
 ground (no tunnels; with "below": true, the tracks a layer under a bridge too), the platforms beside them and the stopping points, for the lines named in
 city.json `rail_osm` ({"bbox": [lon0, lat0, lon1, lat1], "lines": ["山手線", ...]}: a line is a track's
-name, or its ref where the tracks are named that way, as Sydney's "City Inner"). Overture's
+name, or its ref where the tracks are named that way, as Sydney's "City Inner"). A platform is a closed way, or a
+multipolygon of its edges and ends (Tokyo Station's); with "sidings": true the service tracks are kept too. Overture's
 segments keep a track's class but not its line's name, its gauge or its platforms, which is what a
 station is built from. Written in longitude and latitude to cities/<id>/rail_osm.json, which the
 city's hooks read (cities/tokyo/rail.py).
@@ -31,12 +32,12 @@ def main():
         raise SystemExit(f"{city.id}: no rail_osm in city.json")
     x0, y0, x1, y1 = spec["bbox"]
     lines = set(spec["lines"])
-    nodes, ways = {}, {}
+    nodes, ways, rels = {}, {}, {}
     y = y0
     while y < y1:
         req = urllib.request.Request(API.format(x0, round(y, 5), x1, round(min(y1, y + BAND), 5)), headers={"User-Agent": UA})
         for e in json.load(urllib.request.urlopen(req, timeout=180))["elements"]:
-            (nodes if e["type"] == "node" else ways if e["type"] == "way" else {})[e["id"]] = e
+            (nodes if e["type"] == "node" else ways if e["type"] == "way" else rels)[e["id"]] = e
         y += BAND
         time.sleep(1)
     ll = lambda w: [[round(nodes[n]["lon"], 7), round(nodes[n]["lat"], 7)] for n in w["nodes"] if n in nodes]
@@ -44,10 +45,14 @@ def main():
     # as the Yamanote's under Jingu-bashi between Harajuku and Shibuya)
     below = bool(spec.get("below"))
     above = lambda t: t.get("tunnel") != "yes" and t.get("tunnel") != "building_passage" and (below or int(float(t.get("layer", 0) or 0)) >= 0)
-    tracks, platforms, edges, stops = [], [], [], []
+    tracks, platforms, edges, stops, sidings = [], [], [], [], []
     for w in ways.values():
         t = w.get("tags") or {}
         line = t.get("name") if t.get("name") in lines else t.get("ref")
+        # (a city's "sidings": true keeps the service tracks too, unnamed: a terminus's other platform tracks and its crossovers)
+        if spec.get("sidings") and t.get("railway") == "rail" and t.get("service") in ("siding", "crossover", "spur", "yard") and above(t):
+            sidings.append({"id": w["id"], "service": t["service"], "gauge": int(t.get("gauge", 1067)), "layer": int(float(t.get("layer", 0) or 0)), "ll": ll(w)})
+            continue
         if t.get("railway") == "rail" and line in lines and above(t) and t.get("usage") == "main":
             tracks.append({"id": w["id"], "line": line, "gauge": int(t.get("gauge", 1067)), "layer": int(t.get("layer", 0)),
                            **({"bridge": t["bridge"]} if t.get("bridge") else {}), "ll": ll(w)})
@@ -55,6 +60,24 @@ def main():
             platforms.append({"id": w["id"], **({"ref": t["ref"]} if t.get("ref") else {}), "layer": int(float(t.get("layer", 0) or 0)), "ll": ll(w)})
         elif t.get("railway") == "platform_edge" and above(t) and t.get("ref"):   # a platform mapped by its edge alone
             edges.append({"id": w["id"], "ref": t["ref"], "ll": ll(w)})
+    # a platform mapped as a multipolygon of its edges and its two ends (Tokyo Station's): the outer ways joined into a ring
+    for r in rels.values():
+        t = r.get("tags") or {}
+        if t.get("railway") != "platform" or t.get("type") != "multipolygon" or not above(t) or t.get("subway") == "yes":
+            continue
+        parts = [list(ways[m["ref"]]["nodes"]) for m in r["members"] if m["type"] == "way" and m.get("role") in ("outer", "") and m["ref"] in ways]
+        if any((ways[m["ref"]].get("tags") or {}).get("tunnel") == "yes" for m in r["members"] if m["type"] == "way" and m["ref"] in ways) or not parts:
+            continue
+        ring = parts.pop(0)
+        while parts and ring[0] != ring[-1]:
+            k = next((i for i, q in enumerate(parts) if ring[-1] in (q[0], q[-1])), None)
+            if k is None:
+                break
+            q = parts.pop(k)
+            ring += (q if q[0] == ring[-1] else q[::-1])[1:]
+        if ring[0] == ring[-1] and len(ring) > 3 and not parts:
+            platforms.append({"id": r["id"], **({"ref": t["ref"]} if t.get("ref") else {}), "layer": int(float(t.get("layer", 0) or 0)),
+                              "ll": [[round(nodes[n]["lon"], 7), round(nodes[n]["lat"], 7)] for n in ring if n in nodes]})
     for n in nodes.values():
         t = n.get("tags") or {}
         if t.get("railway") == "stop" and t.get("local_ref") and t.get("station") != "subway" and x0 <= n["lon"] <= x1 and y0 <= n["lat"] <= y1:
@@ -63,6 +86,7 @@ def main():
     out = {"source": f"OpenStreetMap contributors (ODbL), fetched {datetime.date.today().isoformat()}: railway=rail (usage=main, above ground) of "
                      + ", ".join(sorted(lines)) + "; railway=platform areas and platform_edge lines; railway=stop nodes with a platform number; lon/lat",
            "tracks": sorted(tracks, key=lambda w: w["id"]), "platforms": sorted(platforms, key=lambda w: w["id"]), **({"edges": sorted(edges, key=lambda w: w["id"])} if edges else {}),
+           **({"sidings": sorted(sidings, key=lambda w: w["id"])} if sidings else {}),
            "stops": sorted(stops, key=lambda s: (s["name"] or "", s["platform"]))}
     path = city.file("rail_osm.json")
     json.dump(out, open(path, "w", encoding="utf8"), ensure_ascii=False, separators=(",", ":"))

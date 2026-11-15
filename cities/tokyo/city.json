@@ -521,10 +521,12 @@
       "time": "12:00"
     }
   ],
+  "night": {"clear": [[597.9, 1171.9, 8.0], [610.2, 1167.6, 13.0], [624.3, 1162.6, 8.0], [634.7, 1158.9, 8.0], [646.0, 1154.9, 8.0], [657.4, 1150.9, 8.0], [656.1, 1361.1, 8.0], [668.4, 1356.8, 13.0], [682.5, 1351.8, 8.0], [692.9, 1348.1, 8.0], [704.2, 1344.1, 8.0], [715.5, 1340.1, 8.0]], "note": "No generated lamp post inside Tokyo Station's dome halls or the passages from them under the tracks (cities/tokyo/station.py): discs [x, y, radius m] (web/night.js)."},
   "rail_osm": {
     "bbox": [139.752, 35.6475, 139.772, 35.685],
-    "lines": ["山手線", "京浜東北線", "東海道本線", "東海道新幹線"],
-    "note": "The JR lines from Tokyo Station to Hamamatsucho, track by track, with their platforms (pipeline/rail_osm.py -> cities/tokyo/rail_osm.json; cities/tokyo/rail.py builds the viaduct, Yurakucho Station and the trains' courses from it)."
+    "lines": ["山手線", "京浜東北線", "東海道本線", "東北本線", "東海道新幹線"],
+    "sidings": true,
+    "note": "The JR lines from Tokyo Station to Hamamatsucho, track by track, with their platforms (pipeline/rail_osm.py -> cities/tokyo/rail_osm.json; cities/tokyo/rail.py builds the viaduct, Tokyo, Yurakucho and Shimbashi stations and the trains' courses from it). The Tohoku Main Line's two tracks are the Tokaido Line's on from Tokyo's tracks 7 and 10 (the Ueno-Tokyo Line); the service tracks are Tokyo Station's tracks 8 and 9."
   },
   "sources": {
     "landmarks": "Tokyo Tower: parametric from published dimensions (333 m; decks at 150 m and 250 m; 80 m base), anchored at its published coordinates"
@@ -542,7 +544,7 @@
     ],
     "look": {"preset": "film", "light": {"shade": [0.88, 0.91, 0.95], "bounce": 0.6}, "grade": {"day": {"sat": 1.0, "vib": 0.06, "shade": [0.99, 1.0, 1.02], "tint": [1.01, 1.0, 0.99]}, "golden": {"ev": 1.34, "tint": [1.035, 1.0, 0.955], "sat": 1.12, "contrast": 0.2, "vib": 0.2, "shade": [1.0, 1.0, 1.01], "hi": [1.04, 1.0, 0.95], "lift": [0.004, 0.003, 0.004]}, "blue": {"ev": 1.3, "tint": [1.0, 1.0, 1.02], "sat": 1.1, "contrast": 0.2, "vib": 0.15, "shade": [0.98, 1.0, 1.04], "lift": [0.0, 0.003, 0.008]}},
       "note": "the map's own daylight, as Shibuya's: the default preset's blue shade turned cream stone, white granite and paving blue-green on a level held to photographs (docs/HERO.md)"},
-    "hero": [{"id": "marunouchi", "glb": "hero/marunouchi.glb", "fine": "hero/marunouchi_fine.glb", "fine_m": 110, "at": [602.3, 1244.0], "r": 175.0, "bake": 1.0, "street": 0.6, "glow": [0.0, 1.0], "hide": ["tks_dome_slate", "tks_round_copper", "tks_round_stone", "tks_tks_brick", "tks_tks_canopy", "tks_tks_clock", "tks_tks_copper", "tks_tks_door", "tks_tks_glass", "tks_tks_glass_dark", "tks_tks_glass_small", "tks_tks_iron", "tks_tks_pent", "tks_tks_reveal", "tks_tks_sign", "tks_tks_slate", "tks_tks_soffit", "tks_tks_stone"], "note": "Tokyo Station's Marunouchi building, where the game starts: every frame, sash and baluster, chamfered edges, baked occlusion and floodlight, scanned brick, stone and slate (cities/tokyo/hero.py on cities/tokyo/station.py, blender/build_hero.py, docs/HERO.md)"}],
+    "hero": [{"id": "marunouchi", "glb": "hero/marunouchi.glb", "fine": "hero/marunouchi_fine.glb", "fine_m": 110, "at": [608.3, 1244.0], "r": 178.0, "bake": 1.0, "street": 0.6, "glow": [0.0, 1.0], "hide": ["tks_dome_slate", "tks_round_copper", "tks_round_stone", "tks_tks_brick", "tks_tks_canopy", "tks_tks_clock", "tks_tks_copper", "tks_tks_door", "tks_tks_glass", "tks_tks_glass_dark", "tks_tks_glass_small", "tks_tks_hall_ceiling", "tks_tks_hall_floor_a", "tks_tks_hall_floor_b", "tks_tks_hall_floor_c", "tks_tks_hall_day", "tks_tks_hall_green", "tks_tks_hall_light", "tks_tks_hall_rib", "tks_tks_hall_stone", "tks_tks_hall_wall", "tks_tks_hall_white", "tks_tks_iron", "tks_tks_pent", "tks_tks_reveal", "tks_tks_sign", "tks_tks_slate", "tks_tks_soffit", "tks_tks_stone"], "note": "Tokyo Station's Marunouchi building, where the game starts: every frame, sash and baluster, chamfered edges, baked occlusion and floodlight, scanned brick, stone and slate (cities/tokyo/hero.py on cities/tokyo/station.py, blender/build_hero.py, docs/HERO.md)"}],
     "start": {
       "at": [553, 1195],
       "facing": [606, 1172],

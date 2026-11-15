@@ -974,13 +974,13 @@ vec3 steepRock(vec3 c, float k) {
     if (all(greaterThan(huv, vec2(0.0))) && all(lessThan(huv, vec2(1.0))) && texture2D(uHole, huv).r > 0.502) discard; }`); // (inland.js: 128 at the hole's edge)
       }
       if (QUAY) { // out in front of a quay, above the water: the grid's ramp up to the land
-        // the distance to the shore is the texture the sea's own patch reads (uShore): where that patch is in this shader
-        // already and holds the same texture, the quay reads it through that sampler, one texture unit and not two
-        const shared = !!(sh.uniforms.uShore && sh.uniforms.uShore.value === QUAY.dist.value && /uniform sampler2D uShore\b/.test(sh.fragmentShader));
+        // (the distance is the shore's own image: where the sea's patch has its sampler in the shader already, that one
+        // is read, a texture unit fewer of the sixteen an Apple GPU or a phone has: glcare.js fit)
+        const shared = /uniform sampler2D uShore;/.test(sh.fragmentShader);
         Object.assign(sh.uniforms, { uQuayMask: QUAY.mask, uQuayBox: QUAY.box, uQuayBed: QUAY.bed }, shared ? {} : { uQuayDist: QUAY.dist });
         sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vQuayWP;')
           .replace('#include <project_vertex>', '#include <project_vertex>\nvQuayWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nuniform sampler2D uQuayMask; ${shared ? '\n#define uQuayDist uShore' : 'uniform sampler2D uQuayDist;'}\nuniform vec4 uQuayBox; uniform vec3 uQuayBed; varying vec3 vQuayWP;`)
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nuniform sampler2D uQuayMask${shared ? '' : ', uQuayDist'}; uniform vec4 uQuayBox; uniform vec3 uQuayBed; varying vec3 vQuayWP;${shared ? '\n#define uQuayDist uShore' : ''}`)
           .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
   { vec2 quv = vec2((vQuayWP.x - uQuayBox.x) / uQuayBox.z, (uQuayBox.y + vQuayWP.z) / uQuayBox.w);
     if (vQuayWP.y > -0.05 && all(greaterThan(quv, vec2(0.0))) && all(lessThan(quv, vec2(1.0))) && texture2D(uQuayMask, quv).r > 0.5 && texture2D(uQuayDist, quv).r > 127.5 / 255.0) discard;
@@ -1041,9 +1041,10 @@ vec3 steepRock(vec3 c, float k) {
       floorTex.minFilter = floorTex.magFilter = THREE.NearestFilter;
     }
     const woodsFloor = sh => {
-      if (!WOODS) return;
+      const FIT = window.OEGLCare ? OEGLCare.fit : null; // (a GPU short of texture units goes without, the least missed first)
+      if (!WOODS || (FIT && FIT.off('woods'))) return;
       Object.assign(sh.uniforms, { uWoods: WOODS.tex, uWoodsBox: WOODS.box });
-      if (floorTex) { sh.uniforms.uFloorMap = { value: floorTex }; sh.defines = Object.assign({}, sh.defines, { FLOOR_MAP: "" }); } // (a copy: the material's own are in its key, trees.js)
+      if (floorTex && !(FIT && FIT.off('floor'))) { sh.uniforms.uFloorMap = { value: floorTex }; sh.defines = Object.assign({}, sh.defines, { FLOOR_MAP: "" }); } // (a copy: the material's own are in its key, trees.js)
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWoodWP;')
         .replace('#include <project_vertex>', '#include <project_vertex>\nvWoodWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
@@ -2557,6 +2558,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // (the sky's old target is let go, not disposed: what it had on the GPU went with the lost context, and three.js
       // deleting a framebuffer, a renderbuffer and a texture of that context in the new one is three calls WebGL
       // refuses, INVALID_OPERATION, which the game's watch on the context then reported: tools/gl_restore_probe.js)
+      // the light from the sky is no longer this sky's (the weather's cover changed under it: game/weather.js light):
+      // the next setSun makes it again
+      skyStale() { envKey = ''; },
       restoreGPU() {
         envRT = null;
         envKey = ''; envAt = -1e9; envWait = null; hazeOk = false; hazeKey = null;

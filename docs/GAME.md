@@ -799,7 +799,11 @@ Sydney Tower's 56 cables steady the shaft, Eikan-do's 2026 night openings run 20
 
 The phone (<kbd>N</kbd>) is the hub: beside the ride app it lists Messages, Diary, Work, Map
 and Camera (`web/game/phone.js`). Messages come as a part of the day begins: someone you know
-is free, something on the calendar has started, something is on tomorrow.
+is free, something on the calendar has started, something is on tomorrow. One thing said is one
+message: the calendar writes once for each run of an event (a season of four weeks is one message,
+keyed by the run's first day, not one for each day you visit in it), the same words from the same
+sender replace their earlier copy, and the list is in the order of the city's clock, newest first.
+A save from before that rule is put right as it is read (`tidy()` in `phone.js`).
 
 ### How it is built
 
@@ -990,7 +994,7 @@ pipeline writes. The only city-specific code is landmark geometry in
     from a pole every 36 m on the side away from the platform, and each platform
     with its end ramps, yellow line and a shelter.
 - **Trains** (`web/game/trains.js`): a main line's trains past its station, on the tracks
-  `game.json` "trains" carries (Tokyo's through Yurakucho and Shimbashi, `cities/tokyo/rail.py`; Sydney's City
+  `game.json` "trains" carries (Tokyo's from Tokyo Station through Yurakucho and Shimbashi, `cities/tokyo/rail.py`; Sydney's City
   Circle through Circular Quay, `cities/sydney/rail.py`; both built with `pipeline/railkit.py`).
   A station's `style` picks its announcements: JR East's in Japanese and English, or Sydney
   Trains' in English.
@@ -1002,7 +1006,9 @@ pipeline writes. The only city-specific code is landmark geometry in
     platform doors' leaves, `{off, u}`: the doors' line off the track and each door's middle along
     it); `stations` lists the stations (`{id, name, native, at, hear_m, r}`). The first pass's one
     `station` and a track's `stop_m` and `platform` still read as one halt. A service's `stop_at`
-    names the stations it stops at, where not all of its track's.
+    names the stations it stops at, where not all of its track's. In its rapid hours (`rapid_h`) a
+    service runs through every station but those `rapid_at` names (the Keihin-Tohoku Line's rapid
+    trains stop at Tokyo).
   - **Doors.** A standing train's doors on the platform's side open a second after it stops and
     close before it pulls away (the lit doorway drawn over the closed door, instanced); the platform
     doors' two leaves slide apart behind the cabinets with them.
@@ -1011,7 +1017,10 @@ pipeline writes. The only city-specific code is landmark geometry in
     `eta`, `departsIn`, `riderPos`, `alightAt`, `events`): a car is a whole train standing at a
     station with another station ahead of it on the map; you stand in its third car by the doors.
     A station on a viaduct (`deck`) is only its platforms' level, not the street under it.
-    `tools/trains_step.js` rides one stop and checks the doors open.
+    `tools/trains_step.js` rides one stop, checks the doors open and that the ride is charged its fare
+    (Yurakucho to Tokyo, 155 yen); `tools/trains_ride.js <city>` runs that ride alone. A station's `way`
+    (`{name, pts}`: points from the street to a platform) is walked by the same step: Tokyo Station's, from
+    the plaza through the south dome's hall and up the stairs.
   - **Stations under the ground** (a station's `under`: `{text}`): a station off the drawn line, its
     `at` the street entrance, where it is boarded and left (`r`, a few metres). A ride to or from one
     runs in tunnel past the course's `hide_m`, where the cars are not drawn: the game veils the view
@@ -2953,7 +2962,24 @@ in the city's Cycles renders where the game puts them.
     a railed roof with life rafts and a small wheelhouse amidships.
   - About 27,000 triangles up close and 4,600 beyond 260 m.
 - **Cars:** a sedan, a taxi (the sedan with a roof sign), a hatchback, an SUV,
-  a van and a 12 m low-floor bus.
+  a van and a 12 m low-floor bus; and the car you drive, a supercar.
+  - **The supercar** (`Car_Super`) is a mid-engined two-seater of our own
+    design, 4.70 m long, 2.04 m wide and 1.16 m high. It was drawn after a
+    survey of what the fastest road cars and single-seaters have in common (a
+    wedge nose whose lower edge is its own lip, a dark canopy
+    set forward, intakes ahead of the rear wheels, a roof scoop running into a
+    fin, a two-element wing hung from swan necks, a finned diffuser with a
+    rain light), and copies no maker's car. Its sections are polygons of ten
+    points a side rounded by a B-spline, with creases where the points say;
+    the cuts (arches, intakes, outlets) follow their curves because the grid
+    is snapped to them. About 80,000 triangles, never in the traffic, so it
+    has no distant copies. Its body is black carbon cloth under lacquer
+    (`vehicles.json` `finish.weave_mm`: a 2x2 twill drawn by the paint's
+    shader, seen close to), the same from the roof to the lip, so that no
+    band of another colour runs along the bottom; the nose is one mouth with
+    struts standing in it, and the lip is the body's own edge. This follows
+    how the best road cars are finished (one material, its detail in the
+    weave, the fine lines and the lamps), without copying any of them.
   - Each body is one parametric surface: the roof and floor lines are curves
     along the car, and each section is a rounded box that narrows above the
     beltline. Lamps and trim lie on that surface. The wheel arches are cut and
@@ -3009,7 +3035,7 @@ optional, and a city with no config gets the defaults:
   "helicopter": {"livery": "survey", "registration": "VH-OEH", "logo": "OPEN EARTH 3D"},
   "ferry": {"livery": "harbour"},
   "cars": {"taxi": {"colours": ["#f4c20d"], "share": 0.1}, "bus": {"colour": "#eef0ef", "band": "#f08a00"}},
-  "car": {"model": "Car_Hatch", "colour": "#c8372d", "seat": "#34363a"}
+  "car": {"model": "Car_Super", "colour": "#0b0d11", "accent": "#d9a441", "seat": "#6e4228"}
 }
 ```
 
@@ -3024,8 +3050,10 @@ optional, and a city with no config gets the defaults:
   come in any colour, mostly white, silver or black; Melbourne's are yellow
   and its buses carry the PTV orange. The taxis you hail are the taxis in the
   traffic, so they come in the same colours.
-- **Your car:** `car` picks its model (`Car_Sedan`, `Car_Hatch`, `Car_SUV` or
-  `Car_Van`), its paint and its seats.
+- **Your car:** the supercar (`Car_Super`) unless `car` picks another model
+  (`Car_Sedan`, `Car_Hatch`, `Car_SUV` or `Car_Van`); `car` also sets its
+  paint, its accent (the brake calipers, the harnesses, the line of light
+  along the sills) and its seats.
 - **The side of the road:** `game.keep` (`left` or `right`) sets it. Without
   one, a city takes its trams' side, else its country's rule of the road.
 

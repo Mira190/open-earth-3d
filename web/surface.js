@@ -16,7 +16,7 @@
 //    greyed where it is not, as the paint of a busy crossing is.
 // It fades out with distance (a pixel of the texture under a pixel of the screen and it would shimmer),
 // so from the air the street is what it was. On the low tier (phones) nothing is loaded and no shader
-// changes: the surfaces cost the high tier two 1024 px layers of one texture (11 MB of GPU memory with mips) and the
+// changes: the surfaces cost the high tier two 1024 px layers of one array texture (11 MB of GPU memory with mips) and the
 // medium tier two at 512 px (3 MB), loaded after the game is playable.
 //
 //   OESurface.active                 whether this tier draws them
@@ -32,62 +32,67 @@ window.OESurface = (function () {
   const active = !!SIZE && !off;
   // the surfaces' tiles in metres (pipeline/surfaces.py)
   const U = {
-    uSf: { value: null }, uSfOn: { value: 0 }, // (an array texture: layer 0 the asphalt, 1 the concrete)
+    uSf: { value: null }, uSfOn: { value: 0 }, // (the two surfaces as the layers of one array texture: one texture unit, not two)
     uSfTile: { value: null }, // vec2: asphalt, concrete (set once THREE is up)
   };
   let loading = null;
 
-  // an image's bytes as they are in the file, bottom row first: read back through a small context of its own, since a
-  // 2D canvas would multiply the colour by the alpha, and the alpha here is half of a normal
-  async function pixels(url) {
-    const bmp = await createImageBitmap(await (await fetch(url)).blob(), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
-    const cv = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(1, 1) : document.createElement('canvas'), gl = cv.getContext('webgl2', { antialias: false, depth: false, stencil: false });
-    if (!gl) throw new Error('no context to read the image with');
-    const tex = gl.createTexture(), fb = gl.createFramebuffer(), w = bmp.width, h = bmp.height, out = new Uint8Array(w * h * 4);
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bmp);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-    const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
-    if (ok) gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, out);
-    bmp.close();
-    const lose = gl.getExtension('WEBGL_lose_context'); if (lose) lose.loseContext(); // (a page has few contexts: this one is given back)
-    if (!ok) throw new Error('the image could not be read back');
-    return { w, h, data: out };
-  }
-  // The two surfaces are the two layers of one array texture: one texture unit, not two. A fragment shader has 16
-  // on an Apple GPU, and the ground's had gone past them (issue 485).
   function load(renderer) {
     if (!active || loading) return loading;
-    const aniso = renderer ? Math.min(8, renderer.capabilities.getMaxAnisotropy()) : 4;
-    loading = Promise.all(['asphalt', 'concrete'].map(name => pixels(`assets/surface/${name}_${SIZE}.webp`))).then(([a, c]) => {
-      if (a.w !== c.w || a.h !== c.h) throw new Error('the surfaces differ in size');
-      const data = new Uint8Array(a.data.length * 2);
-      data.set(a.data, 0); data.set(c.data, a.data.length);
-      const t = new THREE.DataArrayTexture(data, a.w, a.h, 2);
-      Object.assign(t, { format: THREE.RGBAFormat, type: THREE.UnsignedByteType, wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping, colorSpace: THREE.NoColorSpace,
-        magFilter: THREE.LinearFilter, minFilter: THREE.LinearMipmapLinearFilter, generateMipmaps: true, anisotropy: aniso, unpackAlignment: 1 });
+    const ld = new THREE.TextureLoader(), aniso = renderer ? Math.min(8, renderer.capabilities.getMaxAnisotropy()) : 4;
+    const one = name => new Promise(res => ld.load(`assets/surface/${name}_${SIZE}.webp`, t => {
+      Object.assign(t, { wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping, colorSpace: THREE.NoColorSpace, anisotropy: aniso });
       t.needsUpdate = true;
-      t.onUpdate = () => { t.onUpdate = null; t.image.data = null; }; // (the GPU's alone once sent)
-      U.uSf.value = t; U.uSfOn.value = 1;
+      res(t);
+    }, undefined, () => res(null)));
+    loading = Promise.all([one('asphalt'), one('concrete')]).then(([a, c]) => {
+      if (!a || !c || !renderer) return false;
+      // A fragment shader has sixteen texture units on an Apple GPU or a phone, and the ground's needs every one
+      // (glcare.js fit): the two scans are copied into the layers of one array texture, texel for texel, and the
+      // shaders read a layer. (Copied on the GPU: a canvas would multiply the colour by the alpha, which here is
+      // the normal's y.) A restored context has lost the copy, and it is made again from the images.
+      const rt = new THREE.WebGLArrayRenderTarget(SIZE, SIZE, 2, { depthBuffer: false, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter,
+        wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping, colorSpace: THREE.NoColorSpace, anisotropy: aniso });
+      const mat = new THREE.RawShaderMaterial({ glslVersion: THREE.GLSL3, depthTest: false, depthWrite: false, blending: THREE.NoBlending, toneMapped: false, uniforms: { t: { value: null } },
+        vertexShader: 'in vec3 position; out vec2 v; void main() { v = position.xy * 0.5 + 0.5; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+        fragmentShader: 'precision highp float; uniform sampler2D t; in vec2 v; out vec4 o; void main() { o = texture(t, v); }' });
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-1, -1, 0, 3, -1, 0, -1, 3, 0]), 3));
+      const tri = new THREE.Mesh(geo, mat), cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+      tri.frustumCulled = false;
+      const copy = () => {
+        const was = renderer.getRenderTarget(), layer = renderer.getActiveCubeFace(), mip = renderer.getActiveMipmapLevel(), auto = renderer.autoClear, xr = renderer.xr.enabled;
+        renderer.autoClear = false; renderer.xr.enabled = false;
+        [a, c].forEach((t, i) => {
+          Object.assign(t, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false, anisotropy: 1 }); t.needsUpdate = true;
+          mat.uniforms.t.value = t;
+          renderer.setRenderTarget(rt, i);
+          renderer.render(tri, cam);
+          t.dispose(); // (its copy on the GPU: the image stays, for a restored context)
+        });
+        renderer.setRenderTarget(was, layer, mip);
+        renderer.autoClear = auto; renderer.xr.enabled = xr;
+      };
+      copy();
+      renderer.domElement.addEventListener('webglcontextrestored', () => setTimeout(() => { try { copy(); } catch (e) { U.uSfOn.value = 0; } }, 0));
+      U.uSf.value = rt.texture; U.uSfOn.value = 1;
       return true;
-    }).catch(e => { console.warn('surfaces: none drawn', e); return false; });
+    });
     return loading;
   }
 
   // the shared GLSL: anti-tiled lookup, and what a lookup gives (detail, roughness, normal in world space)
   const PARS = `
-uniform mediump sampler2DArray uSf; uniform float uSfOn; uniform vec2 uSfTile;
+uniform highp sampler2DArray uSf; uniform float uSfOn; uniform vec2 uSfTile;
 float sfH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float sfN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(sfH(i), sfH(i + vec2(1, 0)), f.x), mix(sfH(i + vec2(0, 1)), sfH(i + vec2(1, 1)), f.x), f.y); }
 // x in tiles: two lookups, each at an offset that a noise across the tiles picks, blended where it changes
-vec4 sfTap(float layer, vec2 x) {
+vec4 sfTap(float t, vec2 x) { // (t: the layer, 0 the asphalt and 1 the concrete)
   float k = sfN(x * 0.55) * 0.6 + sfN(x * 1.7 + 4.3) * 0.4;
   vec2 dx = dFdx(x), dy = dFdy(x);
   float l = k * 8.0, f = fract(l), ia = floor(l), ib = ia + 1.0;
-  vec4 a = textureGrad(uSf, vec3(x + sin(vec2(3.0, 7.0) * ia), layer), dx, dy), b = textureGrad(uSf, vec3(x + sin(vec2(3.0, 7.0) * ib), layer), dx, dy);
+  vec4 a = textureGrad(uSf, vec3(x + sin(vec2(3.0, 7.0) * ia), t), dx, dy), b = textureGrad(uSf, vec3(x + sin(vec2(3.0, 7.0) * ib), t), dx, dy);
   float s = a.r - b.r;
   return mix(a, b, smoothstep(0.2, 0.8, f - 0.1 * s));
 }
@@ -120,8 +125,9 @@ vSfWP = (modelMatrix * vec4(transformed, 1.0)).xyz;
 
   // the game's ground tiles: masks.road and masks.paved are floats the ground's own shader computed
   // in its map stage (game.js); the asphalt goes on the road, the concrete's grain on the paving
+  const short = () => !!(window.OEGLCare && OEGLCare.fit.off('surface')); // (a GPU short of texture units: glcare.js fit)
   function ground(sh, masks) {
-    if (!active) return;
+    if (!active || short()) return;
     tile();
     Object.assign(sh.uniforms, U);
     sh.vertexShader = VARY_V(sh);
@@ -173,6 +179,7 @@ if (sfRoad + sfPave > 0.004) {
     const own = mat.onBeforeCompile, isPaint = kind === 'paint', idx = kind === 'concrete' ? 1 : 0;
     mat.onBeforeCompile = (sh, r) => {
       if (own) own(sh, r);
+      if (short()) return;
       Object.assign(sh.uniforms, U);
       sh.vertexShader = VARY_V(sh);
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nvarying vec3 vSfWP;${PARS}`)

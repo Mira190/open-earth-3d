@@ -349,15 +349,16 @@ def cut_landmarks(LM, smap, R):
     for k in ("water_cover", "seawalls"):
         if k in LM:
             out[k] = [r for r in LM[k] if R.touches(*box_of([v for q in r for v in q[:2]]), m=EDGE_M)]
-    if "treeless" in LM:
-        out["treeless"] = [r for r in LM["treeless"] if R.scaled(10).touches(*box_of(r))]
+    for k in ("treeless", "bare"):   # rings in decimetres: no tree, no lamp or bench of the map's
+        if k in LM:
+            out[k] = [r for r in LM[k] if R.scaled(10).touches(*box_of(r))]
     if "passages" in LM:
         out["passages"] = [p for p in LM["passages"] if any(R.has(q[0], q[1]) for q in p["pts"])]
     if "trees" in LM:
         out["trees"] = cut_trees(LM["trees"], R)
     if "glows" in LM:
         out["glows"] = [g for g in LM["glows"] if R.has(g[0], g[1], 400)]
-    known = {"materials", "meshes", "notes", "hidden", "demolished", "trees", "clip", "props", "glows", "water_cover", "seawalls", "treeless", "passages"}
+    known = {"materials", "meshes", "notes", "hidden", "demolished", "trees", "clip", "props", "glows", "water_cover", "seawalls", "treeless", "bare", "passages"}
     odd = [k for k in LM if k not in known]
     if odd:
         raise SystemExit(f"landmarks.json has keys this cut does not know: {odd} (pipeline/district.py cut_landmarks)")

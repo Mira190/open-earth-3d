@@ -30,6 +30,14 @@ window.OEDay = (function () {
     const t = doy(m, d), starts = ev.days ? ev.days.map(x => doy(...x)) : [doy(...ev.dates[0])];
     return Math.min(...starts.map(s => (s - t + 365) % 365));
   }
+  // the run of an event that a date falls in, by its first day ("2026-10-20": a season is one run however many days it
+  // lasts, a run over the new year belongs to the year it began in, and a single day is its own); null when it is not on
+  function runOf(ev, y, m, d) {
+    if (!eventOn(ev, m, d)) return null;
+    if (ev.days || !ev.dates) return `${y}-${m}-${d}`;
+    const s = ev.dates[0];
+    return `${doy(m, d) < doy(...s) ? y - 1 : y}-${s[0]}-${s[1]}`;
+  }
 
   // a sky in words from the season's samples (weather.js season(): rain, snow, fog, storm, cloud 0..1): the worst of them
   const skyOf = f => { const mx = k => Math.max(...f.map(o => o[k] || 0)); return mx('storm') > 0.3 ? 'Thunderstorms' : mx('snow') > 0.2 ? 'Snow' : mx('rain') > 0.5 ? 'Rain' : mx('rain') > 0.15 ? 'Showers' : mx('fog') > 0.4 ? 'Fog' : mx('cloud') > 0.6 ? 'Overcast' : 'Clear'; };
@@ -50,7 +58,7 @@ window.OEDay = (function () {
     }
     const slotAt = min => { const b = bounds(); return min < b.morning ? 'night' : min < b.daytime ? 'morning' : min < b.evening ? 'daytime' : min < b.night ? 'evening' : 'night'; };
     const D = {
-      SLOTS, SLOT_NAME, eventOn, daysUntil, bounds, slotAt, hm,
+      SLOTS, SLOT_NAME, eventOn, daysUntil, runOf, bounds, slotAt, hm,
       get slot() { return slotAt(c.min); },
       get date() { return `${c.y}-${c.m}-${c.d}`; },
       get dow() { return dowOf(c.y, c.m, c.d); },
@@ -290,5 +298,5 @@ window.OEDay = (function () {
     L.day = D;
     return D;
   }
-  return { create, SLOTS, SLOT_NAME, eventOn, daysUntil };
+  return { create, SLOTS, SLOT_NAME, eventOn, daysUntil, runOf };
 })();

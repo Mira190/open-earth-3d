@@ -121,11 +121,15 @@ window.OEStreets = (function () {
     if (!lines.length) return st;
     const cw = st.roads = carriageways(lines);
     // flat lists of `stride` numbers per item, x and y first then z, in units of `u` metres
+    // (nor does a lamp or a bench of the map stand where a landmark says nothing of the street's does, inside a hall it
+    // draws: landmarks.json "bare", rings in decimetres, as "treeless" is for the trees in world.js)
+    const bare = ((D.LM && D.LM.bare) || []).map(r => r.map(v => v / 10));
+    const under = (x, y) => bare.some(r => { let c = false; for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) if ((r[i + 1] > y) !== (r[j + 1] > y) && x < (r[j] - r[i]) * (y - r[i + 1]) / (r[j + 1] - r[i + 1]) + r[i]) c = !c; return c; });
     const fix = (name, flat, stride, u, r, zu = u) => {
       const keep = [];
       let moved = 0, dropped = 0;
       for (let i = 0; i + stride - 1 < flat.length; i += stride) {
-        const x = flat[i] * u, y = flat[i + 1] * u, z = flat[i + 2] * zu, q = cw.kerbside(x, y, z, r);
+        const x = flat[i] * u, y = flat[i + 1] * u, z = flat[i + 2] * zu, q = name !== 'trees' && under(x, y) ? null : cw.kerbside(x, y, z, r);
         if (!q) { dropped++; continue; }
         const item = Array.prototype.slice.call(flat, i, i + stride);
         if (q[0] !== x || q[1] !== y) { item[0] = Math.round(q[0] / u); item[1] = Math.round(q[1] / u); moved++; }
