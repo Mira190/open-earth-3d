@@ -1012,16 +1012,21 @@ transformed = crowdPose(transformed, false);`);
     const cast = (real || []).filter(n => lib.npcs && lib.npcs[n]);
     const bySex = { f: cast.filter(n => lib.npcs[n].sex === 'f'), m: cast.filter(n => lib.npcs[n].sex === 'm') };
     // a loaded cast member of rn's sex, to stand in until rn itself comes (begin, above)
-    const realStandIn = rn => { const l = bySex[lib.npcs[rn].sex]; for (const n of l) if (lib.tpl[n]) return n; return null; };
+    // (any of those loaded, by the walker's own number: the first loaded for everyone was a crossing of one man)
+    const realStandIn = (rn, i) => { const l = bySex[lib.npcs[rn].sex].filter(n => lib.tpl[n]); return l.length ? l[(Math.imul(i + 3, 2246822519) >>> 17) % l.length] : null; };
     // load a few of the cast up front so the first near people are real, nearest the camera first as they stream
-    if (cast.length) { bySex.f.slice(0, 2).concat(bySex.m.slice(0, 2)).forEach(n => lib.require(n)); }
+    // (and then the rest of it, a dozen at most: a walker whose character has not come is someone else's double until it does)
+    if (cast.length) { bySex.f.slice(0, 2).concat(bySex.m.slice(0, 2)).forEach(n => lib.require(n)); cast.forEach(n => lib.require(n)); }
     const realOf = (() => {
       if (!cast.length) return () => null;
       return (i, look) => {
         const w = lib.info.characters[look.character] && lib.info.characters[look.character].pack === 'W';
         const list = bySex[w ? 'f' : 'm'].length ? bySex[w ? 'f' : 'm'] : cast;
-        const h = Math.imul(i + 1, 2654435761) >>> 0;
-        return list[h % list.length];
+        // (mixed down to its low bits: the multiplier alone leaves h % 6 the walker's own number % 6, and a group that
+        // set out together, every sixth of the line, was eight of the one man in the one waistcoat)
+        let h = Math.imul(i + 1, 2654435761) >>> 0;
+        h ^= h >>> 15; h = Math.imul(h, 2246822519) >>> 0; h ^= h >>> 13;
+        return list[(h >>> 0) % list.length];
       };
     })();
     // the far copy a walker is drawn as (lib.far): the same cast member it becomes when near, so the step from one to
@@ -1146,17 +1151,19 @@ transformed = crowdPose(transformed, false);`);
       const keep = new Set(want.slice(0, near).map(w => w[1]));
       for (const [i, r] of active) if (!keep.has(i)) { world.remove(r.root); (free[r.character] = free[r.character] || []).push(r); active.delete(i); }
       for (const i of keep) {
-        if (active.has(i)) continue;
+        // (a stand-in gives way to the walker's own character once that has come, not only when they next come near)
+        if (active.has(i)) { const r0 = active.get(i); if (!(r0.standFor && lib.tpl[r0.standFor])) continue; world.remove(r0.root); (free[r0.character] = free[r0.character] || []).push(r0); active.delete(i); }
         const p = P[i], rn = realOf(i, p.look);
         let look = rn ? Object.assign({}, p.look, { character: rn, pattern: null, scale: realScale(rn, p.look) }) : p.look, name = look.character;
         // a real near person whose character is still streaming stands in as a loaded cast member of the same sex,
         // not the far crowd's doll: at the hero spawn a dense crowd reads as real at once, and swaps to its own
         // character when it comes (begin() runs again as the player moves)
-        if (rn && !lib.tpl[name]) { lib.require(name); const si = realStandIn(rn); if (si) { look = Object.assign({}, p.look, { character: si, pattern: null, scale: realScale(si, p.look) }); name = si; } }
+        if (rn && !lib.tpl[name]) { lib.require(name); const si = realStandIn(rn, i); if (si) { look = Object.assign({}, p.look, { character: si, pattern: null, scale: realScale(si, p.look) }); name = si; } }
         if (!lib.tpl[name]) { lib.require(name); continue; }
         const r = (free[name] && free[name].pop()) || person(lib, Object.assign({}, look));
         r.setLook(Object.assign({ pattern: null, pattern2: null, acc: null }, look));
         if (rn) r.dress(p.dress);
+        r.standFor = rn && name !== rn ? rn : null;
         r.umbOn = false;
         world.add(r.root);
         active.set(i, r);

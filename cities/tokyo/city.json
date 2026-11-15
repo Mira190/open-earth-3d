@@ -614,7 +614,7 @@
     "scrambles": [
       {"name": "数寄屋橋 Sukiyabashi", "at": [385.0, 279.8], "note": "Harumi-dori and Sotobori-dori in Ginza; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); both diagonals mapped in OSM."}
     ],
-    "crowd": {"cast": {"f": ["R_Business_Female_03", "R_Female_Adult_09_f011_grey", "R_Female_Adult_15_f013", "R_Female_Adult_08", "R_Business_Female_04_f003", "R_Female_Adult_13_f003_brown", "R_Female_Adult_17_f011", "R_Female_Adult_11"], "m": ["R_Business_Male_02", "R_Male_Adult_06_m024_brown", "R_Business_Male_06_m017", "R_Male_Adult_05", "R_Sports_Male_04_m024", "R_Male_Adult_14_m017_grey", "R_Male_Adult_20_m008", "R_Male_Adult_13"], "note": "the walkers drawn as people, in order: Marunouchi's office workers and Ginza's shoppers, and every fourth a visitor from abroad (an estimate)"}, 
+    "crowd": {"cast": {"f": ["R_Business_Female_03", "R_Female_Adult_09_f011_grey", "R_Female_Adult_15_f013", "R_Female_Adult_08", "R_Business_Female_04_f003", "R_Female_Adult_13_f003_brown", "R_Female_Adult_17_f011", "R_Female_Adult_11"], "m": ["R_Business_Male_02", "R_Business_Male_06_m017", "R_Male_Adult_05", "R_Sports_Male_04_m024", "R_Male_Adult_14_m017_grey", "R_Male_Adult_20_m008", "R_Male_Adult_06_m024_brown", "R_Male_Adult_13"], "note": "the walkers drawn as people, in order: Marunouchi's office workers and Ginza's shoppers, and every fourth a visitor from abroad (an estimate)"}, 
       "pedestrians": 520,
       "cars": 190,
       "radius_m": 450,

@@ -1829,15 +1829,15 @@
     "triangles": 1842,
     "height_m": 1.787
    },
+   "R_Male_Adult_03_m008_grey": {
+    "triangles": 1168,
+    "height_m": 1.818
+   },
    "R_Male_Adult_05": {
     "triangles": 1266,
     "height_m": 1.809
    },
    "R_Male_Adult_05_m024": {
-    "triangles": 1072,
-    "height_m": 1.82
-   },
-   "R_Male_Adult_06_m024_brown": {
     "triangles": 1072,
     "height_m": 1.82
    },

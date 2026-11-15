@@ -364,6 +364,17 @@ Considered and not taken: octahedral impostors (a picture per view angle: 8 to 1
 and a flat card where the crowd's shadows and night lights need a body), and the near walkers' skinned clips on
 every walker (a skeleton a person: the cost the instancing exists to avoid).
 
+**Who is on the street** (`game.crowd.cast`, `web/game/game.js` `realCast`). The walkers drawn as people were the
+story's NPCs in the order of their names, which put the office suits first, and three faults made copies of
+them: the pick of a character was the walker's number modulo the cast's size, so a group that set out together
+was one man eight times; a walker whose character had not streamed stood in as the first one loaded, and stayed
+so; and only four of the cast were fetched ahead. A map now names its cast from every character built, in order
+(six women and six men on a desktop, four and four on a phone): Shibuya's young crowd in everyday clothes with
+every fourth a visitor from abroad, Marunouchi's office workers and shoppers, central Sydney with about a third
+of Asian background (the shares are estimates). The pick is a mixed hash, the whole cast is fetched at the start,
+and a stand-in gives way as soon as the walker's own character has come. Hair is part of a character's head:
+another style is another head built in Blender (`blender/build_people.py` tags), not a change at run time.
+
 **The same person in other clothes** (`web/game/people.js` `DRESS`). A cast of a dozen fills a crossing, so two of
 one character meet, and side by side in the one red shirt, or three in the one taupe suit, they read as copies.
 Each walker wears one of eight: a coloured cloth turned round the wheel and quietened (a dark one nearly to
