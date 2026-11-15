@@ -139,5 +139,5 @@ for (const id of live) {
   }
   console.log(`${id}: ${G.quests.length} quests on ${(G.lines || []).length || 1} lines play through; ${placed} places, the farthest ${Math.round(far)} m from the start, ${out} outside a phone's district`);
 }
-console.log(bad ? `goals: ${bad} of ${n} checks failed` : `goals ok: ${n} checks`);
+console.log(bad ? `goals: ${bad} of ${n} checks failed` : `ok   goals  ${n} checks: the rules, and ${live.length} live maps' lines played to the last stamp`);
 process.exit(bad ? 1 : 0);
