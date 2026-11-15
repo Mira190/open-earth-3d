@@ -554,7 +554,7 @@
       {"name": "神南一丁目 Jinnan 1-chome", "at": [392.3, -819.0], "note": "Koen-dori, the next crossing up; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); diagonals mapped in OSM."},
       {"name": "勤労福祉会館前 Kinro Fukushi Kaikan-mae", "at": [251.7, -680.2], "note": "Koen-dori, about 200 m further; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); diagonals mapped in OSM."}
     ],
-    "crowd": {
+    "crowd": {"cast": {"f": ["R_Female_Adult_13_f003_brown", "R_Female_Adult_14_f016", "R_Female_Adult_15_f013", "R_Female_Adult_08", "R_Female_Adult_17_f011", "R_Female_Adult_04_f003", "R_Business_Female_04_f003", "R_Female_Adult_11", "R_Female_Adult_07_f003", "R_Female_Adult_09_f011_grey"], "m": ["R_Male_Adult_05_m024", "R_Male_Adult_14_m017_grey", "R_Male_Adult_20_m008", "R_Male_Adult_11", "R_Male_Adult_08_m024", "R_Male_Adult_03_m008_grey", "R_Male_Adult_06_m024_brown", "R_Male_Adult_13", "R_Business_Male_06_m017", "R_Male_Adult_15_m024_dark"], "note": "the walkers drawn as people, in order (the first six women and six men on a desktop, four and four on a phone): Shibuya's own young crowd in everyday clothes, one office worker in six, and every fourth a visitor from abroad, as on the Scramble (the ward counts it among Tokyo's most visited places by foreign tourists; the share is an estimate)"}, 
       "pedestrians": 640,
       "pedestrians_peak": 1600,
       "hours": [[0, 0.32], [1, 0.16], [3, 0.07], [5, 0.1], [7, 0.42], [8, 0.72], [9, 0.55], [11, 0.55], [12, 0.7], [14, 0.62], [16, 0.72], [18, 0.88], [20, 0.86], [22, 0.66], [23, 0.5]],
@@ -568,7 +568,7 @@
     "look": {
       "preset": "film",
       "light": {"shade": [0.88, 0.91, 0.95], "bounce": 0.6},
-      "grade": {"day": {"sat": 1.0, "vib": 0.06, "shade": [0.99, 1.0, 1.02], "tint": [1.01, 1.0, 0.99]}},
+      "grade": {"day": {"sat": 1.0, "vib": 0.06, "shade": [0.99, 1.0, 1.02], "tint": [1.01, 1.0, 0.99]}, "golden": {"ev": 1.34, "tint": [1.035, 1.0, 0.955], "sat": 1.12, "contrast": 0.2, "vib": 0.2, "shade": [1.0, 1.0, 1.01], "hi": [1.04, 1.0, 0.95], "lift": [0.004, 0.003, 0.004]}, "blue": {"ev": 1.3, "tint": [1.0, 1.0, 1.02], "sat": 1.1, "contrast": 0.2, "vib": 0.15, "shade": [0.98, 1.0, 1.04], "lift": [0.0, 0.003, 0.008]}},
       "neon": 1,
       "fill": [{ "at": [368.7, -1000.6], "z": 12, "w": 60, "h": 56, "colour": "#ffe4c8", "k": 1.2 },
                { "at": [376.6, -1043.4], "z": 4.2, "w": 3.4, "h": 3.4, "colour": "#ffd0a0", "k": 8, "aim": [373.78, -1047.42, 2.2] }],
@@ -1029,6 +1029,8 @@
         "fine_m": 60,
         "at": [368.0, -1002.0],
         "r": 100.0,
+        "lift": 0.05,
+        "posts": [[294.0, -1001.0], [277.2, -989.3], [309.1, -986.8], [370.6, -971.9], [376.5, -946.6], [382.3, -921.2], [395.1, -997.1], [421.7, -930.0], [420.4, -956.0], [419.3, -982.0], [431.8, -998.4], [457.8, -997.1], [414.0, -1009.8], [348.7, -1061.0], [357.9, -1036.7], [328.6, -1063.2], [332.4, -1041.8], [340.4, -1007.8]],
         "bake": 0.7,
         "street": 0.45,
         "glow": [0.24, 1.5],

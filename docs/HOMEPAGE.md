@@ -121,3 +121,10 @@ Ideas only; nothing taken from their look, code or assets.
   shared link may not know a tap skips it. Worth measuring on real phones (the telemetry's
   `oe:ready` mark) before cutting it.
 - Not checked on a real GPU, WebGPU, Safari or iOS.
+
+## A city's districts stand side by side
+
+Tokyo's two maps, Shibuya and Marunouchi & Ginza, are districts of the one city: on the list they are two rows
+at one indent under it, a rail down their left, each with its name and its way in in two columns that line up
+(`web/title.css` `.ts-sub`, a grid with subgrid rows). The first pass set them on a wrapping line, and the second,
+wrapped, sat further in than the first and read as its child.
