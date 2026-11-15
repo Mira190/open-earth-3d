@@ -719,6 +719,7 @@ LAMPS = []       # (x, y, z, power): the halls' lights, for the level's baked ni
 GLOWS = []       # [x, y, radius, colour, strength]: their light on the floor after dark (landmarks.json "glows")
 DEMOLISHED = []  # the city's solids the halls and the passages stand in the place of
 BARE = []        # the halls' and passages' floors, where no lamp or bench of the map's stands (landmarks.json "treeless")
+WALLED = []      # the building's and the block's footprints: but for BARE, walls stand there (closed() below)
 
 
 def _rail_deck():
@@ -979,6 +980,17 @@ def hall(K, c, R, g, e, t, w_door, d_front, d_back, Z):
     return BARE[-1], box_(d_back - 0.5, u_end, hw), u_end
 
 
+def closed():
+    """Where the station's walls stand across the map's footways (game.json's, which run through its rooms every way):
+    the building's and the block's footprints but for the halls, their vestibules and passages. Rings in metres, for
+    pipeline/game_extras.py, which cuts the crowd's footways there."""
+    import shapely
+    if not WALLED:
+        meshes()
+    area = shapely.union_all(WALLED).buffer(0.2).difference(shapely.union_all(BARE).buffer(-0.4)).buffer(0)
+    return [[[round(float(x), 2), round(float(y), 2)] for x, y in p.exterior.coords] for p in getattr(area, "geoms", [area]) if p.geom_type == "Polygon" and p.area > 1]
+
+
 def chuo(K, g, solids, station, ways, T):
     """The block between the Marunouchi building and the tracks, where the Chuo Line's viaduct stands over the
     station's rooms (its platforms 1 and 2 are not built: issue 480): the city's solids there, redrawn as one plain
@@ -994,6 +1006,7 @@ def chuo(K, g, solids, station, ways, T):
     body = max(getattr(body, "geoms", [body]), key=lambda q: q.area).simplify(0.3)
     DEMOLISHED.extend(s["si"] for s in solids if s["name"] != NAME and len(s["ring"]) > 2 and s.get("base", 0) < 1
                       and Polygon(s["ring"]).buffer(0).intersection(body.buffer(0.5)).area > 0.8 * Polygon(s["ring"]).buffer(0).area)
+    WALLED.append(body)
     m, roof = K["tks_chuo"], K["tks_chuo_roof"]
     low = body.difference(shapely.union_all(ways).buffer(0.02))
     for piece in getattr(low, "geoms", [low]):
@@ -1052,7 +1065,8 @@ def building(K, S):
     # the halls under the domes are walked through: their blocks' solids come down (the walls drawn here are what a
     # walker meets), and so does the block behind them, redrawn with the halls' passages through it
     T = Ground("tokyo")
-    del DEMOLISHED[:], LAMPS[:], GLOWS[:], BARE[:]
+    del DEMOLISHED[:], LAMPS[:], GLOWS[:], BARE[:], WALLED[:]
+    WALLED.append(union(solids))
     feet = []
     for c, R, ph in octs:
         body = min(blocks, key=lambda p: p.centroid.distance(shapely.geometry.Point(c)))

@@ -107,7 +107,7 @@
   ],
   "load_bytes": {
    "model": 3172841,
-   "game": 3662749
+   "game": 3662684
   },
   "lean_pack": {
    "dir": "d/",
@@ -119,7 +119,7 @@
     0,
     2300
    ],
-   "bytes": 2571092
+   "bytes": 2571027
   },
   "flyover": {
    "video": "flyover.mp4",

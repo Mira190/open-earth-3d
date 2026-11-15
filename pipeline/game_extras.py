@@ -38,7 +38,10 @@ def apply(C, scene, out):
         if k in gcfg:
             out[k] = list(gcfg[k])
     if C.hook("game_extras"):
-        for k, v in C.hook("game_extras")(scene).items():
+        extras = C.hook("game_extras")(scene)
+        if extras.get("closed"):   # walls a landmark stands on the crowd's footways: the footways stop at them
+            clip_closed(out, extras["closed"])
+        for k, v in extras.items():
             if k in KEYS:
                 out[k] = out.get(k, []) + v
             elif k in WHOLE:
@@ -54,6 +57,37 @@ def apply(C, scene, out):
         out["npcs"] = [by.pop(n["id"], n) for n in out["npcs"]] + list(by.values())
     drop_kept_off(out)
     return out
+
+
+def clip_closed(out, rings):
+    """Cut the crowd's footways where a landmark has built walls across them (a hook's "closed": rings [[x, y], ...] in
+    metres: Tokyo Station's building but for its halls and passages): each footway keeps its parts outside, 2 m and
+    longer, with its own heights. The map's footways run through a station's rooms in every direction; a walker follows
+    them, and walked through the walls. Returns how many footways were cut."""
+    import numpy as np
+    import shapely
+    from shapely.geometry import LineString, Point, Polygon
+    area = shapely.union_all([Polygon(r).buffer(0) for r in rings if len(r) > 2])
+    if area.is_empty or "paths" not in out:
+        return 0
+    shapely.prepare(area)
+    keep, cut = [], 0
+    for f in out["paths"].get("foot", []):
+        P = np.asarray(f["p"], float).reshape(-1, 3) / 10
+        line = LineString(P[:, :2]) if len(P) > 1 else None
+        if line is None or line.length < 0.1 or not line.intersects(area) or line.intersection(area).length < 0.5:
+            keep.append(f)
+            continue
+        cut += 1
+        s = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(P[:, :2], axis=0), axis=1))])
+        rest = line.difference(area)
+        for piece in getattr(rest, "geoms", [rest]):
+            if piece.geom_type != "LineString" or piece.length < 2.0:
+                continue
+            q = [(x, y, float(np.interp(line.project(Point(x, y)), s, P[:, 2]))) for x, y in piece.coords]
+            keep.append(dict(f, p=[int(round(v * 10)) for pt in q for v in pt]))
+    out["paths"]["foot"] = keep
+    return cut
 
 
 def drop_kept_off(out):

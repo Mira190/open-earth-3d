@@ -497,4 +497,5 @@ def game_extras(scene):
         # under the porch to the glass doors of the main entrance (1.5 m in from the street face)
         close.append(close_to("Kabuki-za, the doors under the porch", F(0, vf - 1.5, 0), g + zs, F(0, vf + 5.5, 0), 1.0, on=True))
     tr = RAIL.trains()   # the JR lines past Yurakucho, and the platform to travel to (cities/tokyo/rail.py)
-    return {"close": close, **({"trains": tr, "travel": RAIL.travel()} if tr else {})}
+    # (and where Tokyo Station's walls stand across the map's footways: cut there, pipeline/game_extras.py clip_closed)
+    return {"close": close, "closed": STATION_HERO.closed(), **({"trains": tr, "travel": RAIL.travel()} if tr else {})}
