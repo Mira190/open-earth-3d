@@ -7,7 +7,8 @@
 //     over the next twenty, and none of them a change of the extras;
 //   - it still gives way at once when the scene gets heavier, and has its resolution and the display's full rate
 //     back a minute after the scene is light again;
-//   - a device that cannot hold the floor ends there with the extras shed;
+//   - a device that cannot hold the floor ends there with the extras shed, and one far out of its depth (frames of
+//     a third of a second) is there within five seconds;
 //   - a device with a record starts from it and does not try the step above for half a minute;
 //   - frames that cost the same at any resolution get the resolution back (web/quality.js `flat`), and frames
 //     that are half pixels keep the floor.
@@ -78,6 +79,10 @@ for (const [name, cost] of [['between 0.85 and 0.90, the extras shed', (s, e) =>
 // 4. a device that cannot hold the floor
 { const g = gov(); g.startLow(); play(g, 90, (s, e) => 30 + 40 * s * s + 8 * e);
   check(Math.abs(g.scale - g.min) < 1e-6 && g.extras === 0, `a device that cannot hold the floor ends there, the extras shed (${g.scale.toFixed(2)}/${g.extras})`); }
+// 4b. a device far out of its depth: frames of a third of a second and more (they were left out as stalls, and such a
+// device was never governed: an Apple M3 in the story's rain, at five frames a second for minutes)
+{ const g = gov(); g.startLow(); play(g, 5, (s, e) => 200 + 300 * s * s + 60 * e);
+  check(Math.abs(g.scale - g.min) < 1e-6 && g.extras === 0, `a device at three frames a second is at the floor with the extras shed within five seconds (${g.scale.toFixed(2)}/${g.extras})`); }
 
 // 5. a record: settled from the start
 if (has('resume')) { const g = gov(); g.resume(0.85, 0);
