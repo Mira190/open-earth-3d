@@ -372,7 +372,10 @@ window.OEAtmos = (function () {
       // (under a thunderstorm the sheet is darker still, and lightning lights it from within: weather.js S.storm, S.flash)
       Wd.cloudLight = (alt, ref) => {
         const WS = (window.OEWeather && OEWeather.S) || {}, WU = window.OEWeather ? OEWeather.U : null;
-        OEClouds.light(su, alt, ref.zen, ref.hor, { palette: LK.palette, overcast: WU ? WU.uOeOvercast.value : 0, rain: Math.min(1, (WU ? WU.uOeRain.value : 0) + 0.6 * (WS.storm || 0)), storm: WS.storm || 0 });
+        // (the cloud base after dark: the twilight it still holds in the blue hour, then the city's own light on it)
+        const nk = Wd.U && Wd.U.uNight ? Wd.U.uNight.value : 0, tw = Wd.twilight || 0, cg = su.uNightHorizon ? su.uNightHorizon.value : null;
+        const glow = [nk * (0.030 * tw + (cg ? cg.r : 0.03) * 0.55 * (1 - tw)), nk * (0.055 * tw + (cg ? cg.g : 0.03) * 0.55 * (1 - tw)), nk * (0.125 * tw + (cg ? cg.b : 0.03) * 0.6 * (1 - tw))];
+        OEClouds.light(su, alt, ref.zen, ref.hor, { glow, palette: LK.palette, overcast: WU ? WU.uOeOvercast.value : 0, rain: Math.min(1, (WU ? WU.uOeRain.value : 0) + 0.6 * (WS.storm || 0)), storm: WS.storm || 0 });
         if (WS.flash > 0) { su.uCloudShade.value.multiplyScalar(1 + 5 * WS.flash); su.uCloudLit.value.multiplyScalar(1 + 3 * WS.flash); }
       };
     }

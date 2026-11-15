@@ -8,6 +8,7 @@
 window.OEWorld = (function () {
   const S = window.Sun, RAD = Math.PI / 180;
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
+  let TWILIGHT_HORIZON = null; // (made at its first use: THREE is not there when this file loads)
   const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   const idle = () => new Promise(r => setTimeout(r, 0));
@@ -2426,6 +2427,16 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         // street lights drawn (night.js) the lamps do the lighting.
         su.uNightSky.value = night ? smooth(0.3, 1, U.uNight.value) : 0;
         if (night && night.skyglow) su.uNightHorizon.value.copy(night.skyglow).multiplyScalar(2.2);
+        // The blue hour is not the night: with the sun 4 to 8 degrees down the sky is still lit from over the horizon,
+        // a deep clear blue as bright as the lit street under it, which is why the hour is photographed. It was drawn
+        // with the night's near-black zenith as soon as the lamps came on. The zenith and the horizon are the twilight's
+        // while the sun is within 13 degrees of the horizon, and the night's after.
+        if (night) {
+          const tw = smooth(-13, -4.5, sp.altitude);
+          su.uNightZenith.value.setRGB(0.0028 + 0.0142 * tw, 0.0075 + 0.0315 * tw, 0.019 + 0.091 * tw);
+          su.uNightHorizon.value.lerp(TWILIGHT_HORIZON || (TWILIGHT_HORIZON = new THREE.Color(0.075, 0.085, 0.13)), 0.7 * tw);
+          api.twilight = tw;
+        }
         // without a clock, guess the hour from the sun: midday, else evening in the west and small hours in the east
         U.uHour.value = minutes != null ? minutes / 60 : sp.altitude > 0 ? 12 : sp.azimuth > 180 ? 21 : 4;
         for (const m of Object.values(floodMats)) m.emissiveIntensity = m.userData.glow * U.uNight.value + m.userData.day * (1 - U.uNight.value);

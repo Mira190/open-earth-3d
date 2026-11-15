@@ -162,6 +162,39 @@ now blends to the designed sky. The environment light is drawn from it, after th
 for the hour is set: it used to keep the previous hour's haze, so a night kept the day's
 bright horizon in every reflection (the cause of the grey nights in the game too).
 
+## A wet street after dark
+
+A city in the rain at night is mostly its reflections: every sign, screen and lamp drawn again in the street as a long
+streak towards whoever looks. `web/mirror.js` draws the scene a second time from under the street and the wet ground
+shows that picture (high tier). Three things were wrong with it, and from a walker's eye height the street showed
+nothing at all:
+
+- **The street was in its own mirror.** Seen from under the street, where the mirrored camera stands, the paving, the
+  kerbs and the paint just over the mirror's plane were a ceiling between the camera and the city. From a pavement
+  (a kerb's height above the carriageway) the plane cleared them, which is why the chase camera had reflections and a
+  camera over the carriageway had none. What mirrors is now left out of the mirror's picture.
+- **The mirrored camera looked the wrong way.** It was the screen's camera, reflected. But a ray leaves a street at the
+  angle it met it, so the street in the frame shows the elevations from the frame's lowest ray up to the horizon, and
+  a film of water on asphalt smears each light down from a good way above that. From 1.6 m, looking along a street, a
+  screen 30 m up is mirrored at a point three metres from the feet, and what reaches the rest of the street is its
+  smear. The picture is now taken over the elevations the street in view can show and thirty degrees more, whatever
+  the screen's camera does.
+- **A wavering picture instead of a streak.** The film between the puddles lies on the asphalt's grain, and at the
+  angle a street is seen from a facet's tilt moves a light's image a long way along the street and hardly across it:
+  the lobe of a rough surface at a grazing angle (the same reason the sun makes a path on the sea). The film now takes
+  the picture along the screen's vertical with a long tail, each pixel from its own places (a grain fixed to the
+  street, so it neither swims nor flickers); a puddle stays a mirror, shaken only by the rain's rings.
+
+After dark the film is smoother (`weather.js` `uOeLit`), the lit ground between the lights is held down (water fills
+the grain that scattered light back), and the reflection's share follows Fresnel for water in a puddle and comes in a
+little sooner on the film, whose facets lean towards the viewer. `?mirror=show` shows the picture alone on the street;
+`tools/night_probe.js` prints what the night is drawn with.
+
+**The blue hour and an overcast.** With the sun 4 to 8 degrees down the sky is still lit from over the horizon: the
+zenith and the horizon are the twilight's blue until the sun is 13 degrees down, not the night's near-black from the
+moment the lamps come on (`world.js`). An overcast after dark is lit from below, by the twilight it still holds and
+then by the city (`clouds.js` `glow`): a wet night over a city is never black overhead.
+
 ## LED screens
 
 Real-time cities usually draw a big screen as a texture that never changes, or as a video
