@@ -26,7 +26,7 @@ const [,, city = 'tokyo'] = process.argv;
     if (!vlib.carsFull) await vlib.loadCars();
     const names = Object.keys(lib.info.characters).filter(n => !/^(W|M)_Worker$/.test(n));
     for (const n of names) await Promise.resolve(lib.require(n)).catch(() => {});
-    for (const model of ['Car_Taxi', 'Car_Sedan', 'Car_SUV', 'Car_Hatch']) {
+    for (const model of ['Car_Taxi', 'Car_Sedan', 'Car_SUV', 'Car_Hatch', 'Car_Super']) {
       if (!vlib.info.cars.models[model]) continue;
       const C = OECars.car(g.Wd.world, vlib, model, { colours: { paint: '#888888' }, keep: g.KEEP });
       C.place(g.player.x, g.player.y, g.player.z + 50, 0);

@@ -427,3 +427,12 @@ The film: `cities/shibuya/scramble_film.json`, 20 s of the scramble at dusk (17:
 and weather a views file names (`tools/views/shibuya-scramble.json`: from Hachiko, from the
 middle of the scramble and from the Starbucks window over it, by day, at dusk, at night and at
 night in the rain).
+
+## The sky's light after the weather changes
+
+The light from the sky (`web/world.js` `setSun`) is made with the clouds as lit for the cover of that moment. The
+weather set its cover afterwards (`web/game/weather.js` `light`), so a storm that cleared between two hours left the
+day lit by its clouds, about an eighth darker in a street between towers (luma 54.6 against 62.2), until the sun
+had moved on or a lost context made the sky again. `light` now has the sky's light made again, once, where the
+cover is no longer the one it was made under (`skyStale`). Found from the game check's lost-context step, which
+held or failed by the hour the run had reached: at night the two skies are alike.

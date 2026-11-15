@@ -27,6 +27,7 @@
 // reads, so a city's own wet-street look (Shibuya's reflections, #112) follows the same rain.
 'use strict';
 window.OEWeather = (function () {
+  let relit = false; // (light() making the sky's light again: not twice)
   const U = { uOeWet: { value: 0 }, uOeRain: { value: 0 }, uOeOvercast: { value: 0 }, uOeT: { value: 0 },
     // settled snow and falling snow (0..1), fog (0..1), lightning (0..1), and the wind: x, z in m/s, the
     // gust 0..1 and the distance the air has travelled (metres, for whatever sways or drifts with it)
@@ -1047,6 +1048,15 @@ void main() {
       // after the world has set this hour's light (world.js setSun): the weather's share of it
       light() {
         const o = cur.cloud, r = cur.rain, day = Wd.day ?? 1;
+        // the light from the sky (world.js setSun) is made with the clouds as lit for the cover of that moment, which
+        // is the cover this function set the time before: a storm that cleared between two hours left the day lit by
+        // its clouds, an eighth darker, until the sun had moved on or a lost context made the sky again. Where the
+        // cover is no longer the one that light was made under, it is made again, once, under this one
+        if (Math.abs(o - U.uOeOvercast.value) > 0.04 && Wd.lastSun && Wd.skyStale && !relit) {
+          U.uOeOvercast.value = o;
+          relit = true;
+          try { Wd.skyStale(); Wd.setSun(Wd.lastSun.sp, Wd.lastSun.minutes); } finally { relit = false; }
+        }
         U.uOeOvercast.value = o;
         if (!(o > 0.001)) { api.air(); return; }
         if (Wd.sunLight) Wd.sunLight.intensity *= 1 - 0.82 * o;

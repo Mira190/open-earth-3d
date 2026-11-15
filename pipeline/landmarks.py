@@ -61,6 +61,8 @@ def main():
         out["demolished"] = city.hook("landmark_demolished")(scene)
     if city.hook("landmark_treeless"):
         out["treeless"] = city.hook("landmark_treeless")(scene)
+    if city.hook("landmark_bare"):   # rings as "treeless": where no lamp or bench of the map's stands (web/streets.js tidy)
+        out["bare"] = city.hook("landmark_bare")(scene)
     path = os.path.join(city.out, "landmarks.json")
     # the passages through the landmarks (pipeline/landmark_passages.py): kept until that script measures them
     # again on the new meshes, which it does here when the segments it reads are cached (data/raw/<id>)

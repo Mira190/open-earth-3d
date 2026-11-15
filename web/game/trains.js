@@ -536,13 +536,17 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
     const services = R.services.filter(s => tracks[s.track]).map((s, i) => {
       const tr = tracks[s.track], S = STOCK[s.stock] || STOCK.e233k, len = s.cars * S.len;
       const halts = tr.halts.filter(h => !s.stop_at || s.stop_at.includes(h.station));
-      return Object.assign({ i, tr, S, len, halts, x0: -len / 2 - 4, x1: tr.c.L + len / 2 + 4, plans: {} }, s);
+      // (in its rapid hours a service stops only where "rapid_at" names: the Keihin-Tohoku Line's at Tokyo, not at Yurakucho)
+      const fast = halts.filter(h => (s.rapid_at || []).includes(h.station));
+      return Object.assign({ i, tr, S, len, halts, fast, x0: -len / 2 - 4, x1: tr.c.L + len / 2 + 4, plans: {} }, s);
     });
+    const rapidNow = s => !!s.rapid_h && hour() >= s.rapid_h[0] && hour() < s.rapid_h[1];
+    const haltsNow = s => (rapidNow(s) ? s.fast : s.halts);
     // a run as phases (cruise, brake, stand, pull away) from setting out to having left: with its halts or through
-    function plan(s, stops) {
-      const key = stops ? 1 : 0;
+    function plan(s, stops, all) {
+      const key = stops ? (!all && rapidNow(s) ? 2 : 1) : 0;
       if (s.plans[key]) return s.plans[key];
-      const v = s.v_ms, db = v * v / (2 * ACC), tb = v / ACC, ph = [], legs = [], hs = stops ? s.halts : [];
+      const v = s.v_ms, db = v * v / (2 * ACC), tb = v / ACC, ph = [], legs = [], hs = key === 2 ? s.fast : key ? s.halts : [];
       let t = 0, x = Math.min(s.x0, hs.length ? hs[0].m - db - 1 : s.x0);
       const x0 = x;
       hs.forEach((h, j) => {
@@ -572,13 +576,13 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
       out.leg = q.leg != null ? q.leg : -1; out.legs = P.legs;
       return out;
     }
-    const stopsNow = s => !!s.stops && s.halts.length > 0 && !(s.rapid_h && hour() >= s.rapid_h[0] && hour() < s.rapid_h[1]);
+    const stopsNow = s => !!s.stops && haltsNow(s).length > 0;
     // when a train running through reaches m along its course (its middle), from setting out
     const passAt = (s, m) => (m - plan(s, false).x0) / s.v_ms;
 
     // the cars, instanced: per stock and role, one mesh per material
     const kinds = {}, dummy = new THREE.Object3D();
-    const capOf = stockId => services.filter(s => s.stock === stockId).reduce((n, s) => n + s.cars * (Math.ceil(Math.max(plan(s, true).T, plan(s, false).T) / s.every_s) + 1), 0);
+    const capOf = stockId => services.filter(s => s.stock === stockId).reduce((n, s) => n + s.cars * (Math.ceil(Math.max(plan(s, true, true).T, plan(s, false).T) / s.every_s) + 1), 0);
     const tier = window.OEQuality ? window.OEQuality.tier().name : 'high';
     const LOD_M = tier === 'low' || tier === 'still' ? 40 : tier === 'medium' ? 60 : 85; // the Blender cars' far copy beyond this
     // a Blender car: per level of detail, one instanced mesh per material; a tail car is the driving car turned about
@@ -647,7 +651,7 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
       L.visible = true; L.material.color.set(colour); L.material.opacity = 0.55 + 0.45 * OEKit.shared.night.value; L.position.set(x, z, -y); L.scale.set(size * 1.6, size * 1.6, 1);
     }
 
-    const api = { tracks, services, kinds, models: false, live: [], t: o.t0 || 0, station: stations[0] || null, stations, said: [], voices: [0, 0, 0], run, plan, stopsNow, passAt };
+    const api = { tracks, services, kinds, models: false, live: [], t: o.t0 || 0, station: stations[0] || null, stations, said: [], voices: [0, 0, 0], run, plan, stopsNow, haltsNow, passAt };
     const state = { t: 0, x: 0, v: 0, a: 0, ph: '', T: 0, t1: 0, t2: 0, t3: 0 };
     const fwd = { x: 0, y: 0, z: 0 }, aft = { x: 0, y: 0, z: 0 };
     let clackAt = [0, 0, 0];

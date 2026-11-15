@@ -269,7 +269,17 @@ def landmark_meshes(scene):
 def landmark_glows(scene):
     """The Shuto's deck lamps over the Nihonbashi River (cities/tokyo/shuto.py), and Yurakucho's platform
     lights (cities/tokyo/rail.py)."""
-    return SHUTO.glows() + RAIL.glows()
+    return SHUTO.glows() + RAIL.glows() + [list(q) for q in STATION_HERO.GLOWS]
+
+
+def landmark_treeless(scene):
+    """Inside Tokyo Station's dome halls and their passages (cities/tokyo/station.py): no tree of the map's."""
+    return [[round(v * 10) for xy in list(p.exterior.coords) for v in xy] for p in STATION_HERO.BARE]
+
+
+def landmark_bare(scene):
+    """And no street lamp or bench of the map's there (web/streets.js)."""
+    return landmark_treeless(scene)
 
 
 def landmark_assets(out_dir, scene):
@@ -279,7 +289,7 @@ def landmark_assets(out_dir, scene):
 
 def landmark_demolished(scene):
     """The old station's rooms under Yurakucho's platforms, where the viaduct now stands (cities/tokyo/rail.py)."""
-    return RAIL.demolished()
+    return RAIL.demolished() + [si for si in STATION_HERO.DEMOLISHED if si not in RAIL.demolished()]
 
 
 def game_surfaces(scene):
@@ -492,4 +502,5 @@ def game_extras(scene):
         # under the porch to the glass doors of the main entrance (1.5 m in from the street face)
         close.append(close_to("Kabuki-za, the doors under the porch", F(0, vf - 1.5, 0), g + zs, F(0, vf + 5.5, 0), 1.0, on=True))
     tr = RAIL.trains()   # the JR lines past Yurakucho, and the platform to travel to (cities/tokyo/rail.py)
-    return {"close": close, **({"trains": tr, "travel": RAIL.travel()} if tr else {})}
+    # (and where Tokyo Station's walls stand across the map's footways: cut there, pipeline/game_extras.py clip_closed)
+    return {"close": close, "closed": STATION_HERO.closed(), **({"trains": tr, "travel": RAIL.travel()} if tr else {})}
