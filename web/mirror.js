@@ -31,7 +31,7 @@ float oePuddle(vec2 xz) { float n = oeMirN(xz * 0.11) * 0.6 + oeMirN(xz * 0.37) 
   function create(Wd, renderer, camera, { tier = 'low', ground = () => 0 } = {}) {
     const own = { value: 0 };
     const U = { uMirror: { value: null }, uMirrorMat: { value: new THREE.Matrix4() }, uMirrorOn: { value: 0 }, uMirrorTime: { value: 0 },
-      uMirrorPx: { value: new THREE.Vector2(1, 1) }, uMirrorDark: { value: window.OEWeather ? 0 : 1 }, uWetM: { value: 0 }, uRainM: (W() && W().uOeRain) || { value: 0 } };
+      uMirrorPx: { value: new THREE.Vector2(1, 1) }, uMirrorDark: { value: window.OEWeather ? 0 : 1 }, uWetM: { value: 0 }, uMirrorNight: (Wd && Wd.U && Wd.U.uNight) || { value: 0 }, uMirrorShow: { value: /[?&]mirror=show\b/.test(location.search) ? 1 : 0 }, uRainM: (W() && W().uOeRain) || { value: 0 } };
     const high = tier === 'high' && renderer.capabilities.isWebGL2;
     const size = renderer.getDrawingBufferSize(new THREE.Vector2());
     // a third of the screen's size: the picture is blurred and rippled down to far less than that anyway
@@ -66,20 +66,20 @@ float oePuddle(vec2 xz) { float n = oeMirN(xz * 0.11) * 0.6 + oeMirN(xz * 0.37) 
       cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
       return true;
     }
-    const patched = new WeakSet();
+    const patched = new WeakSet(), mats = [];
     const puddle = PUDDLE; // (the weather's own oePuddle where its patch is in the shader: game/weather.js)
 
     // a material takes the mirror: its own patch first, then the reflection into the outgoing light
     function patch(mat) {
       if (!rt || !mat || patched.has(mat) || !mat.isMeshStandardMaterial) return; // (below the high tier the shaders stay as they were)
-      patched.add(mat);
+      patched.add(mat); mats.push(mat);
       const before = mat.onBeforeCompile, key = mat.customProgramCacheKey;
       mat.onBeforeCompile = (sh, r) => {
         if (before) before.call(mat, sh, r);
         if (window.OEGLCare && OEGLCare.fit.off('mirror')) return; // (a GPU short of texture units: glcare.js fit)
         Object.assign(sh.uniforms, U);
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform sampler2D uMirror; uniform mat4 uMirrorMat; uniform float uMirrorOn, uMirrorTime, uWetM, uRainM, uMirrorDark; uniform vec2 uMirrorPx;
+uniform sampler2D uMirror; uniform mat4 uMirrorMat; uniform float uMirrorOn, uMirrorTime, uWetM, uRainM, uMirrorDark, uMirrorShow, uMirrorNight; uniform vec2 uMirrorPx;
 ${NOISE}
 ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
           .replace('#include <opaque_fragment>', `
@@ -87,20 +87,41 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
     vec3 oeN = (vec4(normal, 0.0) * viewMatrix).xyz, oeP = (vec4(-vViewPosition, 0.0) * viewMatrix).xyz + cameraPosition;
     float oeUp = smoothstep(0.75, 0.95, oeN.y), oePd = oePuddle(oeP.xz) * smoothstep(0.25, 0.75, uWetM);
     vec3 oeV = normalize(cameraPosition - oeP);
-    float oeF = 0.02 + 0.98 * pow(1.0 - max(dot(oeV, vec3(0.0, 1.0, 0.0)), 0.0), 5.0);   // water, seen at the angle the street is
-    float oeK = oeUp * uWetM * mix(0.55, 1.0, oePd) * oeF;
-    // the street's grain and, in the rain, rings in the puddles: the picture wavers
-    vec2 oeR = vec2(oeMirN(oeP.xz * 2.3 + uMirrorTime * 0.7), oeMirN(oeP.zx * 2.9 - uMirrorTime * 0.6)) - 0.5;
-    oeR += (vec2(oeMirN(oeP.xz * 9.0 + uMirrorTime * 4.0), oeMirN(oeP.zx * 8.0 - uMirrorTime * 3.5)) - 0.5) * uRainM * oePd;
+    // water, seen at the angle the street is: by Fresnel in a puddle, and a little sooner on the film, whose facets
+    // lean towards whoever looks
+    float oeCos = max(dot(oeV, vec3(0.0, 1.0, 0.0)), 0.0);
+    float oeF = mix(0.04 + 0.96 * pow(1.0 - oeCos, 4.0), 0.02 + 0.98 * pow(1.0 - oeCos, 5.0), oePd);
+    float oeK = oeUp * uWetM * mix(0.8, 1.0, oePd) * oeF;
+    // Standing water is a mirror, shaken only by the rain's rings. The film between the puddles lies on the asphalt's
+    // grain: every facet of it tilts a little, and at the angle a street is seen from that tilt moves a light's
+    // image a long way up and down the street and hardly at all across it. So a light is not a wavering picture
+    // there but a long streak towards whoever looks, as a wet street shows a sign in a photograph: the picture
+    // taken along the screen's vertical, far and with most weight near, each pixel from its own places (the grain).
+    vec2 oeR = (vec2(oeMirN(oeP.xz * 9.0 + uMirrorTime * 4.0), oeMirN(oeP.zx * 8.0 - uMirrorTime * 3.5)) - 0.5) * uRainM * oePd;
     vec4 oeC = uMirrorMat * vec4(oeP, 1.0);
-    vec2 oeUv = oeC.xy / max(oeC.w, 1e-4) + oeR * mix(0.012, 0.004, oePd);
-    // the film between the puddles is rough: a wider blur, smeared down the screen as wet asphalt smears a light
-    float oeB = mix(4.0, 1.0, oePd);
-    vec3 oeM = texture2D(uMirror, oeUv).rgb * 0.2;
-    for (int i = -4; i <= 4; i++) { if (i == 0) continue; float fi = float(i); oeM += texture2D(uMirror, oeUv + vec2(0.35 * sin(fi * 1.7), fi * 2.2) * oeB * uMirrorPx).rgb * 0.1; }
-    float oeIn = smoothstep(0.0, 0.03, oeUv.x) * smoothstep(1.0, 0.97, oeUv.x) * smoothstep(0.0, 0.03, oeUv.y) * smoothstep(1.0, 0.8, oeUv.y) * step(0.0, oeC.w);
+    vec2 oeUv = oeC.xy / max(oeC.w, 1e-4) + oeR * 0.004;
+    float oeJ = mix(oeMirN(oeP.xz * 23.0), 0.5, smoothstep(6.0, 22.0, length(vViewPosition))); // (the grain is the street's: it stays where it lies as the camera moves, and never flickers)
+    float oeLen = mix(0.45, 0.008, oePd);
+    vec3 oeM = vec3(0.0); float oeWs = 0.0;
+    for (int i = 0; i < 12; i++) {
+      float ft = (float(i) + oeJ) / 12.0, fw = 1.0 / (1.0 + 9.0 * ft * ft); // (a long tail, as a rough film's lobe has)
+      float fs = ft * ft * oeLen;
+      vec2 oeO = vec2((oeMirN(oeP.zx * 19.0 + float(i) * 3.1) - 0.5) * 5.0 * uMirrorPx.x * (1.0 - oePd) * (1.0 - smoothstep(6.0, 22.0, length(vViewPosition))), fs);
+      // (up the picture only as far as it goes: past its edge there is nothing to take)
+      vec2 oeA = oeUv + oeO, oeB = oeUv - oeO;
+      oeM += texture2D(uMirror, vec2(oeA.x, min(oeA.y, 0.995))).rgb * fw + texture2D(uMirror, vec2(oeB.x, max(oeB.y, 0.005))).rgb * fw;
+      oeWs += 2.0 * fw;
+    }
+    // (a streak holds a light's energy over its length: the lights are far brighter than the picture keeps them,
+    // so the film's share is lifted where the puddle's is not)
+    oeM *= mix(1.7 + 1.3 * uMirrorNight, 1.0 + 0.6 * uMirrorNight, oePd) / oeWs;
+    float oeIn = smoothstep(0.0, 0.03, oeUv.x) * smoothstep(1.0, 0.97, oeUv.x) * smoothstep(0.0, 0.03, oeUv.y) * smoothstep(1.0, 0.9, oeUv.y) * step(0.0, oeC.w);
     outgoingLight *= 1.0 - 0.45 * oeUp * uWetM * uMirrorDark;   // (darkened here only where no weather does it)
+    // after dark a wet street is near black between its lights (water fills the grain that scattered the light back),
+    // and what it shows is the lights' images: the lit ground is held down so that they are what reads
+    outgoingLight *= 1.0 - 0.5 * oeUp * uWetM * uMirrorNight * uMirrorOn;
     outgoingLight = mix(outgoingLight, oeM, oeK * oeIn * uMirrorOn);
+    if (uMirrorShow > 0.5) outgoingLight = oeM * oeIn * uMirrorOn; // (?mirror=show: the picture alone, to look at what the street is given)
   }
 #include <opaque_fragment>`);
       };
@@ -129,16 +150,25 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
         camera.updateMatrixWorld();
         cam.copy(camera, false);
         camera.getWorldDirection(dir);
-        up.set(0, 1, 0).applyQuaternion(camera.quaternion);
+        // The mirrored camera stands under the street where the screen's would be seen in a mirror, but it does not look
+        // where that one would: it looks at what the street in the frame can show. A ray that meets the street at an
+        // angle leaves it at the same angle, so the street in view mirrors the elevations from the frame's lowest ray
+        // to its highest that still meets the ground (lo..hi); and the film's grain smears a light down from a good way
+        // above that (the streaks: patch, above), which is where a street's signs and screens are when one looks along
+        // it. So the picture is taken from lo to hi and some 30 degrees more, whatever the screen's camera does.
+        const half = Math.atan(Math.tan(camera.fov * Math.PI / 360) / (camera.zoom || 1)), pitch = Math.asin(Math.max(-1, Math.min(1, dir.y)));
+        const lo = Math.max(0, -(pitch + half)), hi = Math.max(lo + 0.35, Math.min(1.36, -(pitch - half) + 0.52));
+        const el = (lo + hi) / 2, hv = (hi - lo) / 2 + 0.05;
+        let hx = dir.x, hz = dir.z, hl = Math.hypot(hx, hz);
+        if (hl < 1e-3) { up.set(0, 1, 0).applyQuaternion(camera.quaternion); hx = up.x; hz = up.z; hl = Math.hypot(hx, hz) || 1; } // (looking straight down: the frame's top is ahead)
         cam.position.set(camera.position.x, 2 * h - camera.position.y, camera.position.z);
-        dir.y = -dir.y; up.y = -up.y; up.multiplyScalar(-1);
-        cam.up.copy(up).multiplyScalar(-1);
-        cam.lookAt(look.copy(cam.position).add(dir));
+        cam.up.set(0, -1, 0);
+        cam.lookAt(look.set(hx / hl * Math.cos(el), Math.sin(el), hz / hl * Math.cos(el)).add(cam.position));
         cam.updateMatrixWorld();
-        // (the screen camera's projection, in the depth range the renderer draws with: three.js turns a
-        // camera to the reversed range on its first draw, and would rebuild this one's, oblique plane and all)
-        if (reversed && camera.reversedDepth !== true) { cam._reversedDepth = true; cam.updateProjectionMatrix(); }
-        else { if (reversed) cam._reversedDepth = true; cam.projectionMatrix.copy(camera.projectionMatrix); cam.projectionMatrixInverse.copy(camera.projectionMatrixInverse); }
+        cam.fov = hv * 360 / Math.PI; cam.zoom = 1;
+        cam.aspect = Math.tan(half) * camera.aspect * 1.3 / Math.tan(hv);
+        if (reversed) cam._reversedDepth = true; // (the depth range the renderer draws with: three.js turns a camera to the reversed range on its first draw, and would rebuild this one's, oblique plane and all)
+        cam.updateProjectionMatrix();
         U.uMirrorMat.value.copy(bias).multiply(cam.projectionMatrix).multiply(cam.matrixWorldInverse); // (the texture lookup keeps the plain projection)
         plane.constant = -(h - 0.05);
         if (!oblique()) { U.uMirrorOn.value = 0; return; }
@@ -147,7 +177,11 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
         renderer.shadowMap.autoUpdate = false;
         renderer.setRenderTarget(rt);
         renderer.clear();
-        renderer.render(scene, cam);
+        // What mirrors is not in the mirror: a street does not reflect itself, and seen from under it (where the
+        // mirrored camera stands) the paving, the kerbs and the paint over the plane were a ceiling between the camera
+        // and the city: from a carriageway, at a walker's eye height, the street showed nothing but that ceiling.
+        for (const m of mats) { m.userData.oeMirVis = m.visible; m.visible = false; }
+        try { renderer.render(scene, cam); } finally { for (const m of mats) m.visible = m.userData.oeMirVis; }
         renderer.setRenderTarget(prevT);
         renderer.shadowMap.autoUpdate = prevShadow;
         U.uMirror.value = rt.texture; U.uMirrorOn.value = 1;
