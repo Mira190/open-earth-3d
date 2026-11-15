@@ -5138,7 +5138,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   overture = window.OEOverture && G.overture ? OEOverture.create({ G, scene, CITY, W, world, camera, stage, cine, get live() { return live; }, handOver: (k, f) => handOver(k, f),
     junctions, crowd, footNet, crowdNet, nav, clock, setClock: (y, m, d, min) => setClock(y, m, d, min, !clock.own), player, spawn, tier: QC.name, reduced, sun: () => sun, U, DSM, Wd, weather, show, get atmos() { return atmos; },
     walkIn: (j, inS) => { junctions.walkIn(j, inS); if (inS > 0) { cars.clearBox(j.x, j.y, 45); musterScramble(); } } }) : null;
-  if (overture && OEOverture.due(CITY.id)) overture.prepareScore();
+  if (overture && (story || OEOverture.due(CITY.id))) overture.prepareScore();
   if (overture) $('#gm-overture').hidden = false;
   fillTimes($('#gt-timechoice'));
   if (DISTRICT && DISTRICT.postcard) { // a postcard's light, offered first: the place as the photograph has it
@@ -5183,7 +5183,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const then = () => (story && !cont ? story.begin() : cont ? OEOnboard.markDone(CITY.id) : skip ? welcome(true) : startTour(() => welcome(false)));
     if (story && !cont) story.dress(); // (the evening its first episode is set in, before the opening shot)
     // the map's overture (overture.js) the first time here, unless you continue or arrive at a district; else the opening shot
-    if (overture && !story && !cont && !arrive && !reduced && OEOverture.due(CITY.id) && overture.play(then)) { renderPassport(); return; }
+    // (a story opens on the overture every time, in the evening its first episode is set in; ?overture=0 goes straight to the street)
+    if (overture && !cont && !arrive && !reduced && (story ? !/[?&]overture=0\b/.test(location.search) : OEOverture.due(CITY.id)) && overture.play(then)) { renderPassport(); return; }
     if (openingHere()) { // (#110: the opening shot, the scramble's walk turning green as it comes down)
       const j = junctions.J.find(q => q.scramble && Math.hypot(q.x - player.x, q.y - player.y) < 80);
       if (j) { junctions.walkIn(j, OPENING.walkIn); cars.clearBox(j.x, j.y, 45); musterScramble(); }

@@ -3,6 +3,7 @@
 // episode's state at each beat and the page's errors; exits 1 if a beat is not reached.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/story_shot.js shibuya out_dir [WxH]
+// OVERTURE=1: with the map's overture before it, as a player has it (stills of the overture too, every few seconds)
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const [,, city = 'shibuya', out = '/tmp/story', size = '1440x900'] = process.argv;
@@ -19,9 +20,10 @@ const [,, city = 'shibuya', out = '/tmp/story', size = '1440x900'] = process.arg
   const until = async (what, fn, arg, timeout = 900000) => { try { await p.waitForFunction(fn, arg, { timeout, polling: 500 }); return true; } catch (e) { console.log(`FAIL ${what}: not reached`, JSON.stringify(await state())); return false; } };
   const shot = async name => { await p.screenshot({ path: `${out}/${name}.png` }); console.log(name, JSON.stringify(await state())); };
   let ok = true;
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/?story=1&overture=0${process.env.Q ? `&${process.env.Q}` : ''}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?story=1&overture=${process.env.OVERTURE ? 1 : 0}${process.env.Q ? `&${process.env.Q}` : ''}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.flyover', null, { timeout: 600000 });
   await startPlay(p, { asIs: true });
+  if (process.env.OVERTURE) for (let i = 0; i < 8 && !(await p.evaluate(() => window.__game.story && window.__game.story.state.phase === 'lead')); i++) { await p.waitForTimeout(20000); await p.screenshot({ path: `${out}/0-overture-${i}.png` }); }
   ok = await until('the episode begins', () => window.__game.story && window.__game.story.state.phase === 'lead') && ok;
   await until('the street runs a while', () => window.__game.story.state.t > 5 || window.__game.story.state.phase !== 'lead');
   await shot('1-running');
