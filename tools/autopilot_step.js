@@ -401,10 +401,10 @@ async function kerbStep() {
       heldT.set(c, h);
       if (h > out.held) { out.held = h; out.heldWhy = `car ${A.C.indexOf(c)} ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''} behind parked car ${A.C.indexOf(c.front)} on a ${L[c.line].c} street`; }
       if (t % 2 === 0) { // (its body in a parked car's)
-        for (const o of A.C) if (o.park && o.line >= 0 && Math.abs(o.x - c.x) < 7 && Math.abs(o.y - c.y) < 7) {
+        for (const o of A.C) if (o.park && o.line >= 0 && Math.abs(o.x - c.x) < 7 && Math.abs(o.y - c.y) < 7 && Math.abs(o.z - c.z) < 2) { // (on its level: not one parked on a bridge over the street, Shibuya 808,-1674, 5 m up)
           const fx = Math.sin(o.h), fy = Math.cos(o.h), dx = c.x - o.x, dy = c.y - o.y, cs = Math.abs(Math.sin(c.h - o.h)), cc = Math.abs(Math.cos(c.h - o.h));
           const ea = o.half + c.half * cc + c.hw * cs - Math.abs(dx * fx + dy * fy), eb = o.hw + c.hw * cc + c.half * cs - Math.abs(-dx * fy + dy * fx), d = Math.min(ea, eb);
-          if (d > out.deep) { out.deep = d; out.deepWhy = `car ${A.C.indexOf(c)} (${c.why}, v ${c.v.toFixed(1)}) and parked car ${A.C.indexOf(o)}`; }
+          if (d > out.deep) { out.deep = d; out.deepWhy = `car ${A.C.indexOf(c)} (${c.why}, v ${c.v.toFixed(1)}, at ${c.x.toFixed(1)}, ${c.y.toFixed(1)}, ${c.z.toFixed(1)} on ${L[c.line].c} ${c.line}) and parked car ${A.C.indexOf(o)} (at ${o.x.toFixed(1)}, ${o.y.toFixed(1)}, ${o.z.toFixed(1)} on ${L[o.line].c} ${o.line})`; }
         }
       }
     }
