@@ -108,6 +108,14 @@ window.OpenEarthGame = async function game(cityId) {
   // (the canvas itself is multisampled only where the scene is drawn straight to it: with the post stack the one
   // thing drawn to the canvas is the lens's triangle, which has no edge to smooth)
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: QC.antialias && !(QC.post && window.OELens && window.OEAtmos && (G.sky || {}).post !== false), powerPreference: 'high-performance', reversedDepthBuffer: true });
+  // (a load traced from the context's first call, where the last one here raised an error no later frame did, or
+  // where the address asks: glCheck, below)
+  let glLoad = null;
+  try {
+    const asked = /[?&]gltrace=1\b/.test(location.search), due = asked || localStorage.getItem('oe3d-gl-trace') === '1';
+    if (due && !asked) localStorage.removeItem('oe3d-gl-trace');
+    if (due && window.OEGLCare && OEGLCare.trace) glLoad = OEGLCare.trace(renderer.getContext());
+  } catch (e) { /* storage blocked */ }
   const BASE_FOV = 55, camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.3, 40000);
   // The frame-time governor (quality.js): how much of the canvas's resolution the scene is drawn at, and how much
   // of what a frame can do without (governor.extras), both ways as the frame time allows. Its ceiling is the
@@ -118,8 +126,15 @@ window.OpenEarthGame = async function game(cityId) {
   // starts there. A device with no record starts low and climbs (quality.js startLow, issue 375), not at its ceiling.
   let govRecord = null;
   if (gov.auto) try { const v = localStorage.getItem(GOV_KEY); if (v) { const [sc, ex] = v.split('/').map(Number); if (sc >= gov.min && sc <= 1) govRecord = { scale: Math.round(sc * 20) / 20, extras: [0, 0.5, 1].includes(ex) ? ex : 1 }; } } catch (e) { /* storage blocked */ }
-  if (govRecord) { gov.scale = govRecord.scale; gov.extras = govRecord.extras; } else if (gov.auto) gov.startLow();
+  // (a check starts as a device with that record would, ?gov=0.8/0: the governor itself stands still under a harness,
+  // so the state an ordinary device opens the map in was one no check played: issue 485)
+  const govAsked = /[?&]gov=([\d.]+)\/([\d.]+)/.exec(location.search);
+  if (govAsked) govRecord = { scale: Math.max(gov.min, Math.min(1, Math.round(+govAsked[1] * 20) / 20)), extras: [0, 0.5, 1].includes(+govAsked[2]) ? +govAsked[2] : 1 };
+  if (govRecord) gov.resume(govRecord.scale, govRecord.extras); else if (gov.auto) gov.startLow();
   let atmos = null; // clouds, stars, the moon and the post stack (atmosphere.js), once the world is up
+  // the multisampling rung's values (the governor's ladder, below) for the view's size as it is now
+  let msaaRung = null;
+  const msaaFor = () => { const top = QC.samplesAt ? QC.samplesAt(stage.clientWidth, stage.clientHeight) : QC.samples; msaaRung[0] = top; msaaRung[1] = Math.min(2, top); };
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight, pr = QC.pixelRatio(w, h);
     gov.max = QC.sceneScale ? Math.max(gov.min, QC.sceneScale(w * pr, h * pr)) : 1;
@@ -132,6 +147,7 @@ window.OpenEarthGame = async function game(cityId) {
     camera.aspect = w / Math.max(1, h);
     camera.updateProjectionMatrix();
     if (stack) atmos.setScale(gov.scale);
+    if (msaaRung) { msaaFor(); gov.reapply(); }
     if (atmos) atmos.setSize(w, h);
     if (mirror) { const z = renderer.getDrawingBufferSize(new THREE.Vector2()); mirror.setSize(z.x, z.y); }
   }
@@ -5307,7 +5323,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   if (atmos && atmos.ao && atmos.ao.limit) gov.rung('ao', [2, 1, 0], v => atmos.ao.limit(v));
   // the scene's multisampling: the tier's (four on high) with every extra, two at half, none at the floor, where the
   // sharpened upscale and the lens's grain hide the edges more cheaply than four samples a pixel
-  if (atmos && atmos.setSamples && QC.samples) gov.rung('msaa', [QC.samples, Math.min(2, QC.samples), 0], v => atmos.setSamples(v));
+  // (the tier's: two on a dense display, where the scene has two device pixels or more under each CSS pixel already:
+  // quality.js samplesAt; followed when the window changes size, resize())
+  if (atmos && atmos.setSamples && QC.samples) { msaaRung = [0, 0, 0]; msaaFor(); gov.rung('msaa', msaaRung, v => atmos.setSamples(v)); }
   // the sun's shadow map: the tier's, then half the texels on a side (the box keeps its size: softer edges), then 1024
   if (Wd.setShadowSize) { const S = Wd.shadowSize; gov.rung('shadow', [S, Math.max(1024, S / 2), 1024], v => Wd.setShadowSize(v)); }
   // the crowd: whole, whole, and three in four with none (crowd.active, as the menu's density sets it)
@@ -6444,22 +6462,50 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
 
   // A draw WebGL refuses is not drawn, and nothing else says so: the ground and the walls were missing on a page
-  // opened after dark (world.js shadowDrawnOnce) while every check passed. Every three seconds the context is
-  // asked for its error; one is reported once, with the shadow map's state, and the map is drawn into again,
-  // which is the cure for the case known. (getError waits on the GPU process: not a call for every frame.)
-  let glAsked = 0, glTold = false;
+  // opened after dark (world.js shadowDrawnOnce) while every check passed. Every three seconds, and after the first
+  // frame, the context is asked for its error; one is reported once, with the shadow map's state, and the map is
+  // drawn into again, which is the cure for the case known. (getError waits on the GPU process: not a call for
+  // every frame.) The flag does not say which call raised it, and on the device that reported it (issue 485) no
+  // software renderer raises it at all, so the device is asked to name the call: the next three frames are traced
+  // (glcare.js trace: the error asked for after every call) and what they refuse is reported, the call, its
+  // arguments and the lines that made it. An error the first frame had and those three do not was raised once,
+  // while the map loaded: the next load of this map on this device is traced from its first call instead (glLoad,
+  // a slower load, once). ?gltrace=1 asks for that trace; a check reads what it found in __game.glTrace.
+  const GL_KEY = 'oe3d-gl-trace';
+  const glState = () => { const st = Wd.shadowState ? Wd.shadowState() : {}; return `shadow map ${st.tex ? 'on the GPU' : 'not on the GPU'}, ${st.size} px, pass ${st.auto ? 'on' : 'off'}; extras ${gov.extras}, scale ${gov.scale}, msaa ${atmos && atmos.composer ? atmos.composer.samples : '-'}; ${weather ? weather.state.kind || '' : ''} ${fmtMin(clock.min)}`; };
+  const glNames = list => list.slice(0, 4).map(o => `${o.call}(${o.args}) ${o.err} x${o.n} at ${o.at}`).join(' | ');
+  const glSay = msg => { console.warn(msg); glFound.push(msg); if (window.OETelemetry && OETelemetry.track) OETelemetry.track('error', { kind: 'gl', msg: msg.slice(0, 900), src: 'game.js glCheck' }); };
+  const glFound = [];
+  let glAsked = 0, glTold = false, glTrace = null, glTraceN = 0, glFirst = false;
   function glCheck(now) {
-    if (now - glAsked < 3000) return;
+    const gl = renderer.getContext();
+    if (glLoad) { // a load traced from its first call: what it and the first frame refused
+      const found = glLoad.stop(), calls = glLoad.calls; glLoad = null;
+      glSay(found.length ? `WebGL refused, in the load and the first frame: ${glNames(found)}; ${glState()}` : `WebGL refused nothing in a traced load (${calls} calls); ${glState()}`);
+      if (found.length) { glTold = true; if (Wd.shadowRedraw) Wd.shadowRedraw(); }
+      glAsked = now;
+      return;
+    }
+    if (glTrace) { // the frames after an error: which call
+      if (++glTraceN < 3) return;
+      const found = glTrace.stop(); glTrace = null;
+      if (found.length) glSay(`WebGL refused, each frame: ${glNames(found)}; ${glState()}`);
+      else {
+        glSay(`WebGL refused nothing in the three frames after${glFirst ? ': raised once, in the load or the first frame; the next load here is traced' : ''}; ${glState()}`);
+        if (glFirst) try { localStorage.setItem(GL_KEY, '1'); } catch (e) { /* storage blocked */ }
+      }
+      glAsked = now;
+      return;
+    }
+    if (now - glAsked < 3000 && framesDrawn !== 0) return;
     glAsked = now;
-    const gl = renderer.getContext(), e = gl.getError();
+    const e = gl.getError();
     if (!e || e === gl.CONTEXT_LOST_WEBGL) return;
-    const st = Wd.shadowState ? Wd.shadowState() : {};
     if (Wd.shadowRedraw) Wd.shadowRedraw();
     if (glTold) return;
-    glTold = true;
-    const msg = `WebGL error 0x${e.toString(16)} after a frame: shadow map ${st.tex ? 'on the GPU' : 'not on the GPU'}, ${st.size} px, pass ${st.auto ? 'on' : 'off'}; extras ${gov.extras}, scale ${gov.scale}; ${fmtMin(clock.min)}`;
-    console.warn(msg);
-    if (window.OETelemetry && OETelemetry.track) OETelemetry.track('error', { kind: 'gl', msg, src: 'game.js glCheck' });
+    glTold = true; glFirst = framesDrawn === 0;
+    glSay(`WebGL error 0x${e.toString(16)} after ${glFirst ? 'the first frame' : 'a frame'}: ${glState()}`);
+    if (window.OEGLCare && OEGLCare.trace) { glTrace = OEGLCare.trace(gl); glTraceN = 0; }
   }
   warm.finally(() => requestAnimationFrame(frame)); // (the first draw waits for the shaders, compiled in slices: world.js compile)
   function advance(seconds, hold = []) {
@@ -6499,7 +6545,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   window.__game = { life, hero: () => hero, trips: () => junctions.trips(), pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
     afoot: () => player.mode !== 'car' || stepOut(myCar, 'driver', [player.x, player.y, player.z]), // (for a harness: out of the car where it stands, when no door has room)
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
-     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, boardRail, alightRail, railStation, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, framePhoto, trackNear, care, weather, crowdDraw: () => crowdDraw, life };
+     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, glFound, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, boardRail, alightRail, railStation, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, framePhoto, trackNear, care, weather, crowdDraw: () => crowdDraw, life };
   return {
     stop() { if (window.OEMetro) OEMetro.close(); if (window.OEVis) OEVis.dispose(); keep(); if (fish && fish.api) fish.api.dispose(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

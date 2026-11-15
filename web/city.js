@@ -110,7 +110,7 @@ window.OpenEarthCity = async function main(cityId) {
     Wd.skyHaze = true; // fog mixed before the tone curve: the haze takes the sky's colour (world.js)
     lens = new THREE.ShaderPass(OELens.shader({ merge: true }));
     Object.assign(lens.uniforms, { uGrain: { value: 0.025 }, uCA: { value: 0.12 }, uVignette: { value: 0.16 } });
-    post = OELens.stack(renderer, world, camera, { target: new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: QC.samples }), bloom, lens });
+    post = OELens.stack(renderer, world, camera, { target: new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: QC.samplesAt ? QC.samplesAt(stage.clientWidth, stage.clientHeight) : QC.samples }), bloom, lens });
     resize();
   }
   // a lost WebGL context pauses the loop under a note and comes back redrawn (glcare.js)

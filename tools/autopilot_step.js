@@ -353,7 +353,7 @@ async function railStep() {
         const st = on && c.v < 0.3 ? (stood.get(c) || 0) + 0.25 : 0;
         stood.set(c, st);
         // (not one already there when the check laid the crossing down under it)
-        if (st === 3 && !(tag === 'open' && t < 5)) { out.stoodOn++; if (out.log.length < 6) out.log.push(`${tag} ${t}s: car ${A.C.indexOf(c)} stood on the rails, ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''}`); }
+        if (st === 3 && !(tag === 'open' && t < 5)) { out.stoodOn++; if (out.log.length < 6) out.log.push(`${tag} ${t}s: car ${A.C.indexOf(c)} stood on the rails, ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''} [${d.toFixed(1)} m past the middle, lane ${c.ln || 0}${c.mv ? ', in a junction' : ''}${c.rev ? ', backing' : ''}; in front ${c.front ? `car ${A.C.indexOf(c.front)} ${((c.front.s - c.s) * c.dir).toFixed(1)} m on${c.front.line !== c.line ? ` on piece ${c.front.line}` : ''}, v ${c.front.v.toFixed(1)}, lane ${c.front.ln || 0}, ${c.front.why || 'going'}${c.front.park ? ', parked' : ''}${c.front.parking ? ', parking' : ''}` : 'no car'}]`); }
         if (tag === 'shut' && c.why === 'light' && c.v < 0.3 && d < 0 && d > -30) out.waited = Math.max(out.waited, 1);
         if (c.why === 'rails') out.kept++;
       }
