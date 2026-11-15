@@ -24,7 +24,12 @@ if (wasm && WasmDecoder.useWorkers && typeof Worker === 'function') {
 
 const RETRY_MS = [800, 2400];
 export class GLTFLoader extends GLTFLoaderBase {
-  constructor(manager) { super(manager); this.setMeshoptDecoder(MeshoptDecoder); }
+  constructor(manager) {
+    super(manager);
+    this.setMeshoptDecoder(MeshoptDecoder);
+    // a phone's pictures as ASTC blocks (tex.js, issue 443): a model's colour textures packed before it is handed over
+    if (globalThis.OETex) this.register(globalThis.OETex.gltf);
+  }
   load(url, onLoad, onProgress, onError) {
     let tries = 0;
     const attempt = () => super.load(url, onLoad, onProgress, err => {

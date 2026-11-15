@@ -132,6 +132,7 @@ window.OEFarLand = (function () {
     col.needsUpdate = true;
     col.colorSpace = THREE.SRGBColorSpace;
     col.anisotropy = 16; // three.js holds it to what the GPU allows: the land is mostly seen at a low angle
+    if (window.OETex) window.OETex.pack(col); // (a phone: in ASTC blocks, tex.js)
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.96, metalness: 0, emissive: lin('#ffd9a8'), emissiveIntensity: 0 });
     mat.defines = { OE_FAR: '' };
     const night = { value: 0 };
