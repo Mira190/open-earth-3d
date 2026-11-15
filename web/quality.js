@@ -201,7 +201,13 @@ window.OEQuality = (function () {
       // the near trees' models fetched ahead of need (game.js afterPlayable), which the lightest set leaves to demand
       budget: thin ? { gpuMB: 270, heapMB: 400, groundTiles: [6, 4, 2, 1][lighter], map: MAP[lighter], cast: [8, 8, 4, 2][lighter], extras: lighter < LIGHTEST } : null, shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
       post: c.hdrTarget, samples: c.hdrMsaa ? { high: 4, medium: 2, low: 0 }[name] : 0,
-      pixelRatio: (w, h) => (name === 'high' ? Math.max(0.75, Math.min(c.dpr, 2, Math.sqrt(CANVAS_PX / Math.max(1, w * h)))) : pixelRatio(s, w, h)),
+      // A phone's canvas: two device pixels to the CSS pixel within the tier's budget (1.5 at its lightest level),
+      // where the low tier's 1.25 is a slow laptop's. On a 3x screen 1.25 was 491 x 869 for a 393 x 695 view, the
+      // governor's floor under it 295 x 521, and the owner's verdict on an iPhone was that the picture was far too
+      // poor; its frames (telemetry: 30 to 53 a second at every scale) were not the pixels' to give back. The
+      // scene has one pass and no multisampling there: 786 x 1390 costs about 12 MB more of targets than before.
+      pixelRatio: (w, h) => (name === 'high' ? Math.max(0.75, Math.min(c.dpr, 2, Math.sqrt(CANVAS_PX / Math.max(1, w * h))))
+        : phone && name === 'low' ? pixelRatio({ prMax: lighter >= LIGHTEST ? 1.5 : 2, budget: s.budget }, w, h) : pixelRatio(s, w, h)),
       // the most of the canvas's pixels (as a linear scale) the scene may be drawn at: w, h the canvas's device pixels
       sceneScale: (w, h) => Math.min(1, Math.sqrt(SCENE_PX / Math.max(1, w * h))),
       // The scene's samples for a view of w x h CSS pixels. Four samples a pixel are for a scene drawn a pixel to
@@ -262,6 +268,14 @@ window.OEQuality = (function () {
     // stopped fitting at with no try behind it (the scene got heavier), left alone half a minute, so that the way
     // back is not climbed while the heavy scene lasts and is quick once it has passed.
     const BAD0 = 30000, BADMAX = 480000, EX0 = 60000, EXMAX = 960000;
+    // Resolution that buys nothing is given back (flat). A frame that is slow for its draw calls and its triangles,
+    // as a phone's is in a dense city, takes as long at 0.6 as at 0.8: there the governor used to sit at its floor,
+    // blurred, for no frame gained. So the frame time at `mid` with no extras left (e0) is kept, and when the floor
+    // has been held three seconds for less than 15% off it, the scale goes back to `mid` and from there up a step
+    // every four seconds for as long as the frame stays within 8% of its time at the floor (flatBase; flatTop: the
+    // step that went over). Frames that fit again end it, and the ordinary way up takes over; the scale it reached
+    // stays the floor for two minutes (kept), so that the next slow stretch does not pay the floor to learn it again.
+    let flat = false, e0 = 0, flatBase = 0, flatTry = 0, flatTop = Infinity, kept = 0, keptAt = 0;
     let clock = 0, fullT = 0, top = Infinity, topAt = 0, topWait = BAD0, bad = Infinity, badAt = 0, rose = false, roseAt = 0, exBad = Infinity, exAt = 0, exWait = EX0;
     const failed = level => {
       if (rose && clock - roseAt < topWait) { topWait = top !== Infinity && clock - topAt < 4 * topWait ? Math.min(BADMAX, topWait * 2) : BAD0; top = level; topAt = clock; }
@@ -316,7 +330,8 @@ window.OEQuality = (function () {
         ema = ema ? ema + (ms - ema) * 0.08 : ms;
         if (g.auto) decide(ms);
       },
-      reset() { last = 0; ema = 0; since = calm = floorT = 0; },
+      reset() { last = 0; ema = 0; since = calm = floorT = 0; flat = false; e0 = flatTry = kept = 0; flatTop = Infinity; },
+      get flat() { return flat; },
       set(scale, extras) { change(scale ?? g.scale, extras ?? g.extras); },
       // for the checks: frames of frameOf(scale, extras) milliseconds on a clock of its own, as a GPU would show
       // them; the state after each simulated second, as "scale/extras"
@@ -360,17 +375,31 @@ window.OEQuality = (function () {
         }
         tried = 0;
         const want = Math.max(0.85, Math.min(0.95, Math.sqrt(1 / load))); // (pixels go with the square of the scale)
-        const floor = g.extras > 0 ? Math.max(g.min, Math.min(g.mid, g.max)) : g.min;
-        if (g.scale > floor + 1e-6) { floorT = 0; if (climbing) { climbing = false; wait = 4000; } failed(g.scale); change(Math.max(floor, Math.min(g.scale - STEP, g.scale * want)), g.extras); return; }
+        const midFloor = Math.max(g.min, Math.min(g.mid, g.max));
+        if (flat) { // (see above: the pixels are not what these frames cost)
+          if (flatTry) { const worse = ema > 1.08 * flatBase; flatTry = 0; if (worse) { flatTop = g.scale; change(g.scale - STEP, g.extras); return; } }
+          if (since >= 4000 && g.scale + STEP <= g.max + 1e-6 && g.scale + STEP < flatTop - 1e-6) { flatTry = 1; change(g.scale + STEP, g.extras); return; }
+        }
+        const keep = kept && clock - keptAt < 120000 ? Math.min(kept, g.max) : 0;
+        const floor = flat ? g.scale : Math.max(keep, g.extras > 0 ? midFloor : g.min);
+        if (g.scale > floor + 1e-6) {
+          floorT = 0; if (climbing) { climbing = false; wait = 4000; }
+          if (g.extras <= 0 && Math.abs(g.scale - midFloor) < 1e-6) e0 = ema;
+          failed(g.scale); change(Math.max(floor, Math.min(g.scale - STEP, g.scale * want)), g.extras); return;
+        }
         floorT += ms;
         if (floorT < 3000) return;
         floorT = 0;
-        if (!halved && g.scale <= g.min + 1e-6 && load < 1.9) { halved = true; wait = 4000; return; } // half the display's rate, evenly
+        // (e0 unknown: a device that opened at the floor, from its record. It is asked a step up in the same way)
+        if (!flat && g.extras <= 0 && g.min < midFloor - 1e-6 && g.scale <= g.min + 1e-6 && (!e0 || ema > 0.85 * e0)) { flat = true; flatBase = ema; flatTop = Infinity; flatTry = 0; top = bad = Infinity; if (e0) change(midFloor, g.extras); else since = 4000; return; }
+        if (!halved && (flat || g.scale <= g.min + 1e-6 || (g.extras <= 0 && g.scale <= keep + 1e-6)) && load < 1.9) { halved = true; wait = 4000; return; } // half the display's rate, evenly
         if (g.extras > 0) { exFailed(g.extras); change(g.scale, g.extras - 0.5); }
         return;
       }
       floorT = 0;
       if (load > 1.04) { calm = 0; return; } // on the edge: hold
+      if (flat) { kept = g.scale; keptAt = clock; }
+      if (flat || e0) { flat = false; e0 = flatTry = 0; flatTop = Infinity; } // (frames that fit: the ordinary way up from here)
       calm += ms;
       if (tried && since >= 4000) tried = 0; // the try up held
       if (calm < wait) return;
