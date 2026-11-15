@@ -130,30 +130,49 @@ window.OECars = (function () {
   // material is drawn on both sides, and the back faces (the inside of the shell, seen through
   // the glass) take the lining's colour.
   // With a flip colour (a paint that turns: vehicles.json finish.flip) the colour leans to it where the surface turns away from the eye.
-  function shade(mat, lining, flip) {
+  // With a weave (finish.weave_mm: the width of a tow) the surface is carbon cloth under its lacquer: a 2x2 twill laid flat on
+  // whichever of the car's three planes the surface faces most, its tows catching the light in turn, and fading into its
+  // mean tone where a tow is smaller than a pixel (so no shimmer from across the street).
+  function shade(mat, lining, flip, weave) {
     const uni = { uLining: { value: lining ? lin(lining) : new THREE.Color(0, 0, 0) }, uLiningOn: { value: lining ? 1 : 0 },
-      uFlip: { value: flip ? lin(flip) : new THREE.Color(0, 0, 0) }, uFlipOn: { value: flip ? 1 : 0 } };
+      uFlip: { value: flip ? lin(flip) : new THREE.Color(0, 0, 0) }, uFlipOn: { value: flip ? 1 : 0 }, uWeave: { value: weave ? 1000 / weave : 0 }, uSky: { value: mat.userData.sky ?? 1 } };
+    // (how much of the sky a paint shines back, finish.sky: a material's envMapIntensity no longer reaches the scene's own
+    // environment in newer three.js, and the lacquer's share is kept apart there)
+    const coatSky = +THREE.REVISION >= 150 ? '\n#ifdef USE_CLEARCOAT\n  clearcoatSpecularIndirect *= uSky;\n#endif' : '';
     if (lining) mat.side = THREE.DoubleSide;
     mat.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, uni);
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 color;\nvarying float vAO;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAO = color.r;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vAO;\nuniform vec3 uLining;\nuniform float uLiningOn;\nuniform vec3 uFlip;\nuniform float uFlipOn;')
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 color;\nvarying float vAO;\nvarying vec3 vObjP;\nvarying vec3 vObjN;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAO = color.r; vObjP = position; vObjN = normal;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vAO;\nuniform vec3 uLining;\nuniform float uLiningOn;\nuniform vec3 uFlip;\nuniform float uFlipOn;\nuniform float uWeave;\nuniform float uSky;\nvarying vec3 vObjP;\nvarying vec3 vObjN;')
         .replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( (uLiningOn > 0.5 && !gl_FrontFacing ? uLining : mix(diffuse, uFlip, uFlipOn * pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 3.0))) * mix(1.0, vAO, 0.45), opacity );')
+        .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+if (uWeave > 0.0 && gl_FrontFacing) {
+  vec3 wn = abs(normalize(vObjN));
+  vec2 wg = (wn.y > wn.x && wn.y > wn.z ? vObjP.xz : wn.x > wn.z ? vObjP.zy : vObjP.xy) * uWeave;
+  vec2 wc = floor(wg), wf = fract(wg);
+  float over = step(mod(wc.x + wc.y, 4.0), 1.5);                      // a 2x2 twill: this tow runs over, or under
+  float along = over > 0.5 ? wf.x : wf.y;                             // the tow's round back across its width
+  float tow = mix(0.55, 1.0, sin(along * 3.14159));
+  float seen = 1.0 - smoothstep(0.3, 0.8, max(fwidth(wg.x), fwidth(wg.y)));
+  diffuseColor.rgb *= mix(1.0, (0.45 + 1.5 * over) * tow, seen);
+  diffuseColor.rgb += vec3(0.012, 0.013, 0.015) * over * tow * seen;
+  roughnessFactor = mix(roughnessFactor, roughnessFactor + 0.18 * (1.0 - over), seen);
+}`)
         .replace('#include <lights_physical_fragment>', '#include <lights_physical_fragment>\nif (uLiningOn > 0.5 && !gl_FrontFacing) {\n  material.roughness = 0.92;\n#ifdef USE_CLEARCOAT\n  material.clearcoat = 0.0;\n#endif\n}')
-        .replace('#include <aomap_fragment>', '#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= vAO; reflectedLight.indirectSpecular *= vAO;');
+        .replace('#include <aomap_fragment>', '#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= vAO; reflectedLight.indirectSpecular *= vAO * uSky;' + coatSky);
     };
     mat.customProgramCacheKey = () => 'oe-car';
     return mat;
   }
   const std = (hex, roughness, metalness = 0, extra = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: lin(hex), roughness, metalness }, extra));
-  // finish (a model's own, vehicles.json): { metalness, roughness, sky, flip, rim }: a metallic paint under its lacquer, how
+  // finish (a model's own, vehicles.json): { metalness, roughness, sky, flip, weave_mm, rim }: a metallic paint under its lacquer, how
   // much of the sky it shines back (a deep colour under a bright sky is otherwise a pale haze), the colour it turns to
   // at a glancing angle, and the colour of its forged rims
   function materials({ paint, band, seat, lining }, finish) {
     const fin = finish || {};
     const coat = hex => shade(new THREE.MeshPhysicalMaterial({ color: lin(hex), roughness: fin.roughness ?? 0.3, metalness: fin.metalness || 0, clearcoat: 1,
-      clearcoatRoughness: finish ? 0.04 : 0.07, envMapIntensity: fin.sky ?? 1 }), lining, hex === paint ? fin.flip : null);
+      clearcoatRoughness: finish ? 0.04 : 0.07, userData: { sky: fin.sky ?? 1 } }), lining, hex === paint ? fin.flip : null, hex === paint ? fin.weave_mm : 0);
     const lamp = (hex, emit) => std(hex, 0.2, 0, { emissive: lin(emit), emissiveIntensity: 0 });
     const m = {
       Paint: coat(paint), Paint2: coat(band || paint),
@@ -166,7 +185,12 @@ window.OECars = (function () {
     m.Seam = m.Trim;
     if (finish) { // the supercar's: its carbon under lacquer, its forged rims, its brakes, its displays and the line of light along its sills
       const accent = band || '#f2a12a';
-      m.Carbon = shade(std('#08090a', 0.62, 0, { envMapIntensity: 0.3 }), '#08090a'); // (bare and matt, as a racing car's floor and wings are: it must not shine back the sky or a street lamp)
+      // (with a body of carbon under lacquer, its lip, sills, wing and canopy are the same cloth and the same lacquer: one
+      // material from the roof to the road, no band of another colour along the bottom; else bare and matt)
+      // (the parts that lie flat to the sky, the lip, the sills' blades, the fins and the wing, stay bare and matt: under
+      // lacquer they shone back every street lamp as a pale band along the bottom of the car)
+      m.Carbon_Matt = shade(std('#08090a', 0.62, 0, { envMapIntensity: 0.3 }), '#08090a');
+      m.Carbon = fin.weave_mm ? coat(paint) : m.Carbon_Matt;
       m.Alloy = shade(std(fin.rim || '#2b2d31', 0.32, 0.95));
       m.Disc = shade(std('#8d9196', 0.42, 0.9));
       m.Caliper = shade(std(accent, 0.45));

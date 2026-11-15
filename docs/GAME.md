@@ -2929,15 +2929,20 @@ in the city's Cycles renders where the game puts them.
   - **The supercar** (`Car_Super`) is a mid-engined two-seater of our own
     design, 4.70 m long, 2.04 m wide and 1.16 m high. It was drawn after a
     survey of what the fastest road cars and single-seaters have in common (a
-    wedge nose over a splitter with end fences and dive planes, a dark canopy
+    wedge nose whose lower edge is its own lip, a dark canopy
     set forward, intakes ahead of the rear wheels, a roof scoop running into a
     fin, a two-element wing hung from swan necks, a finned diffuser with a
     rain light), and copies no maker's car. Its sections are polygons of ten
     points a side rounded by a B-spline, with creases where the points say;
     the cuts (arches, intakes, outlets) follow their curves because the grid
     is snapped to them. About 80,000 triangles, never in the traffic, so it
-    has no distant copies. `vehicles.json` gives it a metallic paint that
-    turns colour at a glancing angle (`finish`), its top speed and its pull.
+    has no distant copies. Its body is black carbon cloth under lacquer
+    (`vehicles.json` `finish.weave_mm`: a 2x2 twill drawn by the paint's
+    shader, seen close to), the same from the roof to the lip, so that no
+    band of another colour runs along the bottom; the nose is one mouth with
+    struts standing in it, and the lip is the body's own edge. This follows
+    how the best road cars are finished (one material, its detail in the
+    weave, the fine lines and the lamps), without copying any of them.
   - Each body is one parametric surface: the roof and floor lines are curves
     along the car, and each section is a rounded box that narrows above the
     beltline. Lamps and trim lie on that surface. The wheel arches are cut and
@@ -2993,7 +2998,7 @@ optional, and a city with no config gets the defaults:
   "helicopter": {"livery": "survey", "registration": "VH-OEH", "logo": "OPEN EARTH 3D"},
   "ferry": {"livery": "harbour"},
   "cars": {"taxi": {"colours": ["#f4c20d"], "share": 0.1}, "bus": {"colour": "#eef0ef", "band": "#f08a00"}},
-  "car": {"model": "Car_Super", "colour": "#4315a6", "accent": "#f2a12a", "seat": "#1c1c20"}
+  "car": {"model": "Car_Super", "colour": "#0b0d11", "accent": "#d9a441", "seat": "#6e4228"}
 }
 ```
 

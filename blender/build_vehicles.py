@@ -1756,6 +1756,7 @@ def car_materials():
     material("Seat", "#3b3d41", 0.85)
     material("Dash", "#1d1f22", 0.6)
     material("Carbon", "#0c0d0e", 0.32, 0.0, coat=1.0)      # the supercar's: its carbon, its dark rims, its brakes
+    material("Carbon_Matt", "#08090a", 0.62)                # bare: its lip, blades, fins and wing
     material("Alloy", "#8a6a45", 0.32, 1.0)
     material("Screen", "#0a1420", 0.2, emit="#7fd0ff")
     material("Light_Accent", "#3a2a12", 0.3, emit="#ffb066")
@@ -2092,7 +2093,7 @@ def build_bus():
 
 # ------------------------------------------------------------ the supercar: the car you drive
 # A mid-engined two-seater of our own design, not a copy of any maker's. It takes what the fastest road
-# cars and the single-seaters share: a wedge of a nose over a splitter that stands clear of it, a canopy
+# cars and the single-seaters share: a wedge of a nose that ends in one mouth over its own lip, a canopy
 # set well forward and dark from the screen to the tail, a waist drawn in to the intakes ahead of the
 # rear wheels, an air scoop on the roof running back into a fin, a wing hung from above on swan necks,
 # and a diffuser with a rain light between its fins. Its body is one surface, as the traffic's are, but
@@ -2272,7 +2273,7 @@ def build_supercar():
         if p.x < 1.6:
             return None
         ay, x = abs(p.y), cl(x)
-        return max(1.80 - p.x, 0.24 - ay, ay - (f["wm"](x) - 0.085), f["zb"](x) + 0.045 - p.z, p.z - (f["zs"](x) - 0.12))
+        return max(1.80 - p.x, p.x - (half - 0.052), ay - (f["wm"](x) - 0.085), f["zb"](x) + 0.045 - p.z, p.z - (f["zs"](x) - 0.12))
 
     def bonnet_d(p, x, th):
         return max(abs(p.y) - 0.27, 1.45 - p.x, p.x - 1.81) if 1.2 < x < 2.0 and I(7) < th < I(11) else None
@@ -2338,30 +2339,37 @@ def build_supercar():
     # a floor pan, so that it reads solid from low down
     box(body, "Trim", (L - 1.0, c["W"] - 0.36, 0.03), T((0, 0, c["floor"] + 0.03)))
 
-    # ---- the nose: a splitter standing ahead of it with a fence at each end, dive planes on the corners,
-    # blades across the intakes, lamps in two fine lines along each wing, an outlet in the bonnet
+    # ---- the nose: one mouth with struts standing in it and blades across it, a dive plane on each corner,
+    # a line of light over three projectors along each wing, an outlet in the bonnet
+    # the lip is the body's own lower edge carried a hand's breadth forward, not a board hung under it
     secs = []
-    for x in np.linspace(1.50, 2.43, 18):
-        w = f["wm"](cl(x - 0.07)) + 0.035 if x < 2.40 else 0.36
-        secs.append([(x, -w, 0.088), (x, w, 0.088), (x, w, 0.100), (x, -w, 0.100)])
-    loft(body, "Carbon", secs, smooth=False)
-    # a fine line of the accent colour round its leading edge, as a racing car's floor is marked
-    edge = [(q[1][0], q[1][1] + 0.002, 0.094) for q in secs[4:-1]]
-    tube(body, "Paint2", [(x, -y, z) for x, y, z in edge] + [(2.432, 0.0, 0.094)] + edge[::-1], 0.0065, segs=6)
-    for y in (-0.16, 0.16):                                                   # the struts it hangs from
-        box(body, "Carbon", (0.05, 0.012, 0.09), T((2.30, y, 0.145)))
+    for x in np.linspace(1.50, 2.385, 18):
+        w = f["wm"](cl(x - 0.03)) + 0.012 if x < 2.36 else 0.34
+        secs.append([(x, -w, 0.090), (x, w, 0.090), (x, w, 0.102), (x, -w, 0.102)])
+    loft(body, "Carbon_Matt", secs, smooth=False)
+
+    def nose_x(y, z):
+        """Where along the car the nose is y wide at height z."""
+        lo, hi = 1.6, half - 0.06
+        for _ in range(30):
+            mid = (lo + hi) / 2
+            lo, hi = (mid, hi) if abs(on(mid, z).y) > y else (lo, mid)
+        return (lo + hi) / 2
+    for y in (-0.56, -0.20, 0.20, 0.56):                                      # the struts that stand in the mouth
+        x = nose_x(abs(y), 0.30)
+        z0, z1 = f["zb"](x) + 0.03, f["zs"](x) - 0.10
+        strut = [[(x + 0.010 - 0.05 * k, y - 0.009, z), (x + 0.010 - 0.05 * k, y + 0.009, z), (x - 0.09 - 0.05 * k, y + 0.004, z), (x - 0.09 - 0.05 * k, y - 0.004, z)]
+                 for k, z in ((1.0, z0), (0.0, z1))]
+        loft(body, "Carbon_Matt", strut, smooth=False)
     for s in (1, -1):
         m = (lambda p: p) if s > 0 else (lambda p: mirror(p)[::-1])
-        fence = [[(x, s * (f["wm"](cl(x - 0.07)) + 0.035 - t), z) for t, z in ((0, 0.098), (0.008, 0.098), (0.008, 0.098 + h), (0, 0.098 + h))]
-                 for x, h in ((1.56, 0.02), (1.66, 0.09), (1.92, 0.08), (2.02, 0.02))]
-        loft(body, "Carbon", fence, smooth=False)
-        for z0, x0, x1, wd in ((0.26, 2.14, 1.84, 0.075), (0.37, 2.06, 1.80, 0.06)):   # dive planes, rising to the rear
+        for z0, x0, x1, wd in ((0.30, 2.10, 1.80, 0.055),):   # a dive plane, rising to the rear
             plane = []
             for x in np.linspace(x0, x1, 6):
                 z = z0 + (x0 - x) * 0.42
                 yin = abs(on(x, z).y) - 0.012
                 plane.append([(x, s * yin, z), (x, s * (yin + wd), z + 0.012), (x, s * (yin + wd), z + 0.019), (x, s * yin, z + 0.008)])
-            loft(body, "Carbon", plane, smooth=False)
+            loft(body, "Carbon_Matt", plane, smooth=False)
         for z in (0.255, 0.335):                                              # the blades across each intake
             pts = []
             for x in np.linspace(1.80, 2.26, 12):
@@ -2371,8 +2379,14 @@ def build_supercar():
             if len(pts) > 2:
                 tube(trim, "Carbon", pts, 0.009, segs=6)
         patch(trim, F, m(chaikin([(2.14, I(5.2)), (1.68, I(5.0)), (1.72, I(6.0)), (2.12, I(5.9))], 2)), "Trim", offset=0.004, step=0.03)
-        for i0, i1 in ((5.28, 5.42), (5.56, 5.70)):
-            patch(trim, F, m(chaikin([(2.11, I(i0 + 0.05)), (1.74, I(i0)), (1.75, I(i1)), (2.10, I(i1 + 0.03))], 1)), "Light_Head", offset=0.008, step=0.03)
+        patch(trim, F, m(chaikin([(2.11, I(5.33)), (1.74, I(5.28)), (1.75, I(5.40)), (2.10, I(5.43))], 1)), "Light_Head", offset=0.008, step=0.03)
+        for x in (2.03, 1.93, 1.83):                                          # three projectors behind the line of light
+            th = I(5.64) if s > 0 else math.pi - I(5.64)
+            q, n = F(x, th), F.normal(x, th)
+            M = Matrix.Translation(q + n * 0.004) @ n.to_track_quat("Z", "Y").to_matrix().to_4x4()
+            cyl(body, "Chrome", 0.031, 0.010, M, segs=18)
+            cyl(body, "Trim", 0.026, 0.014, M, segs=18)
+            sphere(body, "Light_Head", 1.0, M @ T((0, 0, 0.004), scale=(0.021, 0.021, 0.010)), segs=12, rings=6)
         patch(trim, F, m(chaikin([(1.96, I(5.78)), (1.78, I(5.76)), (1.78, I(5.88)), (1.96, I(5.88))], 1)), "Light_Amber", offset=0.008, step=0.03)
         # the shut lines: the door's, the bonnet's, the tail's
         x0, x1 = 0.56, -0.42
@@ -2388,10 +2402,10 @@ def build_supercar():
         for x in np.linspace(-0.98, 0.88, 14):
             w = f["wm"](x)
             blade.append([(x, s * (w - 0.10), 0.094), (x, s * (w + 0.022), 0.094), (x, s * (w + 0.022), 0.106), (x, s * (w - 0.10), 0.106)])
-        loft(body, "Carbon", blade, smooth=False)
+        loft(body, "Carbon_Matt", blade, smooth=False)
         fin = [[(x, s * (f["wm"](x) + 0.022 - t), z) for t, z in ((0, 0.104), (0.008, 0.104), (0.008, 0.104 + h), (0, 0.104 + h))]
                for x, h in ((-0.56, 0.01), (-0.70, 0.08), (-0.98, 0.10))]
-        loft(body, "Carbon", fin, smooth=False)
+        loft(body, "Carbon_Matt", fin, smooth=False)
         # a blade standing in the side intake
         vane = [[(x, s * (abs(on(x, z0).y) - 0.03), z0), (x, s * (abs(on(x, z0).y) - 0.10), z0 + 0.01), (x, s * (abs(on(x, z1).y) - 0.10), z1 + 0.01),
                  (x, s * (abs(on(x, z1).y) - 0.03), z1)] for x, z0, z1 in ((-0.66, 0.46, 0.75), (-0.675, 0.46, 0.75))]
@@ -2402,9 +2416,12 @@ def build_supercar():
         box(body, "Carbon", (0.05, 0.17, 0.014), T((xm + 0.01, s * (f["wm"](xm) - 0.10), zm - 0.035), (s * 0.12, 0, 0)), bevel=0.004)
         box(body, "Carbon", (0.075, 0.17, 0.08), T((xm, ym, zm), (0, 0, s * 0.10)), bevel=0.022, segs=3)
         box(body, "Chrome", (0.006, 0.14, 0.055), T((xm - 0.039, ym, zm), (0, 0, s * 0.10)))
+    box(body, "Trim", (0.40, 0.58, 0.02), T((1.63, 0, f["zt"](1.63) - 0.105), (0, 0.2, 0)))        # the outlet's floor
     for x in (1.55, 1.67):                                                    # vanes in the bonnet's outlet
         box(body, "Carbon", (0.03, 0.54, 0.008), T((x, 0, f["zt"](x) - 0.022), (0, 0.5, 0)))
-    box(body, "Plate", (0.02, 0.36, 0.11), T((half - 0.012, 0, 0.29)))
+    zm0, zm1 = f["zb"](half - 0.05) + 0.045, f["zs"](half - 0.05) - 0.12            # the mouth carried across the tip of the nose
+    box(body, "Trim", (0.03, 0.84, zm1 - zm0), T((half - 0.03, 0, (zm0 + zm1) / 2)), bevel=0.01)
+    box(body, "Plate", (0.02, 0.36, 0.11), T((half - 0.012, 0, (zm0 + zm1) / 2)))
     p = F(2.24, I(9))
     cyl(body, "Chrome", 0.028, 0.006, T((p.x, 0, p.z + 0.002), (0, 0.28, 0)), segs=16)             # a badge on the nose
     loop = [(half + 0.012 + 0.03 * math.cos(a), 0.30, 0.215 + 0.03 * math.sin(a)) for a in np.linspace(0, TAU, 13)]
@@ -2443,7 +2460,7 @@ def build_supercar():
     for y in (-0.82, -0.60, -0.38, -0.16, 0.16, 0.38, 0.60, 0.82):
         fin = [[(x, y - 0.006, f["zb"](cl(x)) - 0.065), (x, y + 0.006, f["zb"](cl(x)) - 0.065), (x, y + 0.006, f["zb"](cl(x)) + 0.012),
                 (x, y - 0.006, f["zb"](cl(x)) + 0.012)] for x in np.linspace(-1.74, -2.39, 7)]
-        loft(body, "Carbon", fin, smooth=False)
+        loft(body, "Carbon_Matt", fin, smooth=False)
     box(body, "Carbon", (0.07, 0.10, 0.16), T((xt - 0.02, 0, 0.30)), bevel=0.012)
     box(body, "Light_Tail", (0.02, 0.05, 0.12), T((xt - 0.052, 0, 0.30)), bevel=0.006)
     pitch = 0.14
@@ -2455,13 +2472,13 @@ def build_supercar():
             ch = chord * (1 - 0.12 * k ** 2)
             xl, zl2 = x0 - tip * k ** 2, z0
             secs.append([(xl - a * math.cos(pit) + h * math.sin(pit), y, zl2 + h * math.cos(pit) + a * math.sin(pit)) for a, h in airfoil(ch, thick, n=8)])
-        loft(body, "Carbon", secs)
+        loft(body, "Carbon_Matt", secs)
     element(-1.95, 1.185, 0.90, 0.30, pitch, tip=0.03)
     element(-2.235, 1.245, 0.90, 0.115, 0.50, thick=0.10)
     for s in (1, -1):
         plate = [[(x, s * 0.905 - 0.006, z0), (x, s * 0.905 + 0.006, z0), (x, s * 0.905 + 0.006, z1), (x, s * 0.905 - 0.006, z1)]
                  for x, z0, z1 in ((-1.92, 1.14, 1.20), (-2.00, 1.08, 1.24), (-2.30, 1.08, 1.30), (-2.37, 1.14, 1.30))]
-        loft(body, "Carbon", plate, smooth=False)
+        loft(body, "Carbon_Matt", plate, smooth=False)
         box(body, "Paint2", (0.30, 0.014, 0.012), T((-2.16, s * 0.908, 1.275), (0, -0.05, 0)))
         # a swan neck: up from the deck, forward of the wing, and back over it
         yn = s * 0.34
@@ -2567,11 +2584,11 @@ def build_cars():
                        "Car_Taxi": {"taxi": True}, "Bus": {"bus": True},
                        "Car_Super": {"player": True, "name": "supercar", "top_ms": 92, "pull_ms2": 12.5,
                                      "lamp_glow": 0.5,
-                                     "finish": {"metalness": 0.3, "roughness": 0.26, "sky": 0.55, "flip": "#12205f", "rim": "#8a6a45"}}},
+                                     "finish": {"metalness": 0.0, "roughness": 0.22, "sky": 0.4, "weave_mm": 5, "rim": "#8a6a45"}}},
             "liveries": CAR_LIVERIES,
             "tones": {"Paint": 0, "Paint2": 1, "Seat": 2, "Glass": 4, "Tyre": 5, "Light_Head": 6, "Light_Tail": 7, "Trim": 8, "Chrome": 9,
                       "Rim": 10, "Plate": 11, "Sign": 12, "Light_Amber": 13, "Seam": 8, "Dash": 8, "Carbon": 8, "Alloy": 10, "Disc": 9,
-                      "Caliper": 1, "Screen": 8, "Light_Accent": 8}}
+                      "Carbon_Matt": 8, "Caliper": 1, "Screen": 8, "Light_Accent": 8}}
     for name, d in dims.items():
         info["models"][name].update(d)
         if name in cabins:

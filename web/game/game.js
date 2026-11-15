@@ -1018,7 +1018,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // car on the map moving along its route to the pick-up, and the time it will take.
   const keepSign = KEEP === 'left' ? 1 : -1, kerbSeat = KEEP === 'left' ? 'rear_left' : 'rear_right';
   const CARS_OK = !!(vlib && vlib.cars && Object.values(vlib.info.cars.models).some(m => m.seats));
-  const carCfg = Object.assign({ model: 'Car_Super', colour: '#4315a6', accent: '#f2a12a', seat: '#1c1c20' }, (G.vehicles || {}).car);
+  const carCfg = Object.assign({ model: 'Car_Super', colour: '#0b0d11', accent: '#d9a441', seat: '#6e4228' }, (G.vehicles || {}).car);
   if (vlib && vlib.info.cars && !vlib.info.cars.models[carCfg.model]) carCfg.model = 'Car_Hatch';
   // the ways you can actually go, on foot, by road and in the air (route.js), worked out in slices behind the title
   const ways = OERoute.create({ nav, footNet, roadNet, DSM, helipads: G.helipads, lifts: G.lifts || [], ground: lineGround });

@@ -566,10 +566,10 @@
     "pull_ms2": 12.5,
     "lamp_glow": 0.5,
     "finish": {
-     "metalness": 0.3,
-     "roughness": 0.26,
-     "sky": 0.55,
-     "flip": "#12205f",
+     "metalness": 0.0,
+     "roughness": 0.22,
+     "sky": 0.4,
+     "weave_mm": 5,
      "rim": "#8a6a45"
     },
     "length_m": 4.7,
@@ -601,7 +601,7 @@
     },
     "leg_rake": 2.6,
     "cabin": "Car_Super_Cabin",
-    "triangles": 79131,
+    "triangles": 79855,
     "cabin_triangles": 3768
    }
   },
@@ -654,6 +654,7 @@
    "Carbon": 8,
    "Alloy": 10,
    "Disc": 9,
+   "Carbon_Matt": 8,
    "Caliper": 1,
    "Screen": 8,
    "Light_Accent": 8
