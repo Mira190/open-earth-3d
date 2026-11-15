@@ -78,7 +78,7 @@ PARKED=$(tools/live_cities.sh --parked)
 REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || [ ! -f "web/data/$d/scene.json" ] || echo "$d"; done)   # a reef site: its scene built, no city game
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
 
-cities=() reefs=() title=0 loader=0 voice=0 telemetry=0 shared= fish=0
+cities=() reefs=() title=0 loader=0 voice=0 telemetry=0 shared= fish=0 astc=0
 declare -A want=()   # the kinds to run for each city
 add_city() {   # a city, and the kinds of its checks to run (all of them when none is named)
   local c=$1 k
@@ -139,6 +139,7 @@ else
       web/data/*/d/*)   # a phone's district of a map (pipeline/district.py): what a phone loads, so its memory check
         id=${f#web/data/}; id=${id%%/*}; is_in "$id" "$CITIES" && add_city "$id" mem ;;
       pipeline/district.py) shared_change mem ;;
+      web/astc.js|web/astc-worker.js|tools/astc_check.js) astc=1 ;;   # the device-side ASTC encoder, against a real decoder
       cities/*/*|web/data/*/*)
         id=${f#web/data/}; id=${id#cities/}; id=${id%%/*}   # the city or reef site: cities/<id>/..., web/data/<id>/...
         if is_in "$id" "$CITIES"; then add_city "$id"; elif is_in "$id" "$REEFS"; then add_reef "$id"; fi ;;
