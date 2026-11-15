@@ -360,8 +360,21 @@ window.OEBuildings = (function () {
     const g = cv.getContext('2d');
     const dir = `data/${scene.city.id}/`;
     const draw = (t, im) => { if (im) g.drawImage(im, (t.x0 - fr.x[0]) * k, (fr.y[1] - t.y1) * k, (t.x1 - t.x0) * k, (t.y1 - t.y0) * k); return !!im; };
-    let tex = null;
+    let tex = null, stage = Promise.resolve();
+    // (a phone, tex.js: each stage's picture in ASTC blocks, a quarter of the GPU's memory, the stage before let go
+    // once the next is in; the canvas is read as it stands when the stage's turn comes)
+    const packed = !!(window.OETex && OETex.stats.on && typeof createImageBitmap === 'function');
     const sent = () => {
+      if (packed) {
+        stage = stage.then(() => createImageBitmap(cv)).then(bm => {
+          const t = new THREE.Texture(bm);
+          t.colorSpace = THREE.SRGBColorSpace;
+          t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+          t.needsUpdate = true;
+          return OETex.pack(t).then(() => { const old = tex; tex = t; show(t); if (old) old.dispose(); });
+        }).catch(e => console.warn('roofs\' photo:', e && e.message || e));
+        return;
+      }
       if (!tex) {
         tex = new THREE.CanvasTexture(cv);
         if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace; else tex.encoding = THREE.sRGBEncoding;
@@ -383,7 +396,7 @@ window.OEBuildings = (function () {
     return Promise.all([lo, part(first)]).then(([low, any]) => {
       if (any || low) sent(); // (the overview, at least, if it came)
       return pics && pics.first.some(f => !f) ? part(i => !first(i)).then(more => { if (more) sent(); }) : null;
-    }).then(() => { if (letGo && tex) tex.onUpdate = () => { tex.onUpdate = null; cv.width = cv.height = 0; }; }).catch(() => {});
+    }).then(() => (packed ? stage.then(() => { if (letGo) cv.width = cv.height = 0; }) : (letGo && tex ? (tex.onUpdate = () => { tex.onUpdate = null; cv.width = cv.height = 0; }) : null))).catch(() => {});
   }
 
   // ------------------------------------------------------------ the facade and roof shader

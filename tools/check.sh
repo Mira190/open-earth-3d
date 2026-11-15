@@ -41,6 +41,7 @@
 #   tools/check.sh voice                # what the characters say only (it runs with every target)
 #   tools/check.sh loader               # the loading screen's hand-over only
 #   tools/check.sh telemetry            # the visitor and SLO events, and the game's save, only
+#   tools/check.sh astc                 # the device-side ASTC encoder against a real decoder, only
 #   tools/check.sh gl                   # the map opened as a device with its extras shed opens it: no refused WebGL call
 #   tools/check.sh all                  # every city, every reef site and the title
 #   tools/check.sh static               # the checks that open no browser only (packs, voice, life, rings...)
@@ -78,7 +79,7 @@ PARKED=$(tools/live_cities.sh --parked)
 REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || [ ! -f "web/data/$d/scene.json" ] || echo "$d"; done)   # a reef site: its scene built, no city game
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
 
-cities=() reefs=() title=0 loader=0 voice=0 telemetry=0 gl=0 shared= fish=0
+cities=() reefs=() title=0 loader=0 voice=0 telemetry=0 gl=0 shared= fish=0 astc=0
 declare -A want=()   # the kinds to run for each city
 add_city() {   # a city, and the kinds of its checks to run (all of them when none is named)
   local c=$1 k
@@ -105,12 +106,13 @@ all_reefs() { for r in $REEFS; do add_reef "$r"; done; }
 if [ $# -gt 0 ]; then
   for t in "$@"; do
     case "$t" in
-      all) all_cities; all_reefs; title=1; loader=1; telemetry=1; gl=1 ;;
+      all) all_cities; all_reefs; title=1; loader=1; telemetry=1; gl=1; astc=1 ;;
       voice|static) voice=1 ;;
       *:*) add_kinds "$t" ;;
       title) title=1 ;;
       loader) loader=1 ;;
       telemetry) telemetry=1 ;;
+      astc) astc=1 ;;
       gl) gl=1 ;;
       *) if is_in "$t" "$CITIES" || is_in "$t" "$PARKED"; then add_city "$t"
          elif is_in "$t" "$REEFS"; then add_reef "$t"
@@ -139,6 +141,7 @@ else
       web/data/*/d/*)   # a phone's district of a map (pipeline/district.py): what a phone loads, so its memory check
         id=${f#web/data/}; id=${id%%/*}; is_in "$id" "$CITIES" && add_city "$id" mem ;;
       pipeline/district.py) shared_change mem ;;
+      web/astc.js|web/astc-worker.js|tools/astc_check.js) astc=1 ;;   # the device-side ASTC encoder, against a real decoder
       cities/*/*|web/data/*/*)
         id=${f#web/data/}; id=${id#cities/}; id=${id%%/*}   # the city or reef site: cities/<id>/..., web/data/<id>/...
         if is_in "$id" "$CITIES"; then add_city "$id"; elif is_in "$id" "$REEFS"; then add_reef "$id"; fi ;;
@@ -185,11 +188,11 @@ if [ $plan -eq 1 ]; then   # the targets of this run, each one an argument to th
     [ -n "$rest" ] && echo "$c:$rest"
   done
   for r in "${reefs[@]}"; do echo "$r"; done
-  [ $title -eq 1 ] && echo title; [ $loader -eq 1 ] && echo loader; [ $telemetry -eq 1 ] && echo telemetry; [ $gl -eq 1 ] && echo gl
+  [ $title -eq 1 ] && echo title; [ $loader -eq 1 ] && echo loader; [ $telemetry -eq 1 ] && echo telemetry; [ $gl -eq 1 ] && echo gl; [ $astc -eq 1 ] && echo astc
   exit 0
 fi
 
-if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ] && [ $telemetry -eq 0 ] && [ $gl -eq 0 ]; then
+if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ] && [ $telemetry -eq 0 ] && [ $gl -eq 0 ] && [ $astc -eq 0 ]; then
   echo "nothing to check: no change to a city, a reef site, the game, the renderer or the title"
   stamp "$@"
   exit 0
@@ -303,6 +306,12 @@ run_telemetry() {   # the visitor and SLO events end to end, and the game's save
     echo "ok   telemetry  $(grep -c '^ok' "$OUT/telemetry.log") steps: views, loads, play time, frame rate, tour, spots, exit, crash, the SLO report, the save"
   else echo "FAIL telemetry  $(grep '^FAIL' "$OUT/telemetry.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/telemetry.log)"; fi
 }
+# the device-side ASTC encoder (web/astc.js) against a real decoder: SwiftShader's, since Mesa's llvmpipe offers none
+run_astc() {
+  if PORT=$PORT env -u DISPLAY timeout 600 node tools/astc_check.js >"$OUT/astc.log" 2>&1; then
+    echo "ok   astc   $(grep -c '^ok' "$OUT/astc.log") pictures encoded on the page and decoded by the GPU, none under the floor"
+  else echo "FAIL astc   $(grep '^FAIL' "$OUT/astc.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/astc.log)"; fi
+}
 run_title() {
   timeout 1800 node tools/title_check.js "$OUT/title" >"$OUT/title.log" 2>&1
   python3 -I - "$OUT/title.log" <<'EOF'
@@ -405,6 +414,7 @@ EOF
   [ $loader -eq 1 ] && run_loader
   [ $title -eq 1 ] && run_title
   [ $telemetry -eq 1 ] && run_telemetry
+  [ $astc -eq 1 ] && run_astc
   [ $gl -eq 1 ] && run_gl
 } | tee "$OUT/summary.txt"
 grep -q '^FAIL' "$OUT/summary.txt" && exit 1
