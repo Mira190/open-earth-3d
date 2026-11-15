@@ -431,7 +431,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   const cue = (t, fn, { sound = false } = {}) => cues.push({ t, fn, sound, done: false });
   let soundOn = false;
   const wordEl = $('ts-word');
-  if (STORY) { wordEl.textContent = STORY.title.toUpperCase(); const sub = $('ts-title').querySelector('.s'); if (sub) sub.textContent = `A story in episodes · ${STORY.c.district || STORY.c.name}`; $('ts-tally').textContent = ''; }
+  if (STORY) { app.classList.add('story'); wordEl.textContent = STORY.title.toUpperCase(); const sub = $('ts-title').querySelector('.s'); if (sub) sub.textContent = `A story in episodes · ${STORY.c.district || STORY.c.name}`; $('ts-tally').textContent = ''; }
   // one span per letter for the reveal; screen readers get the word whole
   wordEl.innerHTML = `<span class="ts-sr">${wordEl.textContent}</span>` + wordEl.textContent.split('').map(ch => `<i aria-hidden="true">${ch === ' ' ? '&nbsp;' : ch}</i>`).join('');
   const letters = [...wordEl.querySelectorAll('i')], titleEl = $('ts-title'), subEl = titleEl.querySelector('.s'), tallyEl = $('ts-tally');
@@ -525,8 +525,12 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const el = document.createElement('div');
     el.className = 'ts-story';
     const safe = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-    el.innerHTML = `<small>A story in episodes · ${safe(STORY.c.district || STORY.c.name)}</small><b>${safe(STORY.title)}</b><button class="ts-btn primary" id="ts-begin">Begin</button>`;
-    app.classList.add('story');
+    // no block of a button: the title, and a thin ring that closes over the seconds before it begins by itself (a
+    // camera's ring, as the story has it); a press of the ring, of any key or anywhere on the picture begins at once
+    el.innerHTML = `<small>A story in episodes · ${safe(STORY.c.district || STORY.c.name)}</small><b>${safe(STORY.title)}</b>`
+      + `<button class="ts-begin" id="ts-begin" aria-label="Begin"><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="bg" cx="32" cy="32" r="28"/><circle class="fg" cx="32" cy="32" r="28"/><path d="M27 22 L43 32 L27 42 Z"/></svg></button>`
+      + '<em><span class="ts-kb">Press any key</span><span class="ts-tp">Tap anywhere</span></em>';
+    app.classList.add('story-ready');
     app.appendChild(el);
     requestAnimationFrame(() => el.classList.add('on'));
     let gone = false;
@@ -538,8 +542,10 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       el.classList.remove('on');
       dive(d, true, d.sites ? STORY.c : null, null);
     };
-    on(el.querySelector('button'), 'click', go);
-    after(9000, go); // nobody pressed: it begins by itself (the sound waits for a first touch, as a browser has it)
+    on(el.querySelector('button'), 'click', e => { e.stopPropagation(); go(); });
+    on(app, 'pointerdown', e => { if (!e.target.closest('.ts-open-tools')) go(); }); // (the sound's switch is its own)
+    on(window, 'keydown', e => { if (!e.metaKey && !e.ctrlKey && !e.altKey && e.key !== 'Tab') go(); });
+    after(reduced ? 14000 : 9000, go); // nobody pressed: it begins by itself (the sound waits for a first touch, as a browser has it)
     return true;
   }
   function showMenu() {

@@ -77,7 +77,8 @@
 .ts-caps .live:empty::before { display: none; }
 .title-app.menu:not(.opening) .ts-caps { visibility: hidden; }
 /* the opening's two controls: sound (it starts without) and skip */
-.ts-open-tools { position: absolute; right: max(28px, 4vw); bottom: max(28px, calc((100vh - 100vw / 2.39) / 2 + 22px)); z-index: 7; display: flex; gap: 22px; align-items: center;
+/* the sound's switch and the skip: in the bottom right corner of the page, under the picture's letterbox, on every opening */
+.ts-open-tools { position: absolute; right: max(28px, 4vw); bottom: max(22px, env(safe-area-inset-bottom, 0px)); z-index: 7; display: flex; gap: 22px; align-items: center;
   opacity: 0; transition: opacity 0.8s ease; }
 .ts-skip, .ts-hear { border: 0; background: none; cursor: pointer; font: 400 9.5px/1 var(--t-mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--tx3);
   padding: 12px 0; min-height: 44px; transition: color 0.3s; }
@@ -241,10 +242,27 @@
 .ts-prog { font: 400 9px/1 var(--t-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); }
 .ts-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 /* a story's link: one button under its title, and nothing to choose (title.js storyOpen) */
-.ts-story { position: absolute; left: 50%; bottom: max(12vh, 72px); transform: translateX(-50%); z-index: 6; opacity: 0; transition: opacity 1.4s ease; display: grid; justify-items: center; gap: 14px; text-align: center; color: #f4efe6; text-shadow: 0 2px 28px rgba(0, 0, 0, 0.8); }
+.ts-story { position: absolute; left: 50%; bottom: max(15vh, 96px); transform: translateX(-50%); z-index: 6; opacity: 0; transition: opacity 1.4s ease; display: grid; justify-items: center; gap: 14px; text-align: center; color: #f4efe6; text-shadow: 0 2px 28px rgba(0, 0, 0, 0.8); }
 .ts-story small { font: 600 12px/1 var(--sans, "Public Sans", system-ui, sans-serif); letter-spacing: 0.3em; text-transform: uppercase; color: var(--amber, #ffb066); }
-.ts-story b { font: 300 clamp(40px, 8vw, 92px)/1 var(--sans, "Public Sans", system-ui, sans-serif); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 10px; }
-.title-app.story .ts-open-tools .ts-skip, .title-app.story #ts-skip { display: none; }
+.ts-story b { font: 300 clamp(40px, 8vw, 92px)/1 var(--sans, "Public Sans", system-ui, sans-serif); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 18px; white-space: nowrap; }
+/* a story's opening keeps the sound's switch up while its title waits */
+.title-app.story .ts-open-tools { opacity: 1; }
+.title-app.story-ready .ts-skip { display: none; }
+.ts-begin { width: 68px; height: 68px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--amber, #ffb066); transition: transform 0.25s ease, color 0.25s ease; }
+.ts-begin:hover, .ts-begin:focus-visible { transform: scale(1.08); color: #ffd3a3; outline: none; }
+.ts-begin svg { width: 100%; height: 100%; overflow: visible; }
+.ts-begin circle { fill: none; stroke-width: 1.5; }
+.ts-begin .bg { stroke: rgba(236, 232, 225, 0.22); }
+.ts-begin .fg { stroke: currentColor; stroke-linecap: round; stroke-dasharray: 176; stroke-dashoffset: 176; transform: rotate(-90deg); transform-origin: 32px 32px; }
+.ts-story.on .ts-begin .fg { animation: ts-begin-ring 9s linear forwards; }
+.ts-begin path { fill: currentColor; opacity: 0.9; }
+@keyframes ts-begin-ring { to { stroke-dashoffset: 0; } }
+.ts-story small { white-space: nowrap; }
+@media (max-width: 520px) { .ts-story small { font-size: 10px; letter-spacing: 0.2em; } }
+.ts-story em { font: 400 9.5px/1 var(--t-mono, ui-monospace, monospace); letter-spacing: 0.22em; text-transform: uppercase; font-style: normal; color: rgba(236, 232, 225, 0.55); }
+.ts-story .ts-tp { display: none; }
+@media (hover: none) and (pointer: coarse) { .ts-story .ts-kb { display: none; } .ts-story .ts-tp { display: inline; } }
+@media (prefers-reduced-motion: reduce) { .ts-story.on .ts-begin .fg { animation: none; stroke-dashoffset: 0; } }
 .ts-story.on { opacity: 1; }
 .ts-story .ts-btn { min-width: 200px; justify-content: center; letter-spacing: 0.18em; text-transform: uppercase; }
 .ts-btn { flex: 1; min-width: 140px; border: 1px solid var(--line); background: rgba(236, 232, 225, 0.03); cursor: pointer; padding: 13px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
