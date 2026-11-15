@@ -349,6 +349,12 @@ def run(cid):
         },
         "night_lights": bm,
     }
+    # (the photograph of the ring past the frame is far_photo.py's: kept)
+    old_p = os.path.join(C.out, "far.json")
+    if os.path.exists(old_p):
+        photo = json.load(open(old_p, encoding="utf8")).get("photo")
+        if photo:
+            meta["photo"] = photo
     with open(os.path.join(C.out, "far.json"), "w") as f:
         json.dump(meta, f, indent=1)
     sz = sum(os.path.getsize(os.path.join(C.out, x)) for x in ("far.png", "far.jpg", "far.json")) // 1024

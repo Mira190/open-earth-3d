@@ -36,5 +36,19 @@
    178
   ],
   "vnl_radiance_max": 49.0
+ },
+ "photo": {
+  "file": "far_photo.jpg",
+  "box": [
+   -4700.0,
+   -5100.0,
+   3750.0,
+   2900.0
+  ],
+  "px_m": 5.0,
+  "w": 1690,
+  "h": 1600,
+  "zoom": 15,
+  "source": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
  }
 }
