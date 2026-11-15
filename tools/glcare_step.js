@@ -1,4 +1,4 @@
-// A lost WebGL context on purpose, for tools/tour_check.js and tools/game_check.js: lose the
+// A lost WebGL context on purpose, for tools/game_check.js: lose the
 // view's context (WEBGL_lose_context) as a phone that puts the tab away or a driver that resets
 // would, give it back, and see what a visitor sees (web/glcare.js):
 //   - while it is lost the view holds (care.lost) under a note;

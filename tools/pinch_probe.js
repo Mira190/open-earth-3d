@@ -11,7 +11,7 @@ const { chromium } = require('playwright');
   const city = process.argv[2] || 'shibuya', radius = +(process.argv[3] || 1e9);
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=gl', '--ignore-gpu-blocklist'] });
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction(() => window.__game && window.__game.cars && window.__game.roadNet, null, { timeout: 600000 });
   await p.evaluate(() => window.__game.advance(1));
   const out = await p.evaluate(radius => {

@@ -5,7 +5,7 @@
 //   xvfb-run -a node tools/governor_probe.js sydney out_dir [WxH]      TIER=high|medium|low, TIME=HH:MM
 const { chromium } = require('playwright');
 const path = require('path');
-const [,, city = 'sydney', outDir = '.', size = '1440x900'] = process.argv;
+const [,, city = 'shibuya', outDir = '.', size = '1440x900'] = process.argv;
 const [w, h] = size.split('x').map(Number);
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -15,7 +15,7 @@ const [w, h] = size.split('x').map(Number);
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
   const errs = [];
   p.on('pageerror', e => errs.push(String(e).slice(0, 300)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.atmos', null, { timeout: 600000 });
   await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 300000 }).catch(() => {});
   for (let i = 0; i < 60 && !(await p.evaluate(() => { const t = document.getElementById('g-title'); return !t || t.hidden; })); i++) {

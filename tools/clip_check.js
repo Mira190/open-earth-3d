@@ -21,7 +21,7 @@ const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const fs = require('fs');
-const [,, city = 'sydney', secs = '60', outFile = ''] = process.argv;
+const [,, city = 'shibuya', secs = '60', outFile = ''] = process.argv;
 
 // tolerances: how deep (m) counts as clipping, and how many such samples a run may have
 const TOL = {
@@ -51,7 +51,7 @@ const TOL = {
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   const t0 = Date.now();
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
   await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)

@@ -1,5 +1,10 @@
 # The look of a place: grade, neon, wet streets, crowd and sound
 
+> **Scope, November 2026.** The project is now one story on one map: Blue Hour, at the Shibuya Scramble
+> ([STORY.md](STORY.md)). This page was written while the project built many maps, a globe and a model viewer.
+> Where it names another city, the title screen, the viewer or the reef sites, it describes work kept at the tag
+> `archive/world-2026-11`; the shared code it explains is the code Shibuya runs.
+
 Shibuya's scramble is the reference: a hero shot by day, at dusk, at night and at night in the
 rain, extending the title screen's lens (`web/lens.js`) rather than restyling it. What is built
 here is general: every city's game takes the grade, every city with big LED screens
@@ -174,39 +179,21 @@ lower row the same views after it. The eight Japanese maps have the `shinkai` pr
 
 **Tokyo (Marunouchi and Ginza)**
 
-![Tokyo (Marunouchi and Ginza): main above, the look below; day, golden hour, blue hour, night, rain](images/look/tokyo.jpg)
-
 **Shinjuku**
-
-![Shinjuku: main above, the look below; day, golden hour, blue hour, night, rain](images/look/shinjuku.jpg)
 
 **Kyoto**
 
-![Kyoto: main above, the look below; day, golden hour, blue hour, night, rain](images/look/kyoto.jpg)
-
 **Higashiyama**
-
-![Higashiyama: main above, the look below; day, golden hour, blue hour, night, rain](images/look/higashiyama.jpg)
 
 **Fushimi Inari**
 
-![Fushimi Inari: main above, the look below; day, golden hour, blue hour, night, rain](images/look/fushimi-inari.jpg)
-
 **Tetsugaku-no-michi**
-
-![Tetsugaku-no-michi: main above, the look below; day, golden hour, blue hour, night, rain](images/look/tetsugaku.jpg)
 
 **Kamakura**
 
-![Kamakura: main above, the look below; day, golden hour, blue hour, night, rain](images/look/kamakura.jpg)
-
 **Sydney**
 
-![Sydney: main above, the look below; day, golden hour, blue hour, night, rain](images/look/sydney.jpg)
-
 **Queenstown**
-
-![Queenstown: main above, the look below; day, golden hour, blue hour, night, rain](images/look/queenstown.jpg)
 
 The same views at a phone's size (390 x 844, the look only; five hours across, a map to each block: Fushimi
 Inari, Higashiyama, Kamakura, Kyoto, Queenstown, Shibuya, Shinjuku, Sydney, Tetsugaku-no-michi, Tokyo). These were
@@ -217,7 +204,7 @@ light shafts are compiled out.
 
 A day in 24 seconds, from before sunrise to night, over Shibuya and over Higashiyama (960 x 540, 12 frames a
 second, the clouds at twelve seconds a frame): [images/look/shibuya-day.mp4](images/look/shibuya-day.mp4) and
-[images/look/higashiyama-day.mp4](images/look/higashiyama-day.mp4), made with
+images/look/higashiyama-day.mp4, made with
 `xvfb-run -a node tools/day_film.js shibuya out.mp4 960x540 24 12` (see the tool's header for the view). (Made before the clouds were seeded by place and day, so both start from the same sky.)
 
 ### Follow-ups (issue 372)
@@ -416,12 +403,7 @@ hour). On the high tier the software renderer pays for every area light in every
 and for the larger crowd; on a GPU those are cheap, but this was not measured on one. A device
 that runs slowly can drop a tier in About.
 
-## Stills and the film
-
-The film: `cities/shibuya/scramble_film.json`, 20 s of the scramble at dusk (17:08 to 17:13 on
-30 October) under the game's own grade (`"grade": "game"`):
-`xvfb-run -a node tools/city_film.js shibuya --spec cities/shibuya/scramble_film.json --out <dir>`.
-
+## Stills
 
 `tools/scramble_shot.js` takes stills from free cameras with the world running, at the hours
 and weather a views file names (`tools/views/shibuya-scramble.json`: from Hachiko, from the

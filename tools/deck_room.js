@@ -10,7 +10,7 @@
 // It also prints what decks.js's grading of overlapping decks did (#401: the rounds, what it left, how far points moved).
 //   xvfb-run -a node tools/deck_room.js tetsugaku
 const { chromium } = require('playwright');
-const [,, city = 'tetsugaku'] = process.argv;
+const [,, city = 'shibuya'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
@@ -18,7 +18,7 @@ const [,, city = 'tetsugaku'] = process.argv;
   const p = await b.newPage({ viewport: { width: 800, height: 500 } });
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game || window.__gameError', null, { timeout: 600000 });
   const res = await p.evaluate(() => {
     const g = window.__game, nav = g.nav, KNEE = 0.4, HEAD = 1.8, out = [];

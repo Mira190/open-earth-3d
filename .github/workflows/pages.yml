@@ -1,6 +1,6 @@
 # Publishes web/ to GitHub Pages on every push to main, with a version number.
 # The version is the major.minor in VERSION plus this workflow's run number (0.1.42), and
-# web/version.json carries it with the commit and the build time for the title screen to show.
+# web/version.json carries it with the commit and the build time for the page to show.
 name: Deploy to Pages
 
 on:

@@ -9,14 +9,14 @@
 // env: N=8 walkers, MAX=3, OFF=0.4 (you stand that far left of the footway's line, m),
 // TRACE=1 (that walker every 0.5 s: [t, distance, speed, dir, lat, detour left, stuck, still, squeeze])
 const { chromium } = require('playwright');
-const [,, city = 'fushimi-inari', X = '-181.4', Y = '73.8'] = process.argv;
+const [,, city = 'shibuya', X = '-181.4', Y = '73.8'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 960, height: 600 } });
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
   await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 600000 }).catch(() => {});
   await p.evaluate(() => { const b = document.getElementById('gt-play'); if (b) b.click(); });

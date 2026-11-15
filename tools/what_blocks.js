@@ -3,11 +3,11 @@
 // every collision box a body r m round (knee to head) overlaps: a building's solid (its id, class and heights) or a landmark's cell.
 'use strict';
 const { chromium } = require('playwright');
-const [,, city = 'amsterdam', pts = '[]'] = process.argv;
+const [,, city = 'shibuya', pts = '[]'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl'] });
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   const out = await p.evaluate(P => P.map(([x, y, z, r = 0.5]) => {
     const g = window.__game, nav = g.nav, f = nav.floorAt(x, y, z + 0.3), fz = f ? f.z : z, hits = [];

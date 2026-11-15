@@ -10,7 +10,7 @@ const city = process.argv[2] || 'jinbocho', secs = +(process.argv[3] || 300);
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
   await pinClock(p, city);
   await p.addInitScript(() => { let x = 1; Math.random = () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); });
-  await p.goto(`http://localhost:${process.env.PORT}/#play-${city}`, { waitUntil: 'domcontentloaded' });
+  await p.goto(`http://localhost:${process.env.PORT}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
   await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; });

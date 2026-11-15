@@ -3,28 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Open Earth 3D</title>
-<meta name="description" content="The Earth in 3D, city by city, from open data and the real sun.">
+<title>Blue Hour</title>
+<meta name="description" content="Blue Hour: a story in episodes at the Shibuya Scramble. Once an evening the crossing stops, and only whoever carries the camera walks on.">
 <meta name="theme-color" content="#04060b">
 <link rel="icon" href="favicon.png" sizes="32x32">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Open Earth 3D">
-<meta property="og:title" content="Open Earth 3D">
-<meta property="og:description" content="Real cities rebuilt in 3D from open data, under the real sun. Watch each city's film, explore the model, or walk it.">
-<meta property="og:url" content="https://mira190.github.io/open-earth-3d/">
-<meta property="og:image" content="https://mira190.github.io/open-earth-3d/og.jpg">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="628">
-<meta name="twitter:card" content="summary_large_image">
-<meta property="og:image:alt" content="The Earth from orbit at dawn under the words Open Earth">
-<meta name="twitter:title" content="Open Earth 3D">
-<meta name="twitter:description" content="Real cities rebuilt in 3D from open data, under the real sun.">
-<link rel="canonical" href="https://mira190.github.io/open-earth-3d/">
+<meta property="og:title" content="Blue Hour">
+<meta property="og:description" content="A story in episodes at the Shibuya Scramble, rebuilt from open data. Once an evening the crossing stops.">
 <link rel="stylesheet" href="fonts.css">
-<link rel="stylesheet" href="title.css">
-<link rel="stylesheet" href="film.css">
-<link rel="stylesheet" href="game/life.css">
+<link rel="stylesheet" href="game/story.css">
 <style>
 /* City: full-bleed 3D stage, a working panel on the right, a sun dial dock along the bottom.
    Game: the stage full-bleed under its HUD. Both carry on from the title screen (title.css): off-white
@@ -225,193 +213,6 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
 .lbl.pick { pointer-events: auto; cursor: pointer; background: none; border-width: 0 0 1px; border-style: solid; border-color: rgba(255, 255, 255, 0.55); border-radius: 0; margin: 0; padding: 0 0 5px; }
 .lbl.pick:hover, .lbl.pick:focus-visible { color: var(--accent-2); border-color: var(--accent); }
 .lbl.place { border-bottom: 0; font: italic 400 11.5px/1 var(--f-body); letter-spacing: 0.02em; text-transform: none; color: rgba(255, 255, 255, 0.86); }
-
-/* ---------- city: the stage ---------- */
-.app { display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: minmax(0, 1fr) auto; height: 100%; background: var(--bg); }
-.stage { position: relative; grid-column: 1; grid-row: 1; overflow: hidden; background: #0b111b; min-height: 0; }
-.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-/* a lens's falloff at the edges, as on the title */
-.stage::before, .game-stage::before { content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(130% 120% at 50% 45%, transparent 55%, rgba(2, 4, 8, 0.38) 100%); }
-.panel { grid-column: 2; grid-row: 1 / span 2; background: var(--surface); border-left: 1px solid var(--line);
-  display: flex; flex-direction: column; min-height: 0; padding-right: env(safe-area-inset-right, 0px); }
-.dock { grid-column: 1; grid-row: 2; background: var(--surface); border-top: 1px solid var(--line);
-  padding-block: 12px; padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: 18px; }
-
-.title-card { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); top: 16px; max-width: min(400px, calc(100% - 32px)); padding: 15px 18px 16px;
-  background: var(--hud); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-radius: var(--r); }
-.tc-back { display: inline-flex; gap: 8px; align-items: center; font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); text-decoration: none;
-  transition: color 0.3s; }
-.tc-back b { font-weight: 400; color: var(--accent); }
-.tc-back:hover, .tc-back:focus-visible { color: var(--ink); }
-.title-card .eyebrow { display: flex; gap: 10px; margin-top: 16px; }
-.title-card .eyebrow span + span::before { content: "·"; margin-right: 10px; }
-.title-card .eyebrow span:empty { display: none; }
-/* the other districts of the same city (cities/index.json's groups): one Tokyo, two models */
-.tc-districts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.tc-districts a { font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); text-decoration: none; padding: 6px 9px; border: 1px solid rgba(236, 232, 225, 0.16); transition: color 0.3s, border-color 0.3s; }
-.tc-districts a:hover, .tc-districts a:focus-visible { color: var(--ink); border-color: rgba(236, 232, 225, 0.45); }
-.tc-districts a[aria-current="page"] { color: var(--accent); border-color: var(--accent); pointer-events: none; }
-.tc-districts .tc-metro { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); background: rgba(255, 176, 102, 0.08); padding: 6px 9px; border: 1px solid rgba(255, 176, 102, 0.45); border-radius: 0; transition: background 0.3s; }
-.tc-districts .tc-metro svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.4; }
-.tc-districts .tc-metro:hover, .tc-districts .tc-metro:focus-visible { background: rgba(255, 176, 102, 0.18); }
-.title-card h1 { margin-top: 8px; font: 300 clamp(22px, 2.3vw, 30px)/1.05 var(--f-display); letter-spacing: 0.08em; text-transform: uppercase; color: #fff; }
-.title-card h1 small { font: 500 0.56em/1 var(--f-jp); letter-spacing: 0.22em; color: var(--muted); margin-left: 0.6em; text-transform: none; vertical-align: 0.14em; }
-.title-card h1 small:lang(zh-Hant) { font-family: var(--f-tc); }
-.title-card p { margin: 10px 0 0; color: var(--ink-2); font-size: 12.5px; line-height: 1.55;
-  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-.hud-btns { position: absolute; right: 16px; top: 16px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: max(180px, calc(100% - 440px)); }
-.caption { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); width: min(640px, calc(100% - 32px)); padding: 16px 18px 0;
-  background: var(--hud); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-radius: var(--r);
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: start; }
-.caption .step { font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.12em; color: var(--accent); white-space: nowrap; padding-top: 4px; }
-.caption b { display: block; font: 300 14px/1.25 var(--f-display); letter-spacing: 0.1em; text-transform: uppercase; color: #fff; }
-.caption p { margin: 7px 0 0; color: var(--ink-2); font-size: 13px; line-height: 1.55; }
-/* one segment per stop: the stops seen are full, the one in hand fills, so the tour's end is in view */
-.caption .bar { grid-column: 1 / -1; display: flex; gap: 3px; height: 2px; margin: 0 -18px; }
-.caption .bar span { flex: 1; background: var(--line); overflow: hidden; }
-.caption .bar i { display: block; height: 100%; width: 0; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
-.caption .cap-txt.in { animation: cap-in 0.7s var(--ease) both; }
-@keyframes cap-in { from { opacity: 0; transform: translateY(6px); } }
-.caption .cap-end { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: -4px; }
-.caption .cap-end[hidden] { display: none; }
-.caption.done .step { color: var(--accent-2); }
-.inspector { position: absolute; right: 16px; top: 62px; width: 290px; padding: 15px 16px 16px;
-  background: var(--hud-solid); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-radius: var(--r); }
-.inspector h3 { font: 300 14px/1.25 var(--f-display); letter-spacing: 0.1em; text-transform: uppercase; color: #fff; padding-right: 24px; }
-.inspector .x { position: absolute; right: 8px; top: 7px; border: 0; background: none; cursor: pointer; font-size: 18px; line-height: 1; padding: 4px; color: var(--muted); }
-.inspector .x:hover { color: var(--ink); }
-.kv { display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12.5px; }
-.kv dt { font: 400 8.5px/1.9 var(--f-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); }
-.kv dd { margin: 0; color: var(--ink); }
-.insp-actions { margin-top: 14px; }
-/* the establishing shot: a film title over the city while the camera comes down */
-.title-card, .hud-btns, .caption, .inspector { transition: opacity 0.6s ease; }
-.stage.intro .title-card, .stage.intro .hud-btns, .stage.intro .caption, .stage.intro .inspector { opacity: 0; pointer-events: none; }
-.stage::after { content: ""; position: absolute; inset: auto 0 0 0; height: 60%; pointer-events: none; opacity: 0; transition: opacity 0.8s ease; z-index: 1;
-  background: linear-gradient(transparent, rgba(4, 6, 11, 0.55) 55%, rgba(4, 6, 11, 0.82)); }
-.stage.intro::after { opacity: 1; }
-.intro-card { position: absolute; left: max(32px, 4vw, env(safe-area-inset-left, 0px)); bottom: max(34px, 6vh); max-width: calc(100% - 64px); z-index: 2;
-  color: #fff; text-shadow: 0 0 24px rgba(0, 0, 0, 0.45); opacity: 0; pointer-events: none; }
-.intro-card .eyebrow { color: rgba(236, 232, 225, 0.82); }
-.intro-card h2 { margin-top: 16px; font: 200 clamp(34px, 6vw, 96px)/1.02 var(--f-display); letter-spacing: 0.2em; text-transform: uppercase; color: #f4f1ea;
-  text-shadow: 0 0 40px rgba(255, 190, 120, 0.18), 0 0 24px rgba(0, 0, 0, 0.4); }
-.intro-card h2::after { content: ""; display: block; width: 140px; height: 1px; background: linear-gradient(90deg, var(--accent), transparent); margin-top: 22px; }
-.intro-card p { margin: 16px 0 0; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(236, 232, 225, 0.78); }
-.intro-skip { pointer-events: auto; margin-top: 18px; border: 0; background: none; padding: 8px 0; cursor: pointer; text-shadow: none;
-  font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.18em; text-transform: uppercase; color: rgba(236, 232, 225, 0.6); transition: color 0.3s; }
-.intro-skip::after { content: " →"; }
-.intro-skip:hover { color: #fff; }
-
-/* ---------- city: the panel ---------- */
-.tabs { display: flex; border-bottom: 1px solid var(--line); padding: 0 12px; gap: 2px; flex-wrap: wrap; }
-.tabs button { border: 0; background: none; padding: 18px 10px 15px; cursor: pointer; color: var(--muted); box-shadow: inset 0 -1px 0 transparent;
-  font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.16em; text-transform: uppercase; transition: color 0.3s, box-shadow 0.3s; }
-.tabs button:hover { color: var(--ink); }
-.tabs button[aria-selected="true"] { color: var(--ink); box-shadow: inset 0 -1px 0 var(--accent); }
-.pane { overflow-y: auto; padding: 20px 20px 28px; display: flex; flex-direction: column; gap: 22px; min-height: 0; flex: 1; }
-.pane > * { flex-shrink: 0; }
-.pane h2 { font: 300 16px/1.2 var(--f-display); letter-spacing: 0.1em; text-transform: uppercase; }
-.pane p { margin: 0; color: var(--ink-2); line-height: 1.55; }
-.pane p.note, .pane .note { color: var(--muted); }
-.pane .eyebrow { display: flex; gap: 12px; align-items: center; }
-.pane .eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-.group { display: grid; gap: 10px; }
-.tour-list { list-style: none; margin: 0; padding: 0; display: grid; }
-.tour-list button { width: 100%; text-align: left; border: 0; background: none; padding: 10px 8px 11px 0; cursor: pointer; position: relative; color: var(--ink);
-  display: grid; grid-template-columns: 34px 1fr; gap: 6px; transition: background 0.3s; }
-.tour-list button::before { content: ""; position: absolute; left: 34px; bottom: 2px; height: 1px; width: 0; background: linear-gradient(90deg, var(--accent), transparent); transition: width 0.7s var(--ease); }
-.tour-list button:hover { background: rgba(236, 232, 225, 0.03); }
-.tour-list .n { font: 400 9.5px/1.9 var(--f-mono); letter-spacing: 0.1em; color: var(--faint); padding-left: 8px; transition: color 0.4s; }
-.tour-list b { display: block; font-weight: 500; font-size: 13px; transition: transform 0.6s var(--ease), color 0.4s; }
-.tour-list span > span { display: block; margin-top: 3px; font: 400 9.5px/1.3 var(--f-mono); letter-spacing: 0.08em; color: var(--muted); }
-.tour-list button[aria-current="true"] .n { color: var(--accent); }
-.tour-list button[aria-current="true"] b { color: #fff; transform: translateX(6px); }
-.tour-list button[aria-current="true"] span > span { transform: translateX(6px); }
-.tour-list button[aria-current="true"]::before { width: 70%; }
-.tour-list button.seen .n { color: rgba(255, 176, 102, 0.55); }
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.stat { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 7px; padding: 12px 10px 13px 0; min-width: 0; }
-.stat + .stat { padding-left: 12px; border-left: 1px solid var(--line); }
-.stat b { font: 300 16px/1.1 var(--f-display); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: #fff; white-space: nowrap; }
-.stat span { font: 400 8.5px/1.3 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
-.seg button .num { color: var(--faint); font-size: 9px; margin-left: 4px; }
-.seg button[aria-pressed="true"] .num { color: inherit; opacity: 0.75; }
-table { border-collapse: collapse; width: 100%; font-size: 12px; }
-th { text-align: left; padding: 6px 6px 9px; border-bottom: 1px solid var(--line); font: 400 8.5px/1.3 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
-td { padding: 10px 6px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); }
-td b { color: var(--ink); font-weight: 500; }
-td.r, th.r { text-align: right; }
-tr.place-row { cursor: pointer; transition: background 0.3s; }
-tr.place-row:hover td, tr.place-row[aria-current="true"] td { background: rgba(236, 232, 225, 0.04); }
-tr.place-row[aria-current="true"] td:first-child { box-shadow: inset 1px 0 0 var(--accent); }
-td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
-.meter { height: 2px; background: var(--line); overflow: hidden; margin-top: 6px; min-width: 60px; }
-.meter i { display: block; height: 100%; background: var(--accent); }
-.pill { display: inline-flex; align-items: center; gap: 5px; border-radius: var(--r); padding: 2px 7px; white-space: nowrap;
-  font: 400 9px/1.4 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; }
-.pill.pass { background: color-mix(in srgb, var(--good) 14%, transparent); color: var(--good); }
-.pill.fail { background: color-mix(in srgb, var(--critical) 16%, transparent); color: var(--critical); }
-.pill.na { background: rgba(236, 232, 225, 0.06); color: var(--muted); }
-.pill.pass::before { content: "✓"; }
-.pill.fail::before { content: "✕"; }
-.src-bar { display: flex; height: 6px; overflow: hidden; gap: 2px; }
-.src-bar i { display: block; height: 100%; }
-.legend { display: grid; gap: 6px; font-size: 12px; color: var(--ink-2); }
-.legend div { display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: center; }
-.legend i { width: 10px; height: 10px; border-radius: 50%; }
-.legend .num { font-size: 11px; color: var(--ink); }
-.heat-legend { display: grid; gap: 5px; }
-.heat-legend .ramp { height: 6px; }
-.heat-legend .ticks { display: flex; justify-content: space-between; font: 400 9px/1 var(--f-mono); color: var(--muted); }
-
-/* ---------- city: the dock ---------- */
-.dock-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 20px; align-items: center; }
-.play { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line-2); background: none; color: var(--accent); cursor: pointer;
-  display: grid; place-items: center; transition: border-color 0.3s, background 0.3s; }
-.play:hover { border-color: var(--accent); background: var(--accent-wash); }
-.play svg { width: 12px; height: 12px; }
-.date-chips { display: flex; gap: 2px; flex-wrap: wrap; }
-.date-chips button { border: 0; background: none; padding: 8px 8px; cursor: pointer; color: var(--muted); box-shadow: inset 0 -1px 0 transparent;
-  font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; transition: color 0.3s, box-shadow 0.3s; }
-.date-chips button:hover { color: var(--ink); }
-.date-chips button[aria-pressed="true"] { color: var(--accent); box-shadow: inset 0 -1px 0 var(--accent); }
-.dial { position: relative; }
-.dial .daylight { position: absolute; left: 0; right: 0; top: -3px; height: 2px; pointer-events: none; }
-.dial .daylight i { position: absolute; top: 0; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 176, 102, 0.55) 12%, rgba(255, 176, 102, 0.55) 88%, transparent); }
-.dial .hours { display: flex; justify-content: space-between; font: 400 9px/1 var(--f-mono); letter-spacing: 0.06em; color: var(--faint); margin-top: 4px; }
-.readout { text-align: right; min-width: 180px; }
-.readout b { display: block; font: 300 20px/1.1 var(--f-display); letter-spacing: 0.06em; color: #fff; font-variant-numeric: tabular-nums; }
-.readout span { display: block; margin-top: 4px; font: 400 9.5px/1.2 var(--f-mono); letter-spacing: 0.1em; color: var(--muted); }
-
-@media (max-width: 860px) {
-  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 58vh auto auto; height: auto; min-height: 100%; }
-  .stage { grid-row: 1; }
-  .dock { grid-row: 2; padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); }
-  .panel { grid-column: 1; grid-row: 3; border-left: 0; border-top: 1px solid var(--line); padding-right: 0; }
-  .pane { overflow: visible; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .dock-row { grid-template-columns: auto minmax(0, 1fr); gap: 14px; }
-  .date-chips { grid-column: 1 / -1; order: -1; }
-  .readout { grid-column: 1 / -1; text-align: left; display: flex; gap: 12px; align-items: baseline; }
-  .readout span { margin: 0; }
-  .title-card { left: 10px; top: 10px; padding: 10px 13px 11px; max-width: calc(100% - 20px); }
-  .title-card .eyebrow, .title-card p { display: none; }
-  .title-card h1 { font-size: 18px; margin-top: 8px; }
-  .stage.intro .labels { opacity: 0; } /* no room for both the names and the title card */
-  .intro-card { left: 20px; bottom: 22px; max-width: calc(100% - 40px); }
-  .intro-card h2 { font-size: clamp(28px, 9vw, 44px); letter-spacing: 0.14em; }
-  .caption { bottom: 10px; grid-template-columns: minmax(0, 1fr) auto; padding: 12px 14px 0; gap: 12px; width: calc(100% - 20px); }
-  .caption .bar { margin: 0 -14px; }
-  .caption .step { display: none; }
-  .caption .cap-end { grid-column: 1 / -1; }
-  .caption .cap-end .btn { flex: 1; min-width: 0; text-align: center; }
-  .inspector { top: auto; bottom: 10px; right: 10px; left: 10px; width: auto; }
-  .hud-btns { top: 78px; left: 10px; right: 10px; max-width: none; justify-content: flex-start; gap: 4px; }
-  .tc-districts { margin-top: 7px; gap: 4px; }
-  .tc-districts a, .tc-districts .tc-metro { padding: 5px 7px; font-size: 8.5px; letter-spacing: 0.1em; }
-  .stage:has(.tc-districts:not([hidden])) .hud-btns { top: 114px; }
-  .hud-btns .chip-btn { padding: 8px 9px; font-size: 9px; letter-spacing: 0.1em; }
-}
 
 /* ---------- game ---------- */
 .game-app { height: 100%; background: var(--bg); }
@@ -807,236 +608,9 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 </style>
 </head>
 <body>
-<noscript><p class="oe-nojs">Open Earth 3D draws real cities in 3D in the browser and needs JavaScript and WebGL. Turn JavaScript on, or open the page in a current Chrome, Edge, Firefox or Safari.</p></noscript>
-<div class="title-app" id="globe-app" hidden>
-  <section class="ts-stage" id="globe-stage" aria-label="Open Earth 3D: the Earth now, and the cities rebuilt in 3D">
-    <canvas id="globe-gl" aria-hidden="true"></canvas>
-    <div class="ts-poster" aria-hidden="true"></div>
-    <div class="ts-plate" id="ts-plate" aria-hidden="true"><i></i><i></i></div>
-    <div class="ts-shade" aria-hidden="true"></div>
-    <div class="ts-marks" id="ts-marks"></div>
-    <div class="ts-bars" aria-hidden="true"></div>
-    <div class="ts-boot" id="ts-boot">
-      <div>
-        <span class="wm">OPEN EARTH <b>3D</b></span>
-        <div id="ts-loading">
-          <div class="ts-load"><i id="ts-load-bar"></i></div>
-          <div class="ts-loadline ts-mono"><span>Loading the Earth</span><span id="ts-load-pct">0%</span></div>
-          <div class="ts-loadfile ts-mono" id="ts-load-file"></div>
-        </div>
-      </div>
-    </div>
-    <div class="ts-caps" aria-live="polite"><span class="live" id="ts-cap1"></span><span id="ts-cap2"></span><span id="ts-cap3"></span></div>
-    <div class="ts-open-tools"><button class="ts-hear" id="ts-hear" aria-pressed="false" hidden><span class="ts-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="ts-hear-l">Sound off</span></button><button class="ts-skip" id="ts-skip"><span class="ts-kb">Skip · any key</span><span class="ts-tp">Tap to skip</span></button></div>
-    <h1 class="ts-title" id="ts-title"><span class="w" id="ts-word">OPEN EARTH</span><span class="s">The Earth in 3D, city by city</span><span class="m" id="ts-tally"></span></h1>
-    <header class="ts-top">
-      <a class="ts-logo" href="#globe" id="ts-logo" aria-label="Open Earth 3D">OPEN EARTH<b>3D</b></a>
-      <div class="ts-live ts-mono"><span><b id="ts-utc">--:--:--</b> UTC</span><span class="sub" id="ts-subsolar"></span></div>
-      <button class="ts-tool" id="ts-sound" aria-pressed="false"><span class="ts-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="ts-sound-l">Sound off</span></button>
-      <button class="ts-tool" id="ts-about-btn">About</button>
-    </header>
-    <nav class="ts-menu" aria-label="Destinations">
-      <p class="ts-eyebrow">Destinations</p>
-      <div class="ts-hero" id="ts-hero" hidden></div>
-      <ol class="ts-list" id="ts-list"></ol>
-      <p class="ts-hint"><span class="ts-kb"><kbd>↑</kbd><kbd>↓</kbd> choose · <kbd>↵</kbd> explore · <kbd>P</kbd> play · <kbd>F</kbd> film</span><span class="ts-tp">Tap a place to choose it · drag to turn the Earth</span></p>
-    </nav>
-    <section class="ts-card" id="ts-card" aria-live="polite"></section>
-    <footer class="ts-foot"><span class="next" id="ts-next"></span><button class="ts-tool" id="ts-replay">Replay the opening</button><a class="ts-ver" id="ts-ver" target="_blank" rel="noopener" hidden></a></footer>
-    <p class="ts-notice" id="globe-notice" role="status" hidden></p>
-    <div class="ts-about" id="ts-about" hidden role="dialog" aria-label="About Open Earth 3D">
-      <div>
-        <button class="x" id="ts-about-x" aria-label="Close">×</button>
-        <h2>Open Earth 3D</h2>
-        <p>Each city is rebuilt from open data: real footprints and heights on bare-earth terrain under aerial imagery, lit by the real sun. Every height carries its source and its uncertainty, and every shadow is ray-cast rather than rendered.</p>
-        <div class="cols">
-          <div>
-            <h3>How a city is built</h3>
-            <ol>
-              <li><b>Footprints and heights</b> from Overture Maps (OpenStreetMap and Microsoft ML), each height tagged with where it came from, or measured by LiDAR and surveys where the city publishes them.</li>
-              <li><b>Bare-earth terrain and aerial imagery</b> from the national or state open-data service, checked against an independent source.</li>
-              <li><b>Missing heights</b> estimated from neighbours and calibrated against published heights, with a measured error for every source.</li>
-              <li><b>The land past the model</b> from Copernicus GLO-30 heights, ESA WorldCover 2021 land cover (CC BY 4.0) and NASA's Black Marble lights, under the haze.</li>
-              <li><b>The real sun</b> from the NOAA equations in the city's own time zone, ray-cast through a 2 m surface model.</li>
-            </ol>
-          </div>
-          <div>
-            <h3>Next in line</h3>
-            <ul class="ts-plan" id="ts-planned"></ul>
-          </div>
-        </div>
-        <div class="ts-picture">
-          <h3>Picture</h3>
-          <p class="ts-mono" id="ts-pic-now"></p>
-          <div class="ts-seg" id="ts-pic" role="group" aria-label="Picture quality"><button data-q="">Auto</button><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button><button data-q="still">Still</button></div>
-          <p>Auto measures what this device can draw. Lower settings use smaller textures and fewer pixels and leave out the night lights' close-up detail, MSAA and the bloom; Still shows a picture of the Earth behind the same menu.</p>
-        </div>
-        <div>
-          <h3>This screen</h3>
-          <p>The Earth as it is now: NASA's Blue Marble for this month by day and the Black Marble's city lights by night (NASA Earth Observatory), Blue Marble clouds and GEBCO relief, the atmosphere scattering the real sun. The Milky Way is ESO/S. Brunier's panorama (CC BY 4.0); the stars are the Yale Bright Star Catalogue, in their real places for this minute, and the Moon is in its real place and phase. The sound is synthesised in the browser.</p>
-        </div>
-        <div class="ts-version">
-          <h3>Version</h3>
-          <p class="ts-mono" id="ts-ver-about">Local build</p>
-        </div>
-      </div>
-    </div>
-  </section>
-</div>
-
-<div class="app" id="city-app" hidden>
-  <section class="stage" id="stage" aria-label="3D model of the city">
-    <canvas id="gl"></canvas>
-    <div class="labels" id="labels"></div>
-    <div class="title-card brackets">
-      <a class="tc-back" href="#globe" id="back-globe"><span aria-hidden="true">←</span> Open Earth <b>3D</b></a>
-      <span class="eyebrow"><span id="city-country"></span><span id="city-group"></span><span id="city-coords"></span></span>
-      <h1><span id="city-name">City</span><small id="city-native" hidden></small></h1>
-      <nav class="tc-districts" id="city-districts" aria-label="Districts" hidden></nav>
-      <p id="city-desc"></p>
-    </div>
-    <div class="hud-btns">
-      <button class="chip-btn" id="btn-tour" aria-pressed="true">Tour</button>
-      <button class="chip-btn" id="btn-prov" aria-pressed="false" title="Colour buildings by where their height comes from">Height sources</button>
-      <button class="chip-btn" id="btn-orbit" aria-pressed="false" title="Circle slowly round what you are looking at. Click a landmark's name to fly round it.">Orbit</button>
-      <a class="chip-btn play-chip" id="btn-play" href="#" hidden>Play</a>
-    </div>
-    <div class="caption brackets" id="caption">
-      <span class="step" id="cap-step">1 / 7</span>
-      <div class="cap-txt" id="cap-txt"><b id="cap-title">Loading</b><p id="cap-text"></p></div>
-      <button class="btn" id="cap-skip">Next</button>
-      <div class="cap-end" id="cap-end" hidden><button class="btn primary" id="cap-explore">Explore</button><a class="btn" id="cap-play" href="#" hidden>Play</a><button class="btn" id="cap-again">Watch again</button></div>
-      <div class="bar" id="cap-bars" aria-hidden="true"></div>
-    </div>
-    <aside class="inspector" id="inspector" hidden>
-      <button class="x" id="insp-close" aria-label="Close">×</button>
-      <h3 id="insp-name"></h3>
-      <dl class="kv" id="insp-kv"></dl>
-      <div class="row insp-actions"><button class="btn" id="insp-orbit">Fly round it</button></div>
-    </aside>
-    <div class="intro-card" id="intro" hidden>
-      <span class="eyebrow" id="intro-eyebrow"></span>
-      <h2 id="intro-name"></h2>
-      <p class="mono" id="intro-facts"></p>
-      <button class="intro-skip" id="intro-skip">Skip the flyover</button>
-    </div>
-    <div class="loader" id="loader" role="status"><div>
-      <span class="wm" aria-hidden="true">OPEN EARTH <b>3D</b></span>
-      <span class="ld-mode">The 3D model</span>
-      <b id="load-title">The city</b>
-      <small class="ld-native" id="load-native" hidden></small>
-      <div class="track"><i id="load-bar"></i></div>
-      <small id="load-msg">Loading footprints</small>
-      <span class="ld-stage" id="load-stage" aria-hidden="true"></span>
-      <div class="ld-err"><button class="btn primary" data-reload>Reload</button><a class="btn" href="#globe">Back to the globe</a></div>
-    </div></div>
-  </section>
-
-  <div class="dock">
-    <div class="dock-row">
-      <button class="play" id="play" aria-label="Play the day">
-        <svg viewBox="0 0 14 14" id="play-icon"><path d="M3 1.5v11l9-5.5z" fill="currentColor"/></svg>
-      </button>
-      <div class="date-chips" id="date-chips"></div>
-      <div class="dial">
-        <div class="daylight"><i id="daylight"></i></div>
-        <input type="range" id="time" min="0" max="1439" step="1" value="720" aria-label="Time of day, local clock time">
-        <div class="hours"><span>00</span><span>03</span><span>06</span><span>09</span><span>12</span><span>15</span><span>18</span><span>21</span><span>24</span></div>
-      </div>
-      <div class="readout"><b id="clock">12:00</b><span id="sun-read">sun 32.7° · az 0°</span></div>
-    </div>
-  </div>
-
-  <aside class="panel" aria-label="Controls">
-    <div class="tabs" role="tablist">
-      <button role="tab" aria-selected="true" data-tab="tour">Tour</button>
-      <button role="tab" aria-selected="false" data-tab="sun">Sun</button>
-      <button role="tab" aria-selected="false" data-tab="access">Sun access</button>
-      <button role="tab" aria-selected="false" data-tab="data">Data</button>
-    </div>
-
-    <div class="pane" data-pane="tour">
-      <div class="group">
-        <span class="eyebrow">Guided tour</span>
-        <p id="tour-intro">Stops through the model. Drag the view at any time to take over; the tour waits for you.</p>
-      </div>
-      <ol class="tour-list" id="tour-list"></ol>
-      <div class="row"><button class="btn primary" id="tour-play">Pause tour</button><button class="btn" id="tour-restart">Start again</button></div>
-    </div>
-
-    <div class="pane" data-pane="sun" hidden>
-      <div class="group">
-        <span class="eyebrow">Date and time</span>
-        <div class="row"><input type="date" id="date" aria-label="Date"><div class="seg" id="speed"><button data-s="30">1×</button><button data-s="90" aria-pressed="true">3×</button><button data-s="240">8×</button></div></div>
-        <div class="seg wrap" id="time-presets" role="group" aria-label="Times of day"></div>
-        <p class="note" id="tz-note">Local clock time.</p>
-      </div>
-      <div class="stats" id="sun-stats"></div>
-      <div class="group">
-        <span class="eyebrow">Hours of direct sun</span>
-        <p>Ground-level sun hours across the city centre for the chosen date, every 20 minutes from sunrise to sunset, ray-cast through the 2 m surface model.</p>
-        <div class="row"><button class="btn primary" id="heat-run">Map sun hours</button><button class="btn" id="heat-clear" hidden>Hide map</button><span class="note" id="heat-msg"></span></div>
-        <div class="heat-legend" id="heat-legend" hidden><div class="ramp" id="heat-ramp"></div><div class="ticks" id="heat-ticks"></div></div>
-      </div>
-      <div class="group">
-        <span class="eyebrow">Method</span>
-        <p class="note">Sun position from the NOAA solar equations (about 0.01° accuracy). Shadows in the 3D view use a shadow map; the numbers in this panel and in Sun access come from ray casting, which does not depend on screen resolution.</p>
-      </div>
-    </div>
-
-    <div class="pane" data-pane="access" hidden>
-      <div class="group">
-        <span class="eyebrow" id="prot-title">Public places</span>
-        <p id="prot-summary"></p>
-      </div>
-      <div style="overflow-x:auto"><table id="places"><thead><tr><th>Place</th><th>Protected</th><th class="r">In sun now</th></tr></thead><tbody></tbody></table></div>
-      <p class="note" id="shade-now">Select a place to see which buildings shade it.</p>
-      <div class="group" id="tower-group">
-        <span class="eyebrow">Test a new tower</span>
-        <p>Place a tower, then check it against every protected window: <span id="tw-dates">the four solstice and equinox dates</span> that fall in each period, every 15 minutes. As in the clause, a place fails if its total shadow across the protected hours goes up.</p>
-        <div class="row"><button class="btn primary" id="tw-place">Place a tower</button><button class="btn" id="tw-check" disabled>Check overshadowing</button><button class="btn" id="tw-remove" hidden>Remove</button></div>
-        <div class="field"><label for="tw-h"><span>Height</span><span class="num" id="tw-h-v">180 m</span></label><input type="range" id="tw-h" min="20" max="320" step="5" value="180"></div>
-        <div class="field"><label for="tw-w"><span>Footprint</span><span class="num" id="tw-w-v">40 × 40 m</span></label><input type="range" id="tw-w" min="15" max="90" step="5" value="40"></div>
-        <div class="row">
-          <label class="note" for="tw-replace" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="tw-replace" checked> Replace the buildings on the site</label>
-        </div>
-        <div class="field"><span class="note">Protected times read as</span>
-          <div class="seg" id="tw-basis"><button data-b="standard" aria-pressed="true">Standard time</button><button data-b="clock">Clock time</button></div>
-        </div>
-        <p class="note" id="tw-msg">Place a tower anywhere in the model.</p>
-        <div id="tw-result"></div>
-      </div>
-      <p class="note" id="prot-source"></p>
-      <p class="note" id="prot-reading"></p>
-    </div>
-
-    <div class="pane" data-pane="data" hidden>
-      <div class="group">
-        <span class="eyebrow">Where heights come from</span>
-        <div class="src-bar" id="src-bar"></div>
-        <div class="legend" id="src-legend"></div>
-        <p class="note" id="src-note">Share of building footprint area. Turn on <b>Height sources</b> above the view to see them on the buildings.</p>
-      </div>
-      <div class="group" id="acc-group">
-        <span class="eyebrow">Checked against published heights</span>
-        <div class="stats" id="acc-stats"></div>
-        <p class="note" id="acc-note"></p>
-      </div>
-      <div class="group" id="fix-group">
-        <span class="eyebrow">Heights that move the answers most</span>
-        <p class="note">Each building set to the low and high end of its plausible height, everything else unchanged: the swing in its place's average sun over the protected window. Verifying these few beats refining thousands.</p>
-        <div style="overflow-x:auto"><table id="fix-list"><thead><tr><th>Building</th><th>Place</th><th class="r">Height</th><th class="r">Swing</th></tr></thead><tbody></tbody></table></div>
-      </div>
-      <div class="group">
-        <span class="eyebrow">Sources</span>
-        <ul class="note" id="sources" style="margin:0;padding-left:16px;display:grid;gap:4px"></ul>
-      </div>
-    </div>
-  </aside>
-</div>
-
-<div class="game-app" id="game-app" hidden>
-  <section class="game-stage titled" id="game-stage" aria-label="Game: explore the city on foot, by ferry and by helicopter">
+<noscript><p class="oe-nojs">Blue Hour is drawn in 3D in the browser and needs JavaScript and WebGL 2.</p></noscript>
+<div class="game-app" id="game-app">
+  <section class="game-stage titled" id="game-stage" aria-label="Blue Hour: the Shibuya Scramble, on foot">
     <canvas id="game-gl"></canvas>
     <div class="labels g-labels" id="g-labels"></div>
     <div class="g-reticle" aria-hidden="true"></div>
@@ -1149,18 +723,18 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <tr class="g-metro-key" hidden><td><kbd>B</kbd></td><td>The subway map: go on to another district</td></tr>
         </tbody></table>
         <div class="row" id="gm-links"></div>
-        <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#" title="The city as a 3D model, with its guided tour and the sources of its data">The 3D model and its sources</a><button class="btn" id="gm-intro">Show the intro again</button><button class="btn" id="gm-overture" hidden>Play the opening</button><button class="btn" id="gm-reset">Start again</button></div>
+        <div class="row"><button class="btn" id="gm-intro">Show the intro again</button><button class="btn" id="gm-overture" hidden>Play the opening</button><button class="btn" id="gm-reset">Start again</button></div>
       </div>
     </div>
 
     <!-- shown once the city has loaded, over the live scene -->
     <div class="g-title" id="g-title" hidden>
       <div class="gt-card">
-        <span class="eyebrow gt-eb"><span>Open Earth 3D · <span id="gt-city">City</span></span></span>
-        <h1 id="gt-title">On Foot</h1>
-        <p id="gt-blurb">Walk a real city under the real sun, and talk to the people who know it.</p>
+        <span class="eyebrow gt-eb"><span id="gt-city"></span></span>
+        <h1 id="gt-title">Blue Hour</h1>
+        <p id="gt-blurb"></p>
         <div class="gt-time"><span class="eyebrow">Start at</span><div class="seg" id="gt-timechoice"><button data-t="live" aria-pressed="true" id="gt-now">Now</button></div></div>
-        <div class="gt-go"><button class="btn primary" id="gt-play">Start the survey <kbd>↵</kbd></button><button class="btn" id="gt-continue" hidden>Continue</button></div>
+        <div class="gt-go"><button class="btn primary" id="gt-play">Begin <kbd>↵</kbd></button><button class="btn" id="gt-continue" hidden>Continue</button></div>
         <label class="gt-skip note" id="gt-skip" hidden><input type="checkbox" id="gt-skip-on" checked> Skip the intro: you have played before</label>
         <div class="gt-hints">
           <span><kbd>W A S D</kbd> walk · drag to look around</span>
@@ -1168,7 +742,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <span><kbd>Y</kbd> hail a taxi at the kerb · <kbd>N</kbd> your phone: order a ride</span>
           <span><kbd>Q</kbd> lens · <kbd>G</kbd> guess a height · <kbd>M</kbd> map · <kbd>Esc</kbd> menu</span>
         </div>
-        <a class="gt-back" href="#globe"><span aria-hidden="true">←</span> Back to the globe</a>
+        
       </div>
     </div>
 
@@ -1178,14 +752,14 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
         <button id="gt-down">Down</button><button id="gt-jump">Jump</button><button id="gt-act">E</button></div>
     </div>
     <div class="loader" id="g-loader" role="status"><div>
-      <span class="wm" aria-hidden="true">OPEN EARTH <b>3D</b></span>
+      <span class="wm" aria-hidden="true">BLUE <b>HOUR</b></span>
       <span class="ld-mode">On foot</span>
       <b id="g-load-title">The city</b>
       <small class="ld-native" id="g-load-native" hidden></small>
       <div class="track"><i id="g-load-bar"></i></div>
       <small id="g-load-msg">Loading</small>
       <span class="ld-stage" id="g-load-stage" aria-hidden="true"></span>
-      <div class="ld-err"><button class="btn primary" data-reload>Reload</button><a class="btn" href="#globe">Back to the globe</a></div>
+      <div class="ld-err"><button class="btn primary" data-reload>Reload</button></div>
     </div></div>
   </section>
 </div>
@@ -1225,13 +799,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="cine.js"></script>
 <script src="onboard.js"></script>
 <script src="lens.js"></script>
-<script src="earth.js"></script>
-<script src="score.js"></script>
-<script src="metro.js"></script>
-<script src="postcards.js"></script>
-<script src="title.js"></script>
 <script src="version.js"></script>
-<script src="film.js"></script>
 <script src="plate.js"></script>
 <script src="water.js"></script>
 <script src="visibility.js"></script>
@@ -1253,7 +821,6 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="neon.js"></script>
 <script src="mirror.js"></script>
 <script src="surface.js"></script>
-<script src="city.js"></script>
 <script src="game/collision.js"></script>
 <script src="game/navcells.js"></script>
 <script src="game/nav.js"></script>
@@ -1265,135 +832,46 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="game/vehicles.js"></script>
 <script src="game/cars.js"></script>
 <script src="game/autopilot.js"></script>
-<script src="game/trips.js"></script>
 <script src="game/route.js"></script>
 <script src="game/rail.js"></script>
 <script src="game/trains.js"></script>
 <script src="game/ao.js"></script>
 <script src="game/atmosphere.js"></script>
 <script src="game/weather.js"></script>
-<script src="game/penguins.js"></script>
-<script src="game/gulls.js"></script>
 <script src="game/audio.js"></script>
 <script src="game/walkcalls.js"></script>
 <script src="game/places.js"></script>
 <script src="game/doors.js"></script>
-<script src="game/show.js"></script>
 <script src="game/overture.js"></script>
 <script src="game/hud.js"></script>
 <script src="game/music.js"></script>
-<script src="game/life.js"></script>
-<script src="game/day.js"></script>
 <script src="game/style.js"></script>
-<script src="game/bonds.js"></script>
-<script src="game/jobs.js"></script>
-<script src="game/keepsakes.js"></script>
-<script src="game/phone.js"></script>
-<script src="game/fares.js"></script>
 <script src="game/fx.js"></script>
 <script src="game/goals.js"></script>
 <script src="game/story.js"></script>
 <script src="game/hero.js"></script>
 <script src="game/game.js"></script>
 <script>
-// Router: "#<city id>" opens that city's 3D model, "#play-<city id>" its game ("@<travel id>" to start there),
-// anything else shows the globe. Views switch in place, without reloading the page:
-// the old view stops, and a view shown before gets a fresh copy of its markup so no
-// old listeners remain.
-(async function route() {
-  const $ = id => document.getElementById(id);
-  const ids = ['globe-app', 'city-app', 'game-app'];
-  const fresh = Object.fromEntries(ids.map(id => [id, $(id).cloneNode(true)]));
-  const used = new Set();
-  const pane = id => {
-    if (used.has(id)) { const el = fresh[id].cloneNode(true); $(id).replaceWith(el); }
-    used.add(id);
-    return $(id);
-  };
+// The page is one story on one map: Blue Hour, at the Shibuya Scramble. Nothing to route.
+(async function boot() {
+  const $ = id => document.getElementById(id), MAP = 'shibuya';
   let cities = [];
   try { cities = await fetch('data/cities.json').then(r => r.json()); } catch (e) { cities = []; }
-  window.OE_CITIES = cities; // the loader reads each city's download size from it
-  const hashId = () => decodeURIComponent(location.hash.replace(/^#\/?/, ''));
-  let current = null, lastId = null;
-  // the city's name in its own script, as on the title's destination card
-  const native = (el, c) => { el.textContent = c.native || ''; el.lang = c.id === 'hong-kong' ? 'zh-Hant' : 'ja'; el.hidden = !c.native; };
-  const fmtLL = c => `${Math.abs(c.lat).toFixed(2)}°${c.lat >= 0 ? 'N' : 'S'} ${Math.abs(c.lon).toFixed(2)}°${c.lon >= 0 ? 'E' : 'W'}`;
-  async function show() {
-    const [id, arrive] = hashId().split('@'), play = /^play-/.test(id), cid = id.replace(/^play-/, '');
-    // a travel point that has moved to another map ("moved" in cities/index.json: Shinjuku was part of
-    // the Shibuya map): its old link opens the map that has it now
-    const moved = play && arrive ? (cities.find(c => c.id === cid) || {}).moved : null;
-    const movedTo = moved && Object.keys(moved).find(m => moved[m].includes(arrive));
-    if (movedTo) { history.replaceState(null, '', `#play-${movedTo}@${arrive}`); return show(); }
-    // "#play-<city>@<travel point>": start the game at a district of a map (the Tokyo subway map, title.js)
-    window.OE_ARRIVE = play && arrive ? arrive : null;
-    // the district it names, if the city's subway map has it (a district that shares a bigger map, as Sangenjaya
-    // shares Shibuya's): the loader, the plate and the title are then the district's, and say whose map it is on
-    const dcity = window.OE_ARRIVE && cities.find(c => c.id === cid), dmeta = dcity && dcity.group_meta;
-    const dist = dmeta && (dmeta.districts || []).find(s => s.map === cid && s.travel === arrive) || null;
-    window.OE_DISTRICT = dist && { name: dist.name, native: dist.native || '', map: dcity.name };
-    const from = lastId;
-    lastId = cid;
-    let city = cities.find(c => c.id === cid && c.built && (!play || c.game));
-    // the models need WebGL 2; without it the title says so instead of a loader that never ends
-    const noGL = city && !window.OEQuality.probe().gl2;
-    if (noGL) city = null;
-    const prev = current;
-    current = null;
-    if (prev) { const ctl = await prev; if (ctl) ctl.stop(); }
-    for (const x of ids) $(x).hidden = true;
-    if (city && play) {
-      pane('game-app').hidden = false;
-      $('g-load-title').textContent = dist ? dist.name : city.name;
-      native($('g-load-native'), dist ? { id: city.id, native: dist.native } : city);
-      // opened as a story (?story=, title.js and game/story.js): the loader names the story and its first episode,
-      // and the place under them, where a game names the place alone
-      if (city.story && new URLSearchParams(location.search).has('story')) {
-        const ep = city.story_episode || {}, place = dist ? dist.name : city.district || city.name, nat = dist ? dist.native : city.native;
-        $('g-loader').querySelector('.ld-mode').textContent = `${city.story}${ep.no != null ? ` · Episode ${ep.no}` : ''}`;
-        $('g-load-title').textContent = ep.title || city.story;
-        const n = $('g-load-native');
-        n.textContent = `${place}${nat ? ` ${nat}` : ''}`; n.hidden = false; n.removeAttribute('lang');
-      }
-      OEPlate.play($('g-loader'), city, dist); // the loading plate: the city's aerial survey assembling (plate.js)
-      $('gm-model').href = `#${city.id}`;
-      current = window.OpenEarthGame(city.id);
-    } else if (city) {
-      const el = pane('city-app');
-      el.hidden = false;
-      $('load-title').textContent = city.name;
-      native($('load-native'), city);
-      native($('city-native'), city);
-      $('city-coords').textContent = fmtLL(city);
-      // a district of a bigger city: name the city, and offer its other districts
-      const district = city.group_meta && ['city', 'metro'].includes(city.group_meta.kind), sibs = district ? cities.filter(c => c.group === city.group && c.built) : [];
-      $('city-group').textContent = district ? city.group : '';
-      const nav = $('city-districts');
-      nav.hidden = sibs.length < 2;
-      nav.innerHTML = sibs.length < 2 ? '' : sibs.map(c => `<a href="#${c.id}"${c.id === city.id ? ' aria-current="page"' : ''}>${c.district || c.name}</a>`).join('')
-        // a city drawn as a subway map (Tokyo): the map, full screen, to go on from here (metro.js)
-        + (city.group_meta.kind === 'metro' && window.OEMetro ? `<button type="button" class="tc-metro" data-metro="${city.id}" aria-label="The ${city.group} subway map: go to another district"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1 4.5V1h3.5M7.5 1H11v3.5M11 7.5V11H7.5M4.5 11H1V7.5"/></svg>${city.group} map</button>` : '');
-      OEPlate.play($('loader'), city);
-      if (city.game) { $('btn-play').hidden = false; $('btn-play').href = `#play-${city.id}`; }
-      current = window.OpenEarthCity(city.id);
-    } else {
-      pane('globe-app').hidden = false;
-      document.title = 'Open Earth 3D'; // the city's and the game's pages name their city in the tab (city.js, game.js)
-      const notice = noGL ? 'The 3D models need WebGL 2, which this browser has turned off or does not support.'
-        : id && id !== 'globe' ? `“${id}” has no 3D model yet. Pick a live city.` : '';
-      current = window.OpenEarthGlobe(cities, notice, from);
-    }
-  }
-  document.addEventListener('click', e => {
-    if (e.target.closest('#back-globe')) { e.preventDefault(); location.hash = 'globe'; }
-    if (e.target.closest('[data-reload]')) location.reload(); // a loader that failed
-    const mb = e.target.closest('[data-metro]');
-    const g = mb && window.OEMetro && OEMetro.group(cities, mb.dataset.metro);
-    if (g) OEMetro.full({ g, cities, here: mb.dataset.metro, play: false, backLabel: 'Back to the model' });
-  });
-  addEventListener('hashchange', show);
+  window.OE_CITIES = cities; // the loader reads the map's download size from it
+  window.OE_ARRIVE = null; window.OE_DISTRICT = null;
+  const city = cities.find(c => c.id === MAP);
+  document.addEventListener('click', e => { if (e.target.closest('[data-reload]')) location.reload(); }); // a loader that failed
   if (!window.THREE) await new Promise(r => addEventListener('three-ready', r, { once: true })); // three.js loads as a module
-  show();
+  const ep = (city && city.story_episode) || {};
+  $('g-loader').querySelector('.ld-mode').textContent = ep.no != null ? `Episode ${ep.no}` : '';
+  $('g-load-title').textContent = ep.title || 'Blue Hour';
+  $('g-load-native').textContent = 'Shibuya 渋谷'; $('g-load-native').hidden = false;
+  if (!city || !window.OEQuality.probe().gl2) { // the map needs WebGL 2; without it the loader says so instead of never ending
+    $('g-load-msg').textContent = city ? 'Blue Hour needs WebGL 2, which this browser has turned off or does not support.' : 'The map could not be loaded.';
+    $('g-loader').classList.add('err'); return;
+  }
+  OEPlate.play($('g-loader'), city, null); // the loading plate: the map's aerial survey assembling (plate.js)
+  window.OpenEarthGame(MAP);
 })();
 </script>
 </body>

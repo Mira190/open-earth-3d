@@ -10,7 +10,7 @@
 // TIER=low|medium|high (default high). TIME=HH:MM (default 15:30). OUT=dir keeps the two frames of a mismatch.
 const { chromium } = require('playwright');
 const fs = require('fs');
-const [,, city = 'sydney', stops = '24', size = '960x600'] = process.argv;
+const [,, city = 'shibuya', stops = '24', size = '960x600'] = process.argv;
 const [w, h] = size.split('x').map(Number);
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -32,7 +32,7 @@ const [w, h] = size.split('x').map(Number);
   const p = await ctx.newPage();
   const errors = [];
   p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || ''}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || '?walk=1'}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__renderer', null, { timeout: 300000 });
   const time = process.env.TIME || '15:30';
   await p.evaluate(t => { const g = window.__game; const [H, M] = t.split(':').map(Number); const c = g.clock; g.setClock(c.y, c.m, c.d, H * 60 + M); }, time);

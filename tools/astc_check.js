@@ -12,7 +12,7 @@ const MIN = +(process.env.MIN_DB || 30);
   const b = await chromium.launch({ args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage();
   p.on('pageerror', e => console.log('PAGEERROR', String(e)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/data/life.json`);
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/data/cities.json`);
   await p.setContent('<!doctype html><canvas id=c></canvas>');
   await p.addScriptTag({ url: `http://localhost:${process.env.PORT || 8800}/astc.js` });
   let bad = 0;

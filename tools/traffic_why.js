@@ -7,14 +7,14 @@
 //   xvfb-run -a node tools/traffic_why.js sydney [place: 0 the start, 1, 2...] [seconds] [still: s]
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
-const [,, city = 'sydney', place = '2', secs = '150', minStill = '20'] = process.argv;
+const [,, city = 'shibuya', place = '2', secs = '150', minStill = '20'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 1100, height: 650 } });
   p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 300)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   const out = await p.evaluate(([T, site, minStill]) => {

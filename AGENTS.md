@@ -30,14 +30,14 @@ or an integration session. Done means in main.
    refused). When the owner says "rebase on main", this merge is what they mean.
 2. Resolve conflicts yourself. Keep what both sides do. Where two implementations of the same
    thing meet, keep the better one on first principles and say which and why in the pull
-   request. Don't hand-merge generated files (`web/data/`, models, films, images): rebuild them
+   request. Don't hand-merge generated files (`web/data/`, models, images): rebuild them
    with their script, or take the side the merged code expects and rebuild what you can.
-3. Run `tools/check.sh` on the merged tree; everything must pass. It is the fast tier, about
-   ten minutes: the static checks, the cities your branch changed, and for a change to the
-   shared code the smoke cities (docs/CHECKS.md). Every live city is played on main after you
-   land, in GitHub Actions (`Checks`), not by you before. A line that says FLAKY passed: two
-   runs failed on different steps. A failure that main has without your change isn't yours to
-   block on: fix it if it is small, otherwise say so in the pull request.
+3. Run `tools/check.sh` on the merged tree; everything must pass. It is the fast tier: the
+   static checks, and for a change to the page or the map the story's first episode played
+   through and the phone's memory (docs/CHECKS.md). The clip, gl and touch checks run on main
+   after you land, in GitHub Actions (`Checks`), not by you before. A line that says FLAKY
+   passed: two runs failed on different steps. A failure that main has without your change
+   isn't yours to block on: fix it if it is small, otherwise say so in the pull request.
 4. Push the branch, open a pull request into main (what changed and why, what was checked, what
    wasn't), and land it with `git push origin HEAD:main`. That push only fast-forwards, so it is
    refused if main moved after step 1: go back to 1, and the check in step 3 then covers only what
@@ -56,14 +56,11 @@ or an integration session. Done means in main.
   an issue labelled `main-red` with the shards that failed and the commits they cover. Read
   the open one when you start and after you land (`Checks` takes about half an hour): if your
   commits are in its range, fixing it comes before anything else; reproduce a shard with
-  `tools/check.sh <its name>` (`tools/check.sh shibuya:game`). Don't run the full tier
-  (`CHECK_TIER=full`, `tools/check.sh all`) to land: that is the two-hour wait this replaced.
-- Keep re-checks small. A change to shared code (`web/game/`, `web/assets/`, `web/*.js`,
-  `web/index.html`) plays the smoke cities here and every live city on main: land it on its own
-  and early, and keep city work in city files. Stay in the landing loop until it lands; each
-  round after the first is short.
-- After merging main, run plain `tools/check.sh`, with no city names: it checks only the live
-  cities (`tools/live_cities.sh`). Don't list cities yourself; that checks the parked ones too.
+  `tools/check.sh <its name>` (`tools/check.sh clip`). Don't run the full tier
+  (`CHECK_TIER=full`, `tools/check.sh all`) to land.
+- Keep re-checks small. Stay in the landing loop until it lands; each round after the first
+  checks only what changed since your last pass.
+- After merging main, run plain `tools/check.sh`, with no targets: it picks them from what changed.
 - Once your branch has passed its checks, merging main again needs no new check when the merge has
   no conflicts and main's new commits change none of the files your branch changes (compare
   `git diff --name-only HEAD^2...HEAD^1` with `git diff --name-only HEAD^1...HEAD^2`): push it to
@@ -77,56 +74,49 @@ or an integration session. Done means in main.
   (branch, commit, what is in and what is out). Don't ask the owner, and don't make the owner
   relay messages between sessions: send them yourself.
 
-# Tokyo and Sydney first
+# One story, one map
 
-The owner's decision (November 2026): the game and the look are finished in a few maps before
-anything else opens. Ten live maps each got a share of the work and none was finished; every
-shared change was paid for ten times, and almost half of main's commits were merges of main.
+The owner's decision (November 2026): the project is one story on one map. Blue Hour, a story in
+episodes at the Shibuya Scramble (docs/STORY.md; `web/game/story.js`, its episodes in
+`cities/shibuya/city.json` `game.story`). The globe, the other maps, the reef and alpine sites,
+the films, fishing, postcards and the city model viewer were taken out; they are kept at the tag
+`archive/world-2026-11` and nowhere else. Ten live maps each got a share of the work and none
+was finished; now there is one thing to finish.
 
-- **Shibuya leads, Tokyo with it, Sydney beside them.** Shibuya is the main line: the Scramble,
-  dense, lit at night, the heaviest map on a phone. Tokyo's Marunouchi to Tokyo Tower map is
-  live with it, the same city. Sydney is the second line, worked in parallel, and keeps the
-  shared code from being written for Tokyo alone. Every other map is parked
-  (`cities/index.json`), Shinjuku included.
+- **Story first.** The page opens on the story. Work is judged by what it does for the episode a
+  player is in: what they see, what they are asked to do, whether it moves them. The map without
+  the story (`?walk=1`) is a tool for building and checking, not a second product.
 - **A tiny level, insanely detailed.** The bar the owner set, in their words: "insanely
   detailed quality, something that looks visually like it can keep up with AAA; small in scope
   (like a tiny level) but otherwise impressive photorealistic graphics". It is owed first where
-  the player is born: the hundred metres round each map's spawn are rebuilt as a hero level
-  (docs/HERO.md) before the map's far corners get anything. Depth before breadth.
+  the story is played: the hundred metres round the Scramble are a hero level (docs/HERO.md)
+  before the map's far corners get anything. Depth before breadth.
 - **What is not seen costs nothing.** Memory, download and shading go to what the player can
   see from where they stand: the hero level at full detail, the middle distance simplified, the
   rest of the map not built, unpacked or uploaded until the player nears it (docs/PERFORMANCE.md;
   issues 358, 406 and 443). A map built round the player, never the whole map at once.
 - **Main green comes first.** An open `main-red` issue, a step that fails every run and a step
   listed under `check-flaky` are worked before a feature, whoever broke them.
-- **Finished means this**, in each live map: half an hour of play with a goal and no dead end; a
-  phone that loads the map and keeps its tab; stills at day, dusk and night, on a desktop and a
-  phone, that stand beside a photograph of the place at the spawn and show nothing on the list
-  under "Checking your own work"; and no open follow-up issue for a system in the core.
-- **The core** is walking, driving and traffic, public transport and its fares, the hero level
-  and interiors of each map, and one line of goals through them. Finish these before starting a
-  system. A follow-up issue is closed by doing it or by cutting it, not left as a tail.
-- **Frozen**, kept working but not extended: the reef and alpine sites, fishing, postcards and
-  keepsakes, the films, and weather beyond what the live maps show now. A break in one is still
-  fixed. An idea for one goes in an issue labelled `later`.
+- **Finished means this**, an episode at a time: it plays from its first card to its last with
+  a goal on screen and no dead end, on a desktop and a phone; a phone loads the map and keeps
+  its tab; stills of its beats at the hour it is set, on a desktop and a phone, stand beside a
+  photograph of the place and show nothing on the list under "Checking your own work"; and its
+  beats are in `tools/story_play.js`.
+- **The core** is the story's episodes, and what they stand on: walking, the crowd and the
+  traffic at the crossing, the camera, the hero level, the light from dusk into night and the
+  rain. Finish these before starting a system. A follow-up issue is closed by doing it or by
+  cutting it, not left as a tail.
+- **Nothing comes back by itself.** A map, a site or a system from the archive returns only when
+  the owner asks for it. An idea for one goes in an issue labelled `later`.
 - **Few things at once.** Before starting, read the branches in flight; where work on the same
-  shared file is already open, join it or take a city's own files instead.
-- **A city comes back through a gate**, one at a time, when the live maps are finished: it comes
-  off the parked list, passes `tools/check.sh <id>` and the same stills, and should need its own
-  data and `city.json` only. If bringing it back needs a change to the shared code, the shared
-  code was written for one city: fix that there first, and say so.
+  file is already open, join it or take another part of the episode instead.
 
 # Fewer round trips
 
 The owner has asked for these things again and again. They are standing rules; don't ask again.
 
-- **Every live map by default.** A fix or a feature asked for in one live map goes to the others
-  where it fits, on desktop and phone, unless the owner names one place. A reported bug is a
-  class of bugs: find and fix the others like it in the live maps.
-- **Parked cities wait.** The cities in `cities/index.json` `parked` (everything but Shibuya,
-  Tokyo's Marunouchi to Tokyo Tower map and Sydney) are off the globe and out of `tools/check.sh` (`tools/live_cities.sh` lists the
-  rest). Don't spend work on them or rebuild their data; "every city" means every live one.
-  Their data stays in the repository and the owner brings one back by taking it off the list.
+- **Desktop and phone by default.** A fix or a feature goes to both, unless the owner names
+  one. A reported bug is a class of bugs: find and fix the others like it.
 - **Decide, don't offer a menu.** If you would recommend an option, do it. For an open ask
   ("keep optimising", "push to your limit") do your best ideas in order and report them. Never
   end a turn on a question that a sensible default answers ("shall I open a PR?", "shall I fix
@@ -136,27 +126,27 @@ The owner has asked for these things again and again. They are standing rules; d
 - **Ask only** before publishing or deploying (GitHub Pages, anything public), deleting data or
   rewriting main, spending money or using accounts and keys, or when two directions differ in
   taste. Then name the default you will take, and keep working on whatever the question
-  doesn't block. Put the thing to judge in front of the owner (an artifact, a still, a film),
-  not a description of it.
+  doesn't block. Put the thing to judge in front of the owner (an artifact, a still, a
+  recording), not a description of it.
 - **Look before you build.** Fetch, then read the recent branches
   (`git branch -r --sort=-committerdate | head -20`) and the running sessions if you can list
-  them. Build on work in flight instead of redoing it. "The homepage", "the latest look" or "the
-  mockup" may be on a branch or in an artifact that isn't in main yet.
+  them. Build on work in flight instead of redoing it. "The latest look" or "the mockup" may be
+  on a branch or in an artifact that isn't in main yet.
 - **Research when it matters.** When the owner asks for research or names a reference, and for
-  any new visual or simulation system, first survey the frontier and open-source work that runs
-  in a browser (and any game named), then record in the docs what was adopted and its licence.
-  Learn from a game's design without copying its look.
+  any new visual, simulation or story system, first survey the frontier and open-source work
+  that runs in a browser (and any game or film named), then record in the docs what was adopted
+  and its licence. Learn from a work's design without copying its look.
 - **Show the real thing.** When the owner wants to see or test something, give them the
-  playable page or the film itself, not a progress report.
+  playable page or a recording of it, not a progress report.
 
 # The bar
 
 - AAA and cinematic from the first pass, with a top designer's eye; push to your limit. The
-  title screen is the reference look for every page: the city viewer, the game, the reef sites
-  and the films. Extend its tokens and grade (`web/index.html`, `web/lens.js`) instead of
+  story's own screens are the reference look: its cards, its goal line, the viewfinder and the
+  loading plate. Extend their tokens and grade (`web/index.html`, `web/lens.js`) instead of
   restyling from scratch.
-- Light that is soft and rich, never blown out or grey. At night a city shows its lights the
-  way an aerial photograph does.
+- Light that is soft and rich, never blown out or grey. At night the city shows its lights the
+  way a photograph of it does.
 - Detail that the material explains, never noise. The owner's bar is photoreal, and what broke it
   in review was blotches on the ground, an ugly view from the air, and paving in a jumble of tones.
   From first principles: the eye accepts variation it can read as how a thing is made (courses,
@@ -172,7 +162,7 @@ The owner has asked for these things again and again. They are standing rules; d
   - it holds from every height a player reaches: on foot, from a car, from the helicopter. Inside
     a hero level no aerial photograph shows through as ground;
   - simple beats busy: when a surface looks restless, take variation away before adding any.
-- Real places: measured open data from the newest release, landmarks and their neighbours
+- A real place: measured open data from the newest release, landmarks and their neighbours
   checked against photographs and official dimensions, landmarks modelled finely in Blender or
   three.js, and people who look real and local.
 - It runs in a browser on ordinary devices: degrade by quality tier (`web/quality.js`) rather
@@ -184,24 +174,24 @@ The owner has asked for these things again and again. They are standing rules; d
 The owner should not be the one who finds the bug.
 
 - `tools/check.sh` runs the checks a change needs, chosen from what it changed against
-  origin/main: each changed city's game (`tools/game_check.js`; the smoke cities' when the game,
-  the renderer or the shared assets changed, and every live city's on main afterwards), each
-  changed reef site's scripted test, and the title screen on a tablet, a phone, a desktop and
-  with WebGL faults. `tools/check.sh sydney:game` runs one kind of one city's checks, and
-  `tools/check.sh all` everything (docs/CHECKS.md).
+  origin/main: the static checks (packs, voice, visibility, solids, models, signs), and for a
+  change to the page or the map the story's first episode played through
+  (`tools/story_play.js`) and the page on a phone's memory budget (`tools/mem_check.js`).
+  `tools/check.sh story` runs one target, `tools/check.sh all` everything but the free game's
+  long scenario (docs/CHECKS.md).
 - The checks don't see what a person sees. For a visual change, take stills on a desktop
   (1440×900) and a phone (390×844), at day, dusk and night, from every new viewpoint the change
-  opens (`tools/city_shot.js`, `tools/game_shot.js` for the game on foot, `tools/page_shot.js`, `tools/reef_shot.js`). Look for blown
-  highlights, a grey veil, black frames, flicker between two frames, clipping, anything
-  floating, and text left over from another city. Put new characters and models next to the
+  opens (`tools/story_play.js` for the story's beats, `tools/game_shot.js` for the map on foot,
+  `tools/scramble_shot.js` from free cameras with the world running, `tools/page_shot.js`). Look
+  for blown highlights, a grey veil, black frames, flicker between two frames, clipping, anything
+  floating, and text left over from the world before. Put new characters and models next to the
   existing ones in the same shot. Fix what you see before you report.
-- A new gameplay feature (a vehicle, a ride, a seat, a menu) adds its step to
-  `tools/game_check.js` or to the reef gametest in the same branch. Harnesses you write go in
-  `tools/`, not a scratch folder.
+- A new beat or episode of the story adds its step to `tools/story_play.js` in the same branch.
+  Harnesses you write go in `tools/`, not a scratch folder.
 - Software WebGL: run Chromium under `xvfb-run -a` with Mesa's llvmpipe
   (`--use-gl=angle --use-angle=gl`), about three times faster than SwiftShader, as
-  `tools/game_check.js` and the film tools do. Films, flyovers and stills force the desktop
-  tier; a software renderer picks the low one for itself.
+  `tools/story_play.js` does. Stills force the desktop tier; a software renderer picks the low
+  one for itself.
 - Say what you could not check: a real GPU, WebGPU, Safari or iOS.
 
 # Session setup
@@ -219,48 +209,44 @@ The owner should not be the one who finds the bug.
 
 # Shared assets
 
-- The browser loads each city's buildings from `web/data/<id>/buildings.bin`, packed from
-  `buildings.json` (a quarter of its gzipped size), and a live city's landmarks and game from
+- The browser loads the map's buildings from `web/data/shibuya/buildings.bin`, packed from
+  `buildings.json` (a quarter of its gzipped size), and its landmarks and game from
   `landmarks.bin` and `game.bin`, decoded in a Worker. The JSON stays the pipeline's source; after
   any step that writes `buildings.json`, `landmarks.json` or `game.json`, run `python pipeline/pack.py`
   (it packs what is stale and updates `cities.json`). `tools/check.sh` fails on a stale pack. Never
-  hand-merge a `.bin`: repack it. The same command makes each live city's `vis.bin` and `skyvis.webp`
+  hand-merge a `.bin`: repack it. The same command makes the map's `vis.bin` and `skyvis.webp`
   again when its `buildings.json` changed (`pipeline/visibility.py`: the occluder raster the page's
-  visibility sweep reads, a minute or two for a large city; `pipeline/skyvis.py`: the sky its ground
-  sees; docs/PERFORMANCE.md). And each live city's district for phones (`web/data/<id>/d/`,
-  `pipeline/district.py`: the same packs cut to the rectangle in `cities/<id>/city.json`
+  visibility sweep reads, a minute or two; `pipeline/skyvis.py`: the sky its ground
+  sees; docs/PERFORMANCE.md). And the map's district for phones (`web/data/shibuya/d/`,
+  `pipeline/district.py`: the same packs cut to the rectangle in `cities/shibuya/city.json`
   `phone_district`, which a phone's game loads and plays inside). Never edit a file under `d/`:
   it is cut from the packs. A new list in `game.json` that places things on the map needs its
   line in `district.py` `cut_game`, or a phone keeps what lies outside its district.
 
-- Every city shares the helicopter, ferry, river shuttle and car models
-  (`web/assets/vehicles/`), the trees (`web/assets/trees/`) and the people
-  (`web/assets/people/`). Don't add per-city copies. A city picks its liveries, its
-  helicopter registration, its taxis' and buses' colours, the player's car
-  (`game.vehicles.car`) and its vessel names in `game.vehicles` and `game.ferries`, its
-  ferry model in `game.ferry_style.model`, the side of the road it keeps to in
-  `game.keep`, and its tree species in `trees.mix`, all in `cities/<id>/city.json`.
+- The helicopter and car models (`web/assets/vehicles/`), the trees (`web/assets/trees/`) and
+  the people (`web/assets/people/`) are shared files, built by scripts. The map picks its
+  liveries, its helicopter registration, its taxis' and buses' colours, the player's car
+  (`game.vehicles.car`), the side of the road it keeps to in `game.keep`, and its tree species
+  in `trees.mix`, all in `cities/shibuya/city.json`.
 - The shared models are meshopt-compressed (`EXT_meshopt_compression`) as the last step of each build
   script (`pipeline/meshopt.py`, needs Node); `tools/check.sh` fails on one that is not. A model
-  written another way: `node pipeline/meshopt_glb.mjs <file.glb>`. Every `GLTFLoader` the pages make
-  has three.js's `MeshoptDecoder` set (`web/index.html`, `web/reef/people.js`).
-- The trains (`web/assets/vehicles/trains.glb`, the Enoden's stock) are built by `python blender/build_trains.py`;
-  `web/game/rail.js` runs them on any map with `game.rail.train`.
-- To change a vehicle for every city, edit `blender/build_vehicles.py` and rebuild with
+  written another way: `node pipeline/meshopt_glb.mjs <file.glb>`. Every `GLTFLoader` the page makes
+  has three.js's `MeshoptDecoder` set (`web/index.html`).
+- The trains (`web/assets/vehicles/railstock.glb`, the main-line commuter stock, and `trains.glb`)
+  are built by `python blender/build_railstock.py` and `python blender/build_trains.py`;
+  `web/game/trains.js` and `web/game/rail.js` run them.
+- To change a vehicle, edit `blender/build_vehicles.py` and rebuild with
   `python blender/build_vehicles.py` (or `--only cars`, needs `pip install bpy==5.2.3`).
   For the trees, edit `blender/build_trees.py` and run `python blender/build_trees.py`.
   Both scripts also write the parts the pages load before playable and after (`cars_far.glb`,
   `trees_far.glb`, `trees_near.glb`: `python pipeline/meshopt.py split <model.glb>`);
   `tools/check.sh` fails on a stale part.
-- The main characters (the surveyors you play) are Microsoft Rocketbox avatars and clips (MIT;
+- The main characters (the people you play) are Microsoft Rocketbox avatars and clips (MIT;
   keep `web/assets/people/LICENSE-Rocketbox.txt` with them), built by `blender/build_people.py`
   (`python pipeline/fetch_rocketbox.py` first).
-- The NPCs are Rocketbox avatars too. A city casts each in `game.npcs[].look` in
-  `cities/<id>/city.json`: `character` `R_<avatar>[_<head>][_<tag>...]` and `clip`. Build them
+- The NPCs are Rocketbox avatars too. The map casts each in `game.npcs[].look` in
+  `cities/shibuya/city.json`: `character` `R_<avatar>[_<head>][_<tag>...]` and `clip`. Build them
   with `python blender/build_people.py --npcs`, then `python pipeline/npc_looks.py` to copy the
-  looks into `web/data/<id>/game.json`. A character several cities name is one shared file.
-- The reef and alpine sites' people and the visitor you play there are the same avatars: `web/reef/looks.js` `REAL`
-  names each role's, `web/reef/game/<site>.js` a site's own (`look: { character: 'R_...' }`), and
-  `build_people.py --npcs` builds what they name (docs/GAME_REEF.md, "The people").
+  looks into `web/data/shibuya/game.json`.
 - `web/game/vehicles.js` and `web/game/cars.js` run on three.js r128 and r186. Keep them
   free of version-specific calls, so they stay shared whichever version a branch uses.

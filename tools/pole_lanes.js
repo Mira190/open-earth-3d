@@ -9,7 +9,7 @@ const HALF = { motorway: 7, trunk: 6, primary: 6, secondary: 5, tertiary: 4.5, r
   for (const city of process.argv.slice(2)) {
     const p = await b.newPage({ viewport: { width: 640, height: 400 } });
     await p.addInitScript(() => { try { localStorage.setItem('oe3d-quality', 'low'); } catch (e) { /* storage blocked */ } });
-    await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game && window.__game.junctions && window.__game.junctions.heads', null, { timeout: 600000 });
     const r = await p.evaluate(HALF => {
       const g = window.__game, H = g.junctions.heads, net = g.roadNet, out = [];

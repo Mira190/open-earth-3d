@@ -1,5 +1,10 @@
 # Architecture
 
+> **Scope, November 2026.** The project is now one story on one map: Blue Hour, at the Shibuya Scramble
+> ([STORY.md](STORY.md)). This page was written while the project built many maps, a globe and a model viewer.
+> Where it names another city, the title screen, the viewer or the reef sites, it describes work kept at the tag
+> `archive/world-2026-11`; the shared code it explains is the code Shibuya runs.
+
 One config per city and one build. The outputs are plain JSON and JPEG files
 that three consumers read: the browser, the analyses and Blender. Nothing is
 modelled by hand except the landmarks. Those are code, and their dimensions
@@ -390,16 +395,12 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   render of the scene, as the sea's planar reflection is, so every tier has it, and where
   a card runs past the water's edge it is under the bank and the ground hides it.
 
-  ![The Meguro at night in the festival: the chochin in the water](images/water/meguro_reflections_night.jpg)
-  ![Kyoto's Horikawa: the sunken promenade from a crossing](images/water/horikawa_day.jpg)
-  ![Going down into the Horikawa on foot, day, dusk and night (#315)](images/water/horikawa_steps_315.jpg)
-  ![The same on a phone (#315)](images/water/horikawa_steps_phone_315.jpg)
-  ![The seating steps between Nijo and Oshikoji, day, dusk and night (#315)](images/water/horikawa_seats_315.jpg)
-  ![The lawn between Shimochojamachi and Demizu (#315)](images/water/horikawa_lawn_315.jpg)
-  ![The stepped drops between Marutamachi and Takeyamachi (#315)](images/water/horikawa_weirs_315.jpg)
-  ![Seats, lawn and drops on a phone (#315)](images/water/horikawa_features_phone_315.jpg)
-  ![The Horikawa by zone, main and after, day, dusk and night (#322)](images/fidelity-322/horikawa-desktop.jpg)
-  ![The same on a phone (#322)](images/fidelity-322/horikawa-phone.jpg)
+  
+
+  
+
+  
+
   Walkers stop at a channel's railing and a pond's edge
   (`nav.js`, `keep_off`). `?inland=off` draws without, to compare.
 
@@ -410,12 +411,9 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   Canal below Keage, the temple gardens' ponds), Fushimi Inari (the Kamo Canal, the
   mountain's ponds) and Higashiyama (the ponds). The sea-level cities keep `water.js`.
 
-  ![The Meguro River's channel by day from a deck: revetments, railings and chochin](images/water/meguro_day.jpg)
-  ![The Meguro River at night in the festival](images/water/meguro_night.jpg)
-  ![Out of the festival (10 May): no chochin, the cherries in leaf](images/water/meguro_night_may.jpg)
-  ![On a phone: from a deck by day, dusk, the festival night, May, on foot, and Yoyogi's lawn](images/water/meguro_phone.jpg)
-  ![Kyoto: the canal basin at Okazaki between its stone walls](images/water/kyoto_okazaki.jpg)
-  ![Yoyogi Park's lawn by day, from the open lawn by the fountain pond (#277)](images/trees/yoyogi_lawn_day.jpg)
+  
+
+  
 
   The quay's level is the land behind it: the fine grid's points more than
   0.75 m in from the shore and above the water within 1.6 cells, nearer ones
@@ -706,7 +704,7 @@ The views switch in place, without reloading the page.
   cold open planned on the real sky (a night pass towards the sunrise), the title
   card and the menu. A destination's beacon, reticle and card show its local time
   and sun, and the dive to it hands over to the model's loader. `score.js` is its
-  synthesised sound. [TITLE.md](TITLE.md) has the details.
+  synthesised sound. TITLE.md has the details.
 - **`glcare.js`** keeps a lost WebGL context from leaving a black canvas in the
   model viewer and the game (the title has its own, in `earth.js` and `title.js`).
   A phone that puts the tab away, a driver reset or memory running short takes the
@@ -738,7 +736,7 @@ The views switch in place, without reloading the page.
   full-frame arguments and drew diagonal streaks across the sky.
 - **`film.js`** plays a city's film (`films/<id>.mp4`, rendered from the city's
   own game by `tools/city_film.js`): a silent teaser in the destination card and
-  a theatre with titles set as type from the film's cue sheet. [FILMS.md](FILMS.md)
+  a theatre with titles set as type from the film's cue sheet. FILMS.md
   has the details.
 - **`city.js`** is the model viewer. It drives everything city-specific from
   `scene.city`. Picking a building goes through a bounding-volume hierarchy
@@ -802,18 +800,6 @@ The views switch in place, without reloading the page.
     overhear in passing;
   - HUD;
   - sound.
-
-### "Test a new tower"
-
-The test follows the wording of a typical sun-access rule. A place fails if
-its **total shadow**, shaded area × time across its protected hours, goes up.
-The check runs on the solstice and equinox dates that fall in each place's
-period, every 15 minutes. The tower replaces the buildings whose footprint
-centre lies on its site, so a redevelopment can also remove shadow.
-
-Each result is re-run on four height-error scenarios drawn from the measured
-errors. The protected times can be read as standard time or clock time; the
-city's `protection.default_time_basis` sets the default.
 
 ### What a slow device gives up first
 
@@ -1017,12 +1003,6 @@ was spread over the whole Reserve's outline before (#315).
 
 Nothing was copied: the cells are drawn by `build_trees.py` (`blades`, `plumes`).
 
-![Susuki on the Kamo's bank in October, its heads out](images/kyoto/susuki-kamo-october.jpg)
-![The same bank in July, all leaf](images/kyoto/susuki-kamo-july.jpg)
-![In December, the leaves straw and the heads buff](images/kyoto/susuki-kamo-december.jpg)
-![At night](images/kyoto/susuki-kamo-night.jpg)
-![The Kamo's band of susuki from above](images/kyoto/susuki-kamo-from-above.jpg)
-![Tussock and Lomandra in a Barangaroo Reserve bed](images/sydney/barangaroo-beds-lomandra.jpg)
 ![Susuki on Shibuya's mapped grassland](images/shibuya/susuki-yoyogi.jpg)
 
 ## The far ground under the landmarks
@@ -1049,9 +1029,6 @@ towards the ceiling, a downlight a bay under the ceiling, people standing and se
 and a table's top dark against the light, each bay a little brighter or dimmer;
 further off the storey's mean, as before. `warm_share` 1 lights a restaurant warm
 (#286: the Skyline's flat pale panels beside the deck).
-
-![The Skyline restaurant's glass at night, and the tussock in the deck's bed by day](images/queenstown/skyline_glass_night.jpg)
-![The tussock in the Skyline deck's bed](images/queenstown/skyline_deck_tussock.jpg)
 
 ## Woods and park canopy
 
@@ -1119,9 +1096,6 @@ jointed threads):
 | Ginkgo (icho) | street rows (Midosuji, Jingu Gaien), temple precincts | gold, late November |
 | Evergreen broadleaf (Schima, Machilus; shii and kashi) | Hong Kong's hills, the laurel forest of the shrine groves | |
 | Pisonia, coastal she-oak (casuarina) | the coral cays (below) | |
-
-![The shared trees](images/trees/lineup.jpg)
-![Late November: ginkgo, maple, zelkova](images/trees/lineup_autumn.jpg)
 
 - **Mixes:** a city's `trees.mix` is its streets', `trees.woods` the mix of the
   trees planted from a wood's canopy (the street mix without its palms if it has
@@ -1202,9 +1176,6 @@ few deeper-pink buds. Every one of the cherry's cards is a bloom card
   own guides for the tree counts; OpenStreetMap (ODbL) for the outlines. No code
   or art was taken from elsewhere.
 
-![The cherry through the year: bare, in flower, hazakura, green, autumn](images/trees/cherry_year.jpg)
-![The Meguro River at Nakameguro on 1 April and in June; Hachiko Square's planters on 1 April and in January](images/trees/cherry_places.jpg)
-
 ### The other cherries and the bark (issue #163)
 
 Three more cherries join the Somei-yoshino in `blender/build_trees.py`, each with
@@ -1244,8 +1215,6 @@ shows the cherry's leaf cell.
   Nijo-jo's weeping and double cherries; Shinjuku Gyoen's double cherries,
   weeping cherries and a few kawazu-zakura; the Kokyo East Gardens' grove.
   Shibuya's Meguro River stays Somei-yoshino (on hold for the opening film).
-
-![The four cherries through the year as the game draws them: kawazu-zakura in February, Somei-yoshino and the weeping cherry on 1 April, yaezakura on 18 April, June, January](images/trees/cherry_varieties.jpg)
 
 ### Yozakura: the cherries lit after dark (issue #162)
 
@@ -1287,12 +1256,6 @@ flower (from the first flowers to the petals' fall, the light-ups' season).
   Festival's light-up), Maruyama Park and the Gion weeping cherry (Higashiyama), the
   Meguro River (Shibuya, with chochin). Ueno's Sakura-dori and Osaka's Mint are
   parked.
-
-![The Meguro River at 20:30 in the bloom: chochin along the railings under the lit cherries](images/trees/meguro_yozakura.jpg)
-![The Meguro River's chochin by day, and on a phone at night](images/trees/meguro_day_phone.jpg)
-
-![Yozakura at 20:00: Chidorigafuchi's moat (left) and Maruyama Park round the Gion weeping cherry](images/trees/yozakura.jpg)
-![On a phone: Chidorigafuchi and Maruyama at night, and Chidorigafuchi by day in the bloom](images/trees/yozakura_phone.jpg)
 
 ### A floor per area (issue #165)
 
@@ -1337,8 +1300,6 @@ waits for Shibuya's opening film.
   `GREEN_EXG`): 2.2 ha of street rows in Kyoto (196 street trees to 253), 1.4 ha in
   Sydney, 0.7 in Shibuya and Tetsugaku, 0.1-0.5 elsewhere. The rest of Kyoto's 16 ha
   of canopy without WorldCover's agreement is not along a road (gardens, banks).
-
-![The fill outside the parks, at 11:00](images/trees/canopy_fill.jpg)
 
 - **Measured street-tree heights.** OSM rarely gives a tree's height, so
   `build_scene.py` drew the mapped trees between 7 and 14 m.
@@ -1436,58 +1397,6 @@ dates as the bloom).
   the tools.
 - **After dark** a petal from a lit tree (`yozakura`) catches its uplights while it
   is within a few metres of the crown.
-
-![Petals round the Gion weeping cherry on 6 April: day, night (lit), and on a phone](images/trees/petals.jpg)
-
-### The cays' scrub and the clumped Pisonia (issue #165)
-
-The coral cays' beach scrub was drawn as blobs near the camera. Two shared shrubs
-join the set: Scaevola (beach cabbage, `scaevola`: a mound 1-3 m high and wider than
-tall of thick yellow-green spoon-shaped leaves crowded at the twigs' ends, on five
-soft stems) and the octopus bush (`argusia`, *Heliotropium arboreum*: crooked
-spreading stems under a rounded crown of silvery felted leaves, 3.5 m high and 5 m
-across), with their own atlas cells. `web/reef/life/flora.js` draws the sites'
-`scaevola` and `beach-scrub` with the first and `octopus-bush` with the second, as it
-draws Pisonia and she-oaks. Pisonia grows as a clump of three trunks from one foot
-(`stems`), as it does on Heron, where fallen stems re-root.
-
-![Pisonia, Scaevola, the octopus bush and a she-oak; a Pisonia's clumped trunks](images/trees/cays_scrub.jpg)
-
-**What we looked at for the night.** Real-time engines light a festival's many
-small lamps without a light per lamp: emissive meshes with a halo card or bloom
-for the lamps themselves, and baked or analytic light for what they light (three.js
-has no clustered lighting on WebGL; its WebGPU renderer does). Night photographs of
-Chidorigafuchi, Maruyama and the Meguro River show the blossom lit pink-white from
-below against a deep blue sky, the trunks and the lowest boughs brightest, and the
-lanterns as warm points. **Adopted:** the analytic per-tree uplight in the shader,
-emissive lanterns with a point-sprite halo and additive ground pools (our own code).
-
-**What we looked at.** How browser engines and open-source projects draw trees:
-three.js's `InstancedMesh` foliage with alpha-tested leaf cards (what the shared
-trees already do); [ez-tree](https://github.com/dgreenheck/ez-tree) (MIT; a
-recursive three.js branch generator with a gravity-like force that bends branches
-down, CC0 bark textures from ambientCG); Blender's Sapling Tree Gen (GPL; Weber
-and Penn's parametric model, with a weeping shape and per-level curvature and
-down angle); Weber and Penn, *Creation and Rendering of Realistic Trees*
-(SIGGRAPH 1995); SpeedTree's card-and-hull LOD scheme (proprietary, the industry
-reference for the LOD steps). **Adopted:** the idea of a branch that curves down
-from its turn-over point (Weber and Penn; no code from Sapling or ez-tree), drawn
-with our existing card-and-hull pipeline; the bark's bands are our own shader.
-**Sources:** cultivar habits and bloom times from the Japan Meteorological
-Agency's normals and the parks' guides (Shinjuku Gyoen, Maruyama Park, Kawazu
-town); no art was taken from elsewhere.
-
-### The coral cays
-
-Heron and Lady Elliot's pisonia and she-oaks and Green Island's vine forest were
-the reef renderer's spheres on cylinders (`web/reef/life/geo.js`). Within 160 m of
-the camera they are now the shared trees (`web/reef/life/flora.js` `SHARED`,
-`geo.sharedTree`, `mats.cards`): the full tree within 55 m, the sparse one beyond;
-the far rings keep the reef's own crowns and spindles. The site's leaf albedo
-tints the atlas (over the species' own colour). The life module waits for them
-while it loads, so they do not pop in. On Heron Island the trees drawn from the
-beach are 1.08 M triangles (1.09 M before), from 30 m up 0.46 M (0.47 M); on Lady
-Elliot 0.74 M (0.92 M).
 
 ### What the trees cost
 

@@ -9,7 +9,7 @@
 // map draws again (each caster, every frame the shadows update).
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
-const [,, city = 'kyoto', ...spots] = process.argv;
+const [,, city = 'shibuya', ...spots] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
@@ -29,7 +29,7 @@ const [,, city = 'kyoto', ...spots] = process.argv;
   });
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.flyover', null, { timeout: 600000 });
   await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   for (const s of spots.length ? spots : ['0,0']) {

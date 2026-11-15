@@ -9,7 +9,7 @@
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/driver_fit.js tokyo
 const { chromium } = require('playwright');
-const [,, city = 'tokyo'] = process.argv;
+const [,, city = 'shibuya'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
@@ -17,7 +17,7 @@ const [,, city = 'tokyo'] = process.argv;
   const p = await b.newPage({ viewport: { width: 800, height: 500 } });
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
   const res = await p.evaluate(async () => {
     const g = window.__game, lib = g.peopleLib, vlib = g.vlib, out = [];

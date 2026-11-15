@@ -2,11 +2,11 @@
 // (under xvfb-run, with web/ served on PORT or 8800): prints nav.floorAt, nav.walk and the terrain there.
 'use strict';
 const { chromium } = require('playwright');
-const [,, city = 'sydney', pts = '[]'] = process.argv;
+const [,, city = 'shibuya', pts = '[]'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl'] });
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   const out = await p.evaluate(P => P.map(([x, y, z]) => { z = z || window.__game.nav.terrain(x, y);
     const nav = window.__game.nav;

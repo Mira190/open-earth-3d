@@ -6,11 +6,11 @@
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
-const [,, city = 'shinjuku', steps = '6'] = process.argv;
+const [,, city = 'shibuya', steps = '6'] = process.argv;
 async function run(b) {
   const p = await b.newPage({ viewport: { width: 800, height: 500 } });
   const pinned = await pinClock(p, city);
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); });

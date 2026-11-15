@@ -31,7 +31,7 @@ const [,, city = 'shibuya', out = '/tmp/shaders', keep = '6'] = process.argv;
     requestAnimationFrame(poll);
   });
   const p = await ctx.newPage();
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction(() => window.__game && document.querySelector('#g-loader').hidden, null, { timeout: 900000, polling: 500 });
   const progs = await p.evaluate(() => window.__progs.filter(q => q.pr.__fs).map(q => ({ fs: q.pr.__fs, vs: q.pr.__vs, ms: q.done ? Math.round(q.done - q.t) : -1 })));
   await b.close();

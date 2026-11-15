@@ -10,7 +10,7 @@ const [,, city = 'shibuya'] = process.argv;
   const p = await b.newPage({ viewport: { width: +(process.env.W || 1440), height: +(process.env.H || 900) } });
   p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 300)));
   await pinClock(p, city);
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.cars', null, { timeout: 400000 });
   await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { const g = window.__game; g.hold(true); for (let t = 0; g.arriving() && t < 10; t += 0.25) g.advance(0.25); g.advance(2); });

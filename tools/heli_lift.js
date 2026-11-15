@@ -14,7 +14,7 @@ const [vw, vh] = size.split('x').map(Number), phone = vw < 700;
   const snap = async n => { if (shots) await p.screenshot({ path: `${shots}/${n}.png` }); };
   await p.addInitScript(() => { try { localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } });
   const errs = []; p.on('pageerror', e => errs.push(String(e).slice(0, 200)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction('window.__game && window.__game.flyover', null, { timeout: 600000 });
     // (the title comes up once the loader has drawn the scene twice; a click before it is lost: click until it goes)
   await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 300000 }).catch(() => {});

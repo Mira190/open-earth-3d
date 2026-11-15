@@ -4,10 +4,10 @@
 //   xvfb-run -a node tools/jaywalk_probe.js tokyo [x y ...]
 const { chromium } = require('playwright');
 (async () => {
-  const [city = 'tokyo', ...xy] = process.argv.slice(2);
+  const [city = 'shibuya', ...xy] = process.argv.slice(2);
   const b = await chromium.launch({ headless: !process.env.DISPLAY, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl'] });
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.crowd && window.__game.crowd.crossings', null, { timeout: 300000 });
   const r = await p.evaluate(async (xy) => {
     const g = window.__game, C = g.crowd.crossings, P = g.crowd.P, R = g.roadNet;

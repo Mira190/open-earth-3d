@@ -23,7 +23,7 @@ const [,, city = 'shibuya', outDir = '.', size = '1440x900'] = process.argv;
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   p.on('console', m => { if (m.type() === 'error') logs.push(`error: ${m.text().slice(0, 300)}`); });
   fs.mkdirSync(outDir, { recursive: true });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
   await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { const g = window.__game; g.advance(1); if (g.settleArrival) g.settleArrival(); for (let i = 0; i < 20; i++) g.advance(0.25); });

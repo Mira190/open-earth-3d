@@ -1,4 +1,4 @@
-"""Clean an aerial photograph for the ground at eye level (pipeline/alpine_detail.py, issue #228):
+"""Clean an aerial photograph for the ground at eye level (issue #228):
 
 1. Parked cars out of the roads and car parks. Seen from eye level, a car printed in a 0.3 m photograph is a grey or
    coloured smear on the tarmac. On the sealed ground (within 16 m of a road's line in roads.json: the streets, the

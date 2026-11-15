@@ -1,5 +1,10 @@
 # Buildings: roofs, facades and rooftops
 
+> **Scope, November 2026.** The project is now one story on one map: Blue Hour, at the Shibuya Scramble
+> ([STORY.md](STORY.md)). This page was written while the project built many maps, a globe and a model viewer.
+> Where it names another city, the title screen, the viewer or the reef sites, it describes work kept at the tag
+> `archive/world-2026-11`; the shared code it explains is the code Shibuya runs.
+
 Footprints and heights say where a building is and how tall it is. They do not
 say what it looks like. Until this change every building was a flat-topped
 prism, coloured per class, with the same 3.4 × 3.6 m window grid on every wall
@@ -7,8 +12,6 @@ above 9 m. This page covers what replaced that:
 - what the frontier of footprint-based 3D cities does;
 - what this project took from it;
 - how each part is built and checked.
-
-![Before and after, Sydney: CBD towers, a street, Millers Point terraces, Ultimo, the CBD from the Domain, and at night](images/sydney/buildings-before-after.jpg)
 
 | What | Where | How it is checked |
 |---|---|---|
@@ -56,7 +59,7 @@ What this project took from them:
 
 Each solid takes the first of these that applies:
 1. **Mapped.** A `roof_shape` on the building part, or on the building.
-2. **Measured.** The shape, pitch and height that a LOD2 model shows for the footprint (see [Measured roofs](#measured-roofs)). Today that is Kyoto. Paris measures its roofs from LiDAR over surveyed eaves instead (shape, height and material, but not the ridge's direction, so its gables still follow the street; see [the Paris case study](cities/paris.md#3-roofs)). Amsterdam's come from the 3DBAG's LOD2.2 models, measured with the same classifier as Kyoto's ([the Amsterdam case study](cities/amsterdam.md#3-roofs)).
+2. **Measured.** The shape, pitch and height that a LOD2 model shows for the footprint (see [Measured roofs](#measured-roofs)). Today that is Kyoto. Paris measures its roofs from LiDAR over surveyed eaves instead (shape, height and material, but not the ridge's direction, so its gables still follow the street; see the Paris case study). Amsterdam's come from the 3DBAG's LOD2.2 models, measured with the same classifier as Kyoto's (the Amsterdam case study).
 3. **Flat by rule.** Five or more floors, a top of 20 m or more, or a footprint of 2,000 m² or more. Also commercial or industrial buildings over 600 m², and parts of a larger building.
 4. **Drawn from the region's prior** for the building's group:
    - house, semi-detached, terrace;
@@ -120,8 +123,6 @@ HTTP range requests) and measures each building's roof from its triangles:
 - **Gable or hip.** A gable stands as a wall above the eave. The wall area above the eave is set against the triangle that a gable on the short side would make: over 0.55 is gabled, 0.2–0.55 half-hipped, under that hipped.
 - **Ridge direction.** Gabled across when most of the sloped area faces the ends of the footprint's long axis.
 - **Pitch and height.** The area-weighted median slope, and the height from the eave (10th percentile of the sloped faces' low points) to the ridge.
-
-![Kyoto with its measured roofs: the east side towards Higashiyama (left) and the centre (right)](images/kyoto/roofs-measured.jpg)
 
 79,889 of Kyoto's 80,870 PLATEAU buildings get a measured roof: 25,297 gabled
 across, 12,651 gabled, 1,109 half-hipped, 1,077 hipped, 1,156 skillion and
@@ -237,7 +238,7 @@ Osaka have built-in adjustments:
 LiDAR over BD TOPO's surveyed eaves gives each roof its height and its shape
 (flat, mansard, hipped; gambrel or gabled where a third of the outline is party
 wall), with the land tax files' material; roof source `measured`
-(`pipeline/measured.py`, [the Paris case study](cities/paris.md#3-roofs)). The
+(`pipeline/measured.py`, the Paris case study). The
 region's own rules:
 - roofs flush behind the cornice, ridges along the street, standing-seam zinc;
 - a `haussmann` facade style for stone blocks of four to eight floors: ashlar
@@ -271,7 +272,6 @@ Sources for these numbers:
 - JSMA standard sash sizes;
 - taginfo roof-shape statistics for Australia, Kanto and Kansai.
 
-
 ## 6. One model, three consumers
 
 - **The browser.** Walls, roofs, parapets, coping and awnings are one mesh with packed attributes, so raycasts and the inspector still work by building. Rooftop plant is instanced. The inspector shows each building's roof and how it was chosen: ruled, drawn from the region's mix, mapped, or measured. It also shows the facade style.
@@ -294,13 +294,13 @@ Old files without these fields still render: styles are guessed from class and h
 `style (index in styles)`. Until issue #46 it looked for `style` alone, so every city
 was drawn from the guess: no machiya, Haussmann, canal house or mixed-use front, and
 every pitched roof plain. The before/after stills of that fix are in
-[images/facade-styles/](images/facade-styles/); `tools/style_shots.sh` takes them
+images/facade-styles/; `tools/style_shots.sh` takes them
 (each city's opening view and a street view of its most characteristic styles, at
 day, dusk and night, on a desktop and a phone, from `tools/style_views.py`: night at 21:00 on a winter date, and a street
 view that sees past eaves and tree crowns as well as buildings) and
 `tools/style_compare.py` lays two runs side by side. The stills after issue #73 (the storeys counted again,
 one corner sign a building, the views past trees and at a winter night) are in
-[images/facade-styles/after-73/](images/facade-styles/after-73/), with `corner-signs.jpg` taken from
+images/facade-styles/after-73/, with `corner-signs.jpg` taken from
 the mixed-use cameras of the sheets above.
 
 The integrated build, every city rebuilt (mesh and build time in headless Chrome

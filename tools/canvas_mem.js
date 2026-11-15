@@ -28,7 +28,7 @@ const [city = 'shibuya', secs = '40'] = process.argv.slice(2);
   });
   const p = await ctx.newPage();
   p.on('pageerror', e => console.log('page error:', e.message));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || ''}#play-${city}`, { waitUntil: 'domcontentloaded' });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || '?walk=1'}#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
   await startPlay(p);
   await p.waitForTimeout(+secs * 1000);

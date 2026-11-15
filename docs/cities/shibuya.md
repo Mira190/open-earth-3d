@@ -1,6 +1,11 @@
 # Shibuya: SHIBUYA SKY, the scramble and a game's Tokyo
 
-A map of Tokyo ([Tokyo as maps](tokyo-maps.md)): Sangenjaya to Shibuya, Harajuku, Yoyogi Park and Meiji
+> **Scope, November 2026.** The project is now one story on one map: Blue Hour, at the Shibuya Scramble
+> ([STORY.md](../STORY.md)). This page was written while the project built many maps, a globe and a model viewer.
+> Where it names another city, the title screen, the viewer or the reef sites, it describes work kept at the tag
+> `archive/world-2026-11`; the shared code it explains is the code Shibuya runs.
+
+A map of Tokyo (Tokyo as maps): Sangenjaya to Shibuya, Harajuku, Yoyogi Park and Meiji
 Jingu. It is the real city first: Overture's footprints at the heights Project PLATEAU surveyed, on
 GSI's laser-scanned bare earth, under the real sun. On top of that sit the places a game made famous,
 ten years on: Shibuya's scramble, Center Gai and Sangenjaya's backstreets are the streets *Persona 5*
@@ -9,7 +14,7 @@ known. Every number comes from the scripts in `pipeline/` and `analysis/` run wi
 outputs are in `cities/shibuya/analysis/`.
 
 Until November 2026 the map ran on north to Shinjuku and Yotsuya; that half is now the
-[Shinjuku map](shinjuku.md), with Suga Shrine's stairs, Kabukicho and the east exit. The two share one
+Shinjuku map, with Suga Shrine's stairs, Kabukicho and the east exit. The two share one
 frame, and the landmarks of both are built by `cities/shibuya/city.py`. The overview below was taken
 before the split.
 
@@ -64,7 +69,7 @@ before the split.
 ## 3. Heights and terrain
 
 PLATEAU covers the whole area; `pipeline/build_scene.py` cuts each Overture
-footprint along PLATEAU's roof faces, as in [Tokyo](tokyo.md#3-how-plateau-is-used).
+footprint along PLATEAU's roof faces, as in Tokyo.
 
 - **PLATEAU against OpenStreetMap.** Where both have a height, OpenStreetMap's is a median factor
   of 1.07 from PLATEAU's (90th percentile 1.30) over 3,970 buildings (`height_model.json`). The
@@ -173,7 +178,7 @@ characters, logos, invented shops or interface. What is built:
   with its noren, the coin laundry and vending machines beside it, the meat shop on
   the corner, and utility poles with their wires down the lanes. The Carrot Tower
   stands over it in its own colour.
-- **Shinjuku's** arch, screens and clock are in the [Shinjuku map](shinjuku.md).
+- **Shinjuku's** arch, screens and clock are in the Shinjuku map.
 - **Signs.** Shop signs on street fronts in Center Gai, Udagawacho, Dogenzaka and Sangenjaya. They are
   indicative, not the real shops' signs. A blade sign's two faces each stand on the side they
   face, so both read the right way round (`tools/sign_check.py` checks every city's), and blades
@@ -461,7 +466,7 @@ unmeasured (only llvmpipe, `tools/city_shot.js`).
 
 The game is a walk, not a survey. Aoi, a pilgrimage guide at Hachiko, welcomes you;
 then two lines run side by side, and a report back waits for both. The Your Name, Shinjuku and
-Aoyama walks went with the [Shinjuku map](shinjuku.md#5-tokyo-pilgrimage-shinjuku), and Aoi
+Aoyama walks went with the Shinjuku map, and Aoi
 sends you there at the end.
 
 | Line | Who | What you do |
@@ -490,7 +495,7 @@ band. The helipad in Yoyogi Park is a game device; there is no heliport there. T
 
 ## 8. Sun
 
-Tokyo protects no park's sunlight (see [Tokyo](tokyo.md#5-sun-and-the-rules)). The
+Tokyo protects no park's sunlight (see Tokyo). The
 places carry this project's lunch-hour window, noon to 13:00, as a thought
 experiment. Miyashita Park is a roof garden on a mall; its sun is read at the
 ground here, so treat it with care.
@@ -504,7 +509,7 @@ window, December and June:
 | Jingu-dori Park | 78% | 100% | one 32 m building beside it |
 | Miyashita Park | 81% | 88% | the hotel tower and the mall it stands on, read at the ground |
 
-Shinjuku Gyoen and Suga Park are in the [Shinjuku map](shinjuku.md#6-sun).
+Shinjuku Gyoen and Suga Park are in the Shinjuku map.
 
 ## 9. Limits
 

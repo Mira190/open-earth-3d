@@ -11,7 +11,7 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
-const [,, city = 'sydney', outDir = '.', width = '1440', height = '900'] = process.argv;
+const [,, city = 'shibuya', outDir = '.', width = '1440', height = '900'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
@@ -35,7 +35,7 @@ const [,, city = 'sydney', outDir = '.', width = '1440', height = '900'] = proce
     fs.writeFileSync(path.join(outDir, `${city}-${name}.png`), Buffer.from(png.split(',')[1], 'base64'));
   };
   const t0 = Date.now();
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
   console.log(`loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s`);

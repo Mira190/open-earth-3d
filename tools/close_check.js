@@ -25,7 +25,7 @@ const [,, city = 'shibuya', outDir = '.'] = process.argv;
   p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
   fs.mkdirSync(outDir, { recursive: true });
   const t0 = Date.now();
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   const nv = await p.evaluate(() => { const n = window.__game.nav; return [n.startMs, n.fineBoxes, n.fineMs].map(Math.round); });
   console.log(`loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s; landmark tiles sorted in ${nv[0]} ms, ${nv[1]} fine boxes laid so far in ${nv[2]} ms`);

@@ -9,7 +9,7 @@
 // env: PLACES="jacaranda-lookout,..." (only these travel ids; PLACES=none WATER=1: only the water), DEEP=0.3 (m), JSON=out.json (every buried spot)
 const { chromium } = require('playwright');
 const fs = require('fs');
-const [,, city = 'sydney', radius = '60'] = process.argv;
+const [,, city = 'shibuya', radius = '60'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
@@ -17,7 +17,7 @@ const [,, city = 'sydney', radius = '60'] = process.argv;
   const p = await b.newPage({ viewport: { width: 800, height: 500 } });
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady());
   // play, past the title and the opening

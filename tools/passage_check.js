@@ -10,7 +10,7 @@ const cities = process.argv.slice(2);
   let bad = 0;
   for (const city of cities) {
     const p = await b.newPage({ viewport: { width: 640, height: 400 } });
-    await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 300000 });
     const res = await walk(p);
     if (!res.length) console.log(`${city}: no passages through its landmarks`);

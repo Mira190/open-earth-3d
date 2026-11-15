@@ -7,7 +7,7 @@
 // TIER=medium (default) forces a quality tier. Software WebGL (llvmpipe) gives an upper bound: its
 // fragments cost far more than a GPU's, and the share is what to read.
 const { chromium } = require('playwright');
-const [,, city = 'sydney', at = '23:00', secs = '12'] = process.argv;
+const [,, city = 'shibuya', at = '23:00', secs = '12'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
   const ctx = await b.newContext({ viewport: { width: +(process.env.W || 960), height: +(process.env.H || 600) }, deviceScaleFactor: 1 });
@@ -15,7 +15,7 @@ const [,, city = 'sydney', at = '23:00', secs = '12'] = process.argv;
   const p = await ctx.newPage();
   const errors = [];
   p.on('pageerror', e => errors.push(String(e).slice(0, 200)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction(() => window.__game && !document.querySelector('#g-title').hidden && document.querySelector('#g-loader').hidden, null, { timeout: 900000, polling: 500 });
   await p.evaluate(() => document.querySelector('#gt-play').click());
   await p.waitForTimeout(15000); // the arrival

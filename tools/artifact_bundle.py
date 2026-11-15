@@ -1,4 +1,4 @@
-"""Stage web/ for a host that caps a site's files (about 500) and its size (256 MB), such as a Claude artifact.
+"""Stage web/ for a host that caps a site's files (about 500) and its size (256 MB), such as a hosted artifact page.
 
 Code, styles, fonts and pages stay as files. The data and shared assets of the live cities and sites are packed
 into chunk files (vfs/NNN.wasm, raw bytes under a type such hosts serve, about 12 MB each, grouped by folder so a city loads only its own) with an

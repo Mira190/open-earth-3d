@@ -1,0 +1,155 @@
+/* Blue Hour's interface (story.js). One idea: the screen is a rangefinder's viewfinder. Nothing sits in a box; type
+   lies on the picture over a soft scrim, as bright-line marks do on glass. Two faces: the display face, wide and
+   light, for what the story says of itself; the monospace, small and tracked out, for what the camera says (the
+   minutes, the metres, the frames). One accent, the sodium amber of a street lamp against the blue hour.
+   Tokens are the page's (index.html :root). */
+.game-stage.story { --amber: #ffcf8a; --paper: #f4efe6; --night: rgba(4, 8, 18, 0.62); }
+
+/* the map's own instruments are put away: the story has one line to say and one counter to show */
+.game-stage.story :is(.g-quest, .g-right, .g-chatter, .g-labels, .lf-card, .g-reticle, .g-vhud, .g-lens) { display: none !important; }
+.game-stage.story-auto #g-title { opacity: 0; pointer-events: none; }
+
+/* ---- the title: the story's name over the living street, and one button */
+.game-stage.story .g-title { align-items: flex-end; padding-bottom: max(9vh, 48px); background: linear-gradient(to top, rgba(4, 8, 18, 0.78), rgba(4, 8, 18, 0.2) 46%, transparent 70%); }
+.game-stage.story .gt-card { width: min(620px, 100%); gap: 20px; }
+.game-stage.story :is(.gt-time, .gt-hints, .gt-skip, #gt-continue) { display: none !important; }
+.game-stage.story .gt-card .gt-eb { font: 400 10px/1 var(--f-mono); letter-spacing: 0.34em; text-transform: uppercase; color: var(--amber); }
+.game-stage.story .gt-card h1 { font: 200 clamp(44px, 8vw, 104px)/0.96 var(--f-display); letter-spacing: 0.16em; color: var(--paper); text-shadow: 0 0 60px rgba(120, 150, 255, 0.28); }
+.game-stage.story .gt-card h1 small:lang(ja) { margin-top: 20px; font: 500 18px/1 var(--f-jp); letter-spacing: 0.5em; color: var(--amber); opacity: 1; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.8); }
+.game-stage.story .gt-card > p { font: 300 clamp(15px, 1.5vw, 18px)/1.6 var(--f-body); color: rgba(244, 239, 230, 0.86); max-width: 46ch; }
+.game-stage.story .gt-go .btn.primary { min-width: 0; gap: 26px; padding: 15px 22px; border: 1px solid var(--amber); border-radius: 2px; background: transparent; color: var(--amber);
+  font: 400 11px/1 var(--f-mono); letter-spacing: 0.34em; text-transform: uppercase; transition: background 0.3s, color 0.3s; }
+.game-stage.story .gt-go .btn.primary:is(:hover, :focus-visible) { background: var(--amber); color: #0b1020; }
+
+/* ---- the goal: the one thing to do now, under the Stop's minutes */
+#g-story-goal { position: absolute; left: 50%; top: 0; transform: translateX(-50%); z-index: 6; width: min(100%, 760px); padding: max(26px, env(safe-area-inset-top)) 24px 46px; text-align: center; pointer-events: none;
+  opacity: 0; transition: opacity 0.7s ease; color: var(--paper); background: radial-gradient(ellipse 60% 100% at 50% 0, var(--night), transparent 100%); }
+#g-story-goal.on { opacity: 1; }
+#g-story-goal small { display: block; font: 400 10px/1 var(--f-mono); letter-spacing: 0.34em; text-transform: uppercase; color: var(--amber); font-variant-numeric: tabular-nums; }
+#g-story-goal small::after { content: ""; display: block; width: 28px; height: 1px; margin: 12px auto 13px; background: rgba(255, 207, 138, 0.6); }
+#g-story-goal span { font: 300 clamp(17px, 2.2vw, 22px)/1.3 var(--f-body); letter-spacing: 0.01em; text-shadow: 0 1px 18px rgba(0, 0, 0, 0.9); }
+
+/* ---- where it is: a bright-line mark on the place, held at the frame's edge on the side it lies */
+#g-story-mark { position: absolute; left: 0; top: 0; z-index: 5; pointer-events: none; opacity: 0; transition: opacity 0.5s ease; will-change: transform; }
+#g-story-mark.on { opacity: 1; }
+#g-story-mark i { display: block; width: 18px; height: 18px; margin: -9px 0 0 -9px; border: 1px solid var(--paper); border-radius: 50%; box-shadow: 0 0 0 1px rgba(4, 8, 18, 0.5), 0 0 16px 2px rgba(159, 196, 255, 0.6); animation: g-story-beat 1.8s ease-in-out infinite; }
+#g-story-mark i::after { content: ""; position: absolute; left: -1.5px; top: -1.5px; width: 3px; height: 3px; border-radius: 50%; background: var(--paper); }
+#g-story-mark b { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); white-space: nowrap; font: 400 10px/1 var(--f-mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--paper); text-shadow: 0 1px 8px #000, 0 0 2px #000; font-variant-numeric: tabular-nums; }
+@keyframes g-story-beat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
+
+/* ---- the keys, the first time they are needed */
+#g-story-keys { position: absolute; left: 50%; bottom: max(92px, calc(env(safe-area-inset-bottom) + 92px)); transform: translateX(-50%); z-index: 6; pointer-events: none; opacity: 0; transition: opacity 0.6s ease;
+  display: flex; gap: 26px; white-space: nowrap; color: var(--paper); font: 400 10px/1 var(--f-mono); letter-spacing: 0.2em; text-transform: uppercase; text-shadow: 0 1px 10px #000, 0 0 2px #000; }
+#g-story-keys.on { opacity: 1; }
+#g-story-keys kbd { display: inline-block; min-width: 22px; padding: 5px 6px; margin-right: 5px; border: 1px solid rgba(244, 239, 230, 0.6); border-radius: 2px; background: rgba(4, 8, 18, 0.45); font: inherit; letter-spacing: 0.06em; text-align: center; }
+#g-story-keys kbd + kbd { margin-left: -1px; }
+
+/* ---- the film: seven frames in a strip, the ones spent gone dark; the counter as the camera shows it */
+#g-story-frames { position: absolute; left: max(22px, env(safe-area-inset-left)); bottom: max(22px, env(safe-area-inset-bottom)); z-index: 6; display: grid; gap: 9px; pointer-events: none;
+  opacity: 0; transition: opacity 0.9s ease; color: var(--paper); font: 400 10px/1 var(--f-mono); letter-spacing: 0.3em; text-transform: uppercase; text-shadow: 0 1px 10px #000; }
+#g-story-frames.on { opacity: 1; }
+#g-story-frames b { font: 300 30px/0.9 var(--f-mono); letter-spacing: 0; color: var(--amber); font-variant-numeric: tabular-nums; margin-right: 10px; vertical-align: -3px; }
+#g-story-frames .strip { display: flex; gap: 3px; padding: 4px; background: rgba(4, 8, 18, 0.6); border-top: 2px dotted rgba(244, 239, 230, 0.35); border-bottom: 2px dotted rgba(244, 239, 230, 0.35); }
+#g-story-frames .strip i { width: 20px; height: 14px; background: var(--amber); opacity: 0.9; transition: opacity 0.8s ease, background 0.8s ease; }
+#g-story-frames .strip i.spent { background: rgba(244, 239, 230, 0.16); opacity: 1; }
+
+/* ---- the episode's name, falling on the stopped street */
+#g-story-card { position: absolute; inset: 0; z-index: 7; display: grid; place-items: center; pointer-events: none; opacity: 0; transition: opacity 1.2s ease; background: radial-gradient(ellipse at center, rgba(4, 8, 18, 0.1) 20%, rgba(4, 8, 18, 0.6) 100%); }
+#g-story-card.on { opacity: 1; }
+#g-story-card div { text-align: center; color: var(--paper); }
+#g-story-card small { display: block; font: 400 10px/1 var(--f-mono); letter-spacing: 0.44em; margin-right: -0.44em; text-transform: uppercase; color: var(--amber); }
+#g-story-card small::after { content: ""; display: block; width: 28px; height: 1px; margin: 18px auto 20px; background: rgba(255, 207, 138, 0.6); }
+#g-story-card span { display: block; font: 200 clamp(28px, 5.4vw, 64px)/1.08 var(--f-display); letter-spacing: 0.14em; margin-right: -0.14em; text-transform: uppercase; text-shadow: 0 2px 40px rgba(0, 0, 0, 0.8); }
+
+/* ---- the stopped world: colder, darker at its edges and drained of colour (a multiply never lifts the blacks into a grey veil) */
+#g-story-veil { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity 1.6s ease; background: radial-gradient(ellipse at 50% 45%, #e6edff 35%, #9aabe6 100%); mix-blend-mode: multiply; }
+#g-story-veil.on { opacity: 1; transition: opacity 0.5s ease; }
+#g-story-flash { position: absolute; inset: 0; z-index: 4; pointer-events: none; opacity: 0; background: #dfe9ff; }
+#g-story-flash.on { animation: g-story-flash 0.7s ease-out; }
+@keyframes g-story-flash { 0% { opacity: 0.75; } 100% { opacity: 0; } }
+.game-stage.story-on #game-gl { transition: filter 1.4s ease; }
+.game-stage.story-stop #game-gl { filter: brightness(0.92) contrast(1.12) saturate(0.5); transition: filter 0.45s ease; }
+
+/* ---- the camera raised: the bright-line frame, the rangefinder's patch at its centre, and the release */
+#g-story-finder { position: absolute; inset: 12% 18%; z-index: 5; pointer-events: none; opacity: 0; transition: opacity 0.5s ease; --l: rgba(244, 239, 230, 0.95);
+  background: linear-gradient(var(--l), var(--l)) 0 0 / 40px 1.5px no-repeat, linear-gradient(var(--l), var(--l)) 0 0 / 1.5px 40px no-repeat, linear-gradient(var(--l), var(--l)) 100% 0 / 40px 1.5px no-repeat, linear-gradient(var(--l), var(--l)) 100% 0 / 1.5px 40px no-repeat,
+    linear-gradient(var(--l), var(--l)) 0 100% / 40px 1.5px no-repeat, linear-gradient(var(--l), var(--l)) 0 100% / 1.5px 40px no-repeat, linear-gradient(var(--l), var(--l)) 100% 100% / 40px 1.5px no-repeat, linear-gradient(var(--l), var(--l)) 100% 100% / 1.5px 40px no-repeat;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.7)); }
+#g-story-finder::after { content: ""; position: absolute; left: 50%; top: 50%; width: 74px; height: 50px; margin: -25px 0 0 -37px; border-radius: 3px; background: rgba(255, 207, 138, 0.14); box-shadow: inset 0 0 0 1px rgba(255, 207, 138, 0.35); }
+#g-story-finder.on { opacity: 1; }
+#g-story-shutter { position: absolute; left: 50%; bottom: max(64px, calc(env(safe-area-inset-bottom) + 64px)); transform: translateX(-50%); z-index: 8; display: none; align-items: center; gap: 16px; padding: 0; border: 0; background: none; cursor: pointer;
+  color: var(--paper); font: 400 10px/1 var(--f-mono); letter-spacing: 0.3em; text-transform: uppercase; text-shadow: 0 1px 10px #000, 0 0 2px #000; }
+#g-story-shutter.on { display: flex; }
+#g-story-shutter i { flex: none; width: 62px; height: 62px; border-radius: 50%; border: 1.5px solid var(--paper); background: rgba(4, 8, 18, 0.5); box-shadow: inset 0 0 0 5px rgba(4, 8, 18, 0.6), inset 0 0 0 31px rgba(244, 239, 230, 0.22); transition: box-shadow 0.3s ease, border-color 0.3s ease; }
+#g-story-shutter.ready i { border-color: var(--amber); box-shadow: inset 0 0 0 5px rgba(4, 8, 18, 0.6), inset 0 0 0 31px var(--amber), 0 0 30px rgba(255, 207, 138, 0.45); }
+#g-story-shutter:active i { transform: scale(0.94); }
+#g-story-shutter kbd { padding: 5px 7px; border: 1px solid rgba(244, 239, 230, 0.6); border-radius: 2px; background: rgba(4, 8, 18, 0.45); font: inherit; letter-spacing: 0.06em; }
+#g-story-shutter:focus-visible { outline: 1px solid var(--amber); outline-offset: 6px; }
+
+/* ---- the one thing the map still offers (a lift to ride): its key and its words, on the picture */
+.game-stage.story .g-prompt { border: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; color: var(--paper); font: 400 10px/1 var(--f-mono); letter-spacing: 0.24em; text-transform: uppercase; text-shadow: 0 1px 10px #000, 0 0 2px #000; }
+.game-stage.story .g-prompt #gp-alt { display: none; }
+.game-stage.story .gd-choices { max-width: 34em; margin: 0 auto 10px; text-align: left; }
+.game-stage.story .gd-choices button { border-color: rgba(244, 239, 230, 0.3); background: rgba(4, 8, 18, 0.5); font: 300 16px/1.4 var(--f-body); color: var(--paper); border-radius: 2px; }
+.game-stage.story .gd-choices button:is(:hover, :focus-visible) { border-color: var(--amber); background: rgba(255, 207, 138, 0.1); }
+
+/* ---- what they say: a lower third on the picture, not a window over it */
+.game-stage.story .g-dialog { bottom: 0; width: 100%; max-width: none; transform: translateX(-50%); padding: 90px max(24px, calc(50% - 380px)) max(34px, calc(env(safe-area-inset-bottom) + 34px)); border: 0; border-radius: 0; box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none; background: linear-gradient(to top, rgba(4, 8, 18, 0.88), rgba(4, 8, 18, 0.5) 55%, transparent); text-align: center; }
+.game-stage.story .g-dialog::before, .game-stage.story .g-dialog::after { display: none; }
+.game-stage.story .gd-head { justify-content: center; gap: 12px; }
+.game-stage.story .gd-head b { font: 400 10px/1 var(--f-mono); letter-spacing: 0.34em; color: var(--amber); }
+.game-stage.story .gd-head span { font: 400 10px/1 var(--f-mono); letter-spacing: 0.24em; color: rgba(244, 239, 230, 0.6); }
+.game-stage.story .g-dialog p { margin: 16px auto 14px; max-width: 34em; min-height: 3.1em; font: 300 clamp(18px, 2.1vw, 23px)/1.55 var(--f-body); color: var(--paper); text-shadow: 0 1px 16px rgba(0, 0, 0, 0.9); }
+.game-stage.story .gd-hint { text-align: center; font-size: 9px; letter-spacing: 0.3em; color: rgba(244, 239, 230, 0.5); }
+
+/* ---- a line as the world runs on again: type on the picture */
+.game-stage.story .g-toasts { top: max(30px, env(safe-area-inset-top)); width: min(640px, calc(100% - 48px)); }
+.game-stage.story .g-toast { border: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; padding: 4px 0; text-align: center; font: 300 clamp(16px, 2vw, 20px)/1.4 var(--f-body); color: var(--paper); text-shadow: 0 1px 16px #000, 0 0 3px rgba(0, 0, 0, 0.8); }
+
+/* ---- the last card: the print, what it was, what comes next */
+#g-story-end { position: absolute; inset: 0; z-index: 9; display: none; place-items: center; background: rgba(4, 8, 18, 0.8); -webkit-backdrop-filter: blur(8px) saturate(0.6); backdrop-filter: blur(8px) saturate(0.6); color: var(--paper); opacity: 0; transition: opacity 1.2s ease; overflow: auto; }
+#g-story-end.on { display: grid; }
+#g-story-end.in { opacity: 1; }
+#g-story-end .card { display: grid; justify-items: center; gap: 18px; max-width: min(92vw, 600px); text-align: center; padding: 24px; }
+#g-story-end figure { margin: 0 0 10px; padding: 10px 10px 0; background: var(--paper); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.65); transform: rotate(-2deg); }
+#g-story-end img { display: block; width: min(70vw, 400px); aspect-ratio: 3 / 2; object-fit: cover; filter: saturate(0.8) contrast(1.06); }
+#g-story-end figcaption { display: flex; justify-content: space-between; padding: 9px 2px 10px; font: 400 9px/1 var(--f-mono); letter-spacing: 0.22em; text-transform: uppercase; color: #3a3f4c; }
+#g-story-end .sheet { list-style: none; margin: 0 0 6px; padding: 8px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; background: #0b0d12; border-top: 2px dotted rgba(244, 239, 230, 0.3); border-bottom: 2px dotted rgba(244, 239, 230, 0.3); }
+#g-story-end .sheet li { display: grid; gap: 5px; }
+#g-story-end .sheet img { width: min(13vw, 86px); aspect-ratio: 3 / 2; filter: none; }
+#g-story-end .sheet span { font: 400 8px/1 var(--f-mono); letter-spacing: 0.14em; color: var(--amber); white-space: nowrap; }
+#g-story-end small { font: 400 10px/1 var(--f-mono); letter-spacing: 0.4em; margin-right: -0.4em; text-transform: uppercase; color: var(--amber); }
+#g-story-end h2 { margin: 0; font: 200 clamp(26px, 4.4vw, 46px)/1.1 var(--f-display); letter-spacing: 0.12em; margin-right: -0.12em; text-transform: uppercase; }
+#g-story-end p { margin: 0; max-width: 40ch; font: 300 16px/1.6 var(--f-body); color: rgba(244, 239, 230, 0.84); }
+#g-story-end p.next { font: 400 10px/1.6 var(--f-mono); letter-spacing: 0.26em; text-transform: uppercase; color: var(--paper); }
+#g-story-end p.next::before { content: "Next"; display: block; color: var(--amber); margin-bottom: 4px; }
+#g-story-end .row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 10px; }
+#g-story-end button { padding: 15px 22px; border: 1px solid rgba(244, 239, 230, 0.4); border-radius: 2px; background: transparent; color: var(--paper); font: 400 10px/1 var(--f-mono); letter-spacing: 0.3em; text-transform: uppercase; cursor: pointer; transition: background 0.3s, color 0.3s, border-color 0.3s; }
+#g-story-end button:is(:hover, :focus-visible) { border-color: var(--paper); }
+#g-story-end button.go { border-color: var(--amber); color: var(--amber); }
+#g-story-end button.go:is(:hover, :focus-visible) { background: var(--amber); color: #0b1020; }
+#g-story-end button:focus-visible { outline: 1px solid var(--amber); outline-offset: 4px; }
+
+/* ---- by touch: the left thumb walks, the right thumb has the release; the map's other buttons are put away */
+.game-stage.story:has(#g-title:not([hidden])) .g-touch { display: none; }
+.game-stage.story .gt-btns { grid-template-columns: 56px; }
+.game-stage.story .gt-btns button:not(#gt-run) { display: none; }
+@media (pointer: coarse), (max-width: 640px) {
+  #g-story-finder { inset: 16% 8%; }
+  #g-story-keys { gap: 16px; letter-spacing: 0.12em; bottom: max(170px, calc(env(safe-area-inset-bottom) + 170px)); }
+  #g-story-frames { left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); grid-auto-flow: column; align-items: center; gap: 10px; }
+  #g-story-frames span:first-child { font-size: 0; }
+  #g-story-frames b { font-size: 20px; margin: 0; vertical-align: 0; }
+  #g-story-frames .strip i { width: 14px; height: 10px; }
+  #g-story-shutter { left: auto; right: max(18px, env(safe-area-inset-right)); bottom: max(92px, calc(env(safe-area-inset-bottom) + 92px)); transform: none; font-size: 0; gap: 0; }
+  #g-story-shutter i { width: 76px; height: 76px; box-shadow: inset 0 0 0 5px rgba(4, 8, 18, 0.6), inset 0 0 0 38px rgba(244, 239, 230, 0.22); }
+  #g-story-shutter.ready i { box-shadow: inset 0 0 0 5px rgba(4, 8, 18, 0.6), inset 0 0 0 38px var(--amber), 0 0 30px rgba(255, 207, 138, 0.45); }
+  .game-stage.story .gt-btns { bottom: 190px; }
+  .game-stage.story .g-title { padding-left: 20px; padding-right: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #g-story-mark i { animation: none; }
+  #g-story-goal, #g-story-keys, #g-story-end, #g-story-frames, #g-story-card, #g-story-veil, .game-stage #game-gl { transition: none; }
+  #g-story-flash.on { animation: none; }
+}

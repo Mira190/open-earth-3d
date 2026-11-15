@@ -1,5 +1,10 @@
 # Learning from game engines
 
+> **Scope, November 2026.** The project is now one story on one map: Blue Hour, at the Shibuya Scramble
+> ([STORY.md](STORY.md)). This page was written while the project built many maps, a globe and a model viewer.
+> Where it names another city, the title screen, the viewer or the reef sites, it describes work kept at the tag
+> `archive/world-2026-11`; the shared code it explains is the code Shibuya runs.
+
 This is a study of how Unreal Engine 5, other engines and a few well-known games
 solve the problems this game has: moving a character through a city, keeping the
 camera out of walls, filling streets with people, letting the player talk to them,

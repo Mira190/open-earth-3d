@@ -13,7 +13,7 @@ const [,, city = 'shibuya'] = process.argv;
   const p = await b.newPage({ viewport: { width: 1100, height: 650 } });
   const errs = [];
   p.on('pageerror', e => errs.push(String(e).slice(0, 300)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   const play = await p.waitForSelector('#gt-play', { state: 'visible', timeout: 60000 }).catch(() => null);
   if (play) await play.click({ timeout: 10000 }).catch(() => p.evaluate(() => document.getElementById('gt-play').click()));

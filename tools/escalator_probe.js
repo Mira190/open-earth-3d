@@ -2,11 +2,11 @@
 // stops carrying you and the collision boxes just ahead there: for an escalator that stops short.
 //   xvfb-run -a node tools/escalator_probe.js tokyo "Yurakucho Station, the north escalator"
 const { chromium } = require('playwright');
-const [,, city = 'tokyo', match = ''] = process.argv;
+const [,, city = 'shibuya', match = ''] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] } : {});
   const p = await b.newPage({ viewport: { width: 800, height: 500 } });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.nav', null, { timeout: 600000 });
   const r = await p.evaluate((match) => {
     const g = window.__game, pl = g.player, nav = g.nav, out = [];

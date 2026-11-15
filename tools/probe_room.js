@@ -5,7 +5,7 @@ const [,, city, x0, y0, x1, y1, n = '24'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl'] });
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.nav && window.__game.nav.room', null, { timeout: 600000 });
   const out = await p.evaluate(([a, b2, c, d, n]) => {
     const g = window.__game, nav = g.nav, r = [];

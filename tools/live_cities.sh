@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The cities with a game, less the parked ones (cities/index.json "parked"): what tools/check.sh and
-# the sweeps run over. With --parked, the parked ones that have a game instead.
+# The maps with a game, less any parked one (cities/index.json "parked"): what the sweeps run over. There is
+# one, shibuya. With --parked, the parked ones that have a game instead.
 cd "$(dirname "$0")/.."
 python3 -I - "${1:-}" <<'PY'
 import glob, json, os, sys

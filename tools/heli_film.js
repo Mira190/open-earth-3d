@@ -6,7 +6,7 @@
 //   xvfb-run -a node tools/heli_film.js sydney out_dir [WxH]
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
-const [,, city = 'sydney', outDir = '.', size = '1280x720'] = process.argv;
+const [,, city = 'shibuya', outDir = '.', size = '1280x720'] = process.argv;
 const [VW, VH] = size.split('x').map(Number);
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -22,7 +22,7 @@ const [VW, VH] = size.split('x').map(Number);
   });
   const p = await ctx.newPage();
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(async () => { const g = window.__game; if (g.heli && g.heli.want) await g.heli.want(); });
   // (the title comes up once the loader has drawn the scene twice; a click before it does nothing: as tools/game_shot.js)

@@ -31,7 +31,7 @@ const W = 960, H = 600;
     });
     const errors = [];
     p.on('pageerror', e => errors.push(String(e).slice(0, 200)));
-    await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 600000 });
     await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 600000 }).catch(() => {});
     await p.evaluate(() => { const b = document.getElementById('gt-play'); if (b) b.click(); });

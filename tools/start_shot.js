@@ -7,7 +7,7 @@ const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
-const [,, city = 'sydney', outDir = '.', size = '1440x900', times = '11:00'] = process.argv;
+const [,, city = 'shibuya', outDir = '.', size = '1440x900', times = '11:00'] = process.argv;
 const [W, H] = size.split('x').map(Number);
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -23,7 +23,7 @@ const [W, H] = size.split('x').map(Number);
   });
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   fs.mkdirSync(outDir, { recursive: true });

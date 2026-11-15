@@ -8,7 +8,7 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
-const [,, city = 'sydney', outDir = 'load-check', mode = 'play', size = '1440x900', every = '250'] = process.argv;
+const [,, city = 'shibuya', outDir = 'load-check', mode = 'play', size = '1440x900', every = '250'] = process.argv;
 const [w, h] = size.split('x').map(Number);
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY

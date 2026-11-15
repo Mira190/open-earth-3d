@@ -10,13 +10,13 @@
 'use strict';
 const { chromium } = require('playwright');
 const fs = require('fs');
-const [,, city = 'fushimi-inari', file] = process.argv;
+const [,, city = 'shibuya', file] = process.argv;
 const walks = JSON.parse(fs.readFileSync(file, 'utf8'));
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl'] });
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
   p.on('pageerror', e => console.log('page error:', e.message));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
   await p.evaluate(() => window.__game.advance(1));
   const out = await p.evaluate(W => {

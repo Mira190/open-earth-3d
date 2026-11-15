@@ -5,7 +5,7 @@
 //   xvfb-run -a node tools/gl_restore_probe.js sydney [out_dir]
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
-const [,, city = 'sydney', outDir = '/tmp'] = process.argv;
+const [,, city = 'shibuya', outDir = '/tmp'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
@@ -16,7 +16,7 @@ const [,, city = 'sydney', outDir = '/tmp'] = process.argv;
     HTMLCanvasElement.prototype.getContext = function (type, opts) { return get.call(this, type, /webgl/.test(type) ? Object.assign({}, opts, { preserveDrawingBuffer: true }) : opts); };
   });
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/?overture=0${process.env.Q ? `&${process.env.Q}` : ''}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1&overture=0${process.env.Q ? `&${process.env.Q}` : ''}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.flyover', null, { timeout: 600000 });
   await p.waitForFunction(() => { const l = document.getElementById('g-loader'); return !l || l.hidden; }, null, { timeout: 900000, polling: 500 });
   if (process.env.NIGHT) await p.evaluate(() => { const x = document.querySelector('#gt-timechoice [data-t="night"]'); if (x) x.click(); });

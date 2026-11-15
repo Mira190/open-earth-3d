@@ -1,689 +1,129 @@
-# Open Earth 3D
+# Blue Hour
 
-**The Earth in 3D, city by city, from open data and the real sun.**
+One story, in episodes, on one map: the Shibuya Scramble, rebuilt from open data and played in a
+browser. Seven evenings at the crossing, one camera with seven frames left in it: the world stops,
+and someone who should not be there asks you for a photograph. [docs/STORY.md](docs/STORY.md) is the
+story bible; episode 1 is built.
 
-Open Earth 3D rebuilds real cities in 3D from open data. Buildings and their
-heights come from OpenStreetMap and Overture Maps. They stand on bare-earth
-terrain under aerial imagery, and the sun is computed for any date and time.
-Every building's height carries its source and a measured error, and every
-shadow comes from ray casting rather than a render. The result is a model you
-can check, as well as look at.
-
-It started with Sydney, as an answer to the "Opus 5.5 + Blender made a 3D
-Sydney" demos: the same city, rebuilt so that it can be checked. Melbourne came
-next, then Melbourne's bayside, Osaka, Kyoto, Tokyo, Shibuya and Shinjuku, Paris,
-Hong Kong and Amsterdam. A city with more than one model is still one place on the
-globe (`groups` in `cities/index.json`): Tokyo's four maps are chosen from its subway
-map, Melbourne holds its centre and its bayside, and the Great Barrier Reef its five
-sites. It
-grows from there one city at a time. Each new city is a config file and a few
-checks, not a new codebase.
-
-![The title screen: the real sun rising over the real night side, filmed live in the browser](docs/images/title/opening.jpg)
-
-It opens like a film. The camera crosses the night side of the Earth as it is
-this minute, over the city lights that dawn is about to reach, and runs into the
-real sun as it clears the limb. The title lands on the sunrise, with its own
-synthesised score. Then the camera pulls back to the planet and the destinations
-come up where they are, with their local time and sun. It is drawn live in
-three.js from NASA's Blue Marble and Black Marble and the Yale catalogue of the
-stars. It draws what the device can afford: the tier is measured on the device
-(textures, MSAA, pixels, the steps through the air), a test frame catches a
-pipeline that draws nothing, and a device that cannot draw the Earth gets a
-still of it behind the same menu, never a black screen. The cities' model and
-game take the same tier. [docs/TITLE.md](docs/TITLE.md) covers the sequence, the
-references it draws on (Flight Simulator, Death Stranding, Hitman), the
-rendering and the tiers.
-
-While you are away, Mugi, a small plush cat, keeps travelling and sends postcards: a
-photograph from a real spot in a live city, in the light the real sun gave it at
-the minute it is dated, with a line of its diary. They are in each map's passport
-(the home page shows none), and a link to one starts the game on that spot.
-[docs/POSTCARDS.md](docs/POSTCARDS.md) covers the idea, the journey and the stills.
-
-| Sydney in the browser | Height sources | Testing a tower against the planning rule |
-|---|---|---|
-| ![](docs/images/sydney/screenshot-overview.jpg) | ![](docs/images/sydney/screenshot-provenance.jpg) | ![](docs/images/sydney/screenshot-tower.jpg) |
-| **The flyover as the city opens** | **Flying round a tower** | **In the game: surveying from a trig station** |
-| ![](docs/images/sydney/flyover.jpg) | ![](docs/images/sydney/orbit.jpg) | ![](docs/images/sydney/game-trig.jpg) |
-
-![Cycles render of Sydney from the Blender script](docs/images/sydney/overview.jpg)
-
-| Melbourne in the browser | Testing a tower against DDO10 | Cycles render of Melbourne |
-|---|---|---|
-| ![](docs/images/melbourne/screenshot-overview.jpg) | ![](docs/images/melbourne/screenshot-tower.jpg) | ![](docs/images/melbourne/overview.jpg) |
-
-| Hong Kong from the Peak | The Bank of China Tower and Central | A Symphony of Lights |
-|---|---|---|
-| ![](docs/images/hong-kong/overview.jpg) | ![](docs/images/hong-kong/towers.jpg) | ![](docs/images/hong-kong/night.jpg) |
-
-| Paris: every roof measured by LiDAR | The Île de la Cité | The Eiffel Tower sparkling at 23:01 |
-|---|---|---|
-| ![](docs/images/paris/overview.jpg) | ![](docs/images/paris/cite.jpg) | ![](docs/images/paris/eiffel-night.jpg) |
-
-| Amsterdam: every building from the 3DBAG | The canal ring | Gables of three centuries |
-|---|---|---|
-| ![](docs/images/amsterdam/overview.jpg) | ![](docs/images/amsterdam/canals.jpg) | ![](docs/images/amsterdam/gables.jpg) |
-
-| Shinjuku: the 男坂 of Suga Shrine | Shibuya: SHIBUYA SKY, 229 m up | Shinjuku: Kabukicho after dark |
-|---|---|---|
-| ![](docs/images/shibuya/cycles-suga-stairs.jpg) | ![](docs/images/shibuya/cycles-shibuya-sky.jpg) | ![](docs/images/shibuya/cycles-kabukicho.jpg) |
-
-Buildings get LOD2 roofs, facades, shopfronts, parapets and rooftops, inferred
-where the open data is silent and checked where it is not
-([docs/BUILDINGS.md](docs/BUILDINGS.md)):
-
-![Before and after: Ultimo's houses and flats, and towers in the CBD](docs/images/sydney/buildings-compare.jpg)
-
-## Watch it: a film of each city
-
-Choose a city on the title screen and its card plays a film of its highlights:
-about 36 seconds, one day from sunrise to the blue hour, cut like a trailer.
-It is filmed in the city's own model and game, with its crowds, ferries,
-traffic, sky and lights, under the real sun for each shot's date and hour,
-through the title screen's lens, with a score in the title's voice. The titles
-are set over the picture as type, from the facts in the model and its sources.
-Each film is directed as a shot list (`cities/<id>/film.json`) and rendered
-frame by frame by `tools/city_film.js`; [docs/FILMS.md](docs/FILMS.md) is the
-director's guide.
-
-There are twelve: Sydney, Melbourne, Melbourne Bayside, Hong Kong, Tokyo,
-Shibuya, Shinjuku, Osaka, Kyoto, Paris, Amsterdam and the Great Barrier Reef,
-whose five sites share one film shot in the reef viewer. Each has its contact
-sheet in [docs/images/films](docs/images/films).
-
-![Sydney's film, one frame from each shot](docs/images/films/sydney.jpg)
-
-## Play it: every city on foot
-
-The model is also a game.
-- **Sydney:** you walk the city centre as a surveyor and talk to the people who
-  know it. You climb the Opera House's Monumental Steps, ride the Cross Harbour
-  ferry and walk onto the Harbour Bridge with the traffic. Then you fly a
-  helicopter under its deck, and find a sunny spot in Martin Place on the
-  winter solstice. By the Opera Bar, silver gulls fight over a dropped box of
-  hot chips, and go up in a cloud when you walk into them.
-- **Melbourne:** you check the midwinter sun on Federation Square, take a
-  shuttle down the Yarra, and fly past the Arts Centre spire.
-- **Melbourne's bayside:** you walk out along St Kilda Pier and wait on the
-  viewing platform after sunset. The little penguins come ashore on the
-  breakwater and waddle to their burrows. You walk into Luna Park through
-  Mr Moon's mouth, and along the 96 Brighton bathing boxes.
-- **Hong Kong:** you cross the harbour on the Star Ferry, read surveyed and
-  LiDAR heights at the Clock Tower, fly between the towers, find the winter sun
-  in Statue Square and ride the Peak Tram to the lookout for the 8 pm light
-  show. Double-deck trams run along the north shore and stop for you.
-- **Shibuya and Shinjuku:** you cross the scramble, take the lift up Shibuya
-  Scramble Square and ride SHIBUYA SKY's escalator out onto the roof 229 m up,
-  climb the 52 steps of Suga Shrine's 男坂 and read the year's ema, walk
-  Sangenjaya's backstreets and see Kabukicho's arch after dark. Walking into a
-  neighbourhood puts its name up on a station sign.
-- **Paris:** a bouquiniste teaches you to read a roof, you take the Batobus to
-  Notre-Dame, find a chair in the winter sun in the Luxembourg, buy a baguette,
-  and fly a helicopter under the Eiffel Tower's first floor.
-- **Amsterdam:** a building historian sends you down the canals to find a step,
-  a neck and a bell gable, each dated by the year in the register. You hear the
-  Westertoren's carillon, take the free ferry across the IJ, and find the
-  December sun on the Rembrandtplein.
-
-The surveyors you play and the people who send you out are Microsoft Rocketbox
-avatars (MIT) with their own motion capture, cast city by city for who they are: a
-station attendant, a ferry captain, a takoyaki master. Passers-by are rigged,
-animated characters from open (CC0) packs, recoloured so that every one looks
-different. Everything the characters tell you is
-computed from the model as you play. The survey runs as three lines you can take
-in any order. Every city and every reef site lets you pick the time of day:
-- now;
-- sunrise, morning, noon, golden hour, sunset, blue hour or night, worked out
-  from the sun on the day;
-- any minute of the day, on a slider.
-
-Photo mode stops the world for a picture, under the sun for the time you choose.
-In free roam you can survey the view from Sydney's trig stations, or
-test your eye against the data by guessing building heights. In every city you
-can also go by road: drive your own car (arcade handling, a handbrake drift, a view
-from the driver's seat), raise your hand at the kerb for a taxi, or order a ride on
-your phone, as GTA VI's Ryde Me app does. The driver takes you along the real
-streets, keeping to the city's side of the road, and talks about what you pass.
-Choose a destination
-on the title screen and **Play**, or go to `#play-sydney`, `#play-melbourne`, `#play-melbourne-bayside` or
-`#play-hong-kong`, the Japanese cities' games at `#play-osaka`, `#play-kyoto`,
-`#play-tokyo`, `#play-shibuya`, `#play-shinjuku`, `#play-asakusa`, `#play-akihabara`, `#play-ueno`, `#play-ikebukuro`, `#play-jinbocho`, `#play-roppongi`, `#play-tsukishima`, `#play-odaiba` and `#play-shinagawa`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
-
-The helicopter, the ferries, the cars and the trees are modelled in Blender
-from code, with ambient occlusion baked in Cycles. Every city shares them, in
-its own liveries and its own mix of trees, and the Blender twin of each city
-places the helicopter and ferries where the game does. The ferries' wakes and
-the rotor wash are foam on the moving sea, the night sky has the real stars and
-the moon in its phase, and jacarandas flower in late spring. You get into the
-helicopter through the pilot's door, which swings open on its hinge and shuts
-behind you, and you can fly it from the cockpit (<kbd>V</kbd>).
-
-| The helicopter | The harbour ferry | In the Blender twin of Sydney |
-|---|---|---|
-| ![](docs/images/vehicles/helicopter.jpg) | ![](docs/images/vehicles/ferry.jpg) | ![](docs/images/sydney/harbour.jpg) |
-| **The river shuttle** | **The traffic** | **The trees** |
-| ![](docs/images/vehicles/ferry_river.jpg) | ![](docs/images/vehicles/cars.jpg) | ![](docs/images/trees/trees.jpg) |
-
-[docs/GAME.md](docs/GAME.md) covers:
-- the controls;
-- what we took from Flight Simulator, Sketchbook, GTA, Ship Simulator and the
-  Discovery Tour;
-- where this game does better than they do.
-
-[docs/FISHING.md](docs/FISHING.md): fishing from the shore, a pilot in Sydney Harbour and on
-Lake Wakatipu, with the harbour's and the lake's own fish, legal lengths and seasons. Its code
-and data load only when you walk up to a spot.
-
-[docs/ENGINES.md](docs/ENGINES.md) studies what to take from Unreal Engine and
-other engines: movement, cameras, crowds, interaction and gameplay. Three of
-its steps are built:
-- Unreal-style capsule collision against the exact building footprints;
-- a crowd that steers round each other and round you;
-- benches people sit on, choosing sun or shade by the season.
-
-| Under the Harbour Bridge | The Opera House's Monumental Steps | Talking to the Opera House guide |
-|---|---|---|
-| ![](docs/images/sydney/game-heli.jpg) | ![](docs/images/sydney/game-steps.jpg) | ![](docs/images/sydney/game-dialogue.jpg) |
-| **Melbourne: a planner explains DDO10 in City Square** | **The river shuttle on the Yarra** | **Past the Arts Centre spire** |
-| ![](docs/images/melbourne/game-dialogue.jpg) | ![](docs/images/melbourne/game-river.jpg) | ![](docs/images/melbourne/game-heli.jpg) |
-| **The bayside: the Brighton bathing boxes** | **Mr Moon and the Scenic Railway** | **Little penguins ashore at night** |
-| ![](docs/images/melbourne-bayside/game-boxes.jpg) | ![](docs/images/melbourne-bayside/game-luna-park.jpg) | ![](docs/images/melbourne-bayside/game-penguins.jpg) |
-| **Hong Kong: the Star Ferry at Tsim Sha Tsui** | **The Peak Tram** | **Trams on the north shore** |
-| ![](docs/images/hong-kong/game-ferry.jpg) | ![](docs/images/hong-kong/game-peak-tram.jpg) | ![](docs/images/hong-kong/game-tram.jpg) |
-| **Driving your car in Sydney** | **A taxi pulls in at the kerb** | **From the back seat** |
-| ![](docs/images/sydney/game-drive.jpg) | ![](docs/images/sydney/game-taxi.jpg) | ![](docs/images/sydney/game-backseat.jpg) |
-
-**Osaka on Foot** is the same game in another city: Dotonbori at dusk, the Tombori
-River Cruise, a kushikatsu chef in Shinsekai, a leopard-print obachan with candy in the
-Kuromon Market, a Tigers fan, two manzai comedians, the Aqua Liner to the castle keep,
-and a helicopter over Umeda. The people wear what Osakans wear (patterns and accessories
-are procedural, in `web/game/people.js`) and talk like them. Open **Play** on the Osaka
-card, or go to `#play-osaka`.
-
-| Dotonbori, with shop signs | Fumi, Kuromon Market | The cast |
-|---|---|---|
-| ![](docs/images/osaka/game-daisuke.jpg) | ![](docs/images/osaka/game-fumi.jpg) | ![](docs/images/osaka/people.jpg) |
-
-**Tokyo is a set of maps**, as games draw it: on the globe it is one destination whose card is a
-subway map of its districts (Marunouchi & Ginza, Shibuya, Shinjuku, Akihabara, Asakusa and the
-Skytree, Ueno, Ikebukuro, Jinbocho, Roppongi, Tsukishima, Odaiba and Shinagawa). Pick a station and go in there.
-See [Tokyo as maps](docs/cities/tokyo-maps.md).
-
-**Tokyo Pilgrimage** walks Shibuya and Shinjuku, two maps of Tokyo, ten years after a film and a
-game drew them: the stairs of *Your Name* at Suga Shrine and Kabukicho's arch in Shinjuku, SHIBUYA
-SKY's roof (take the lift, ride the escalator out) and Sangenjaya's backstreets in Shibuya. Walking
-into a neighbourhood puts its name up on a station sign; <kbd>E</kbd> reads an ema or a vending
-machine; you overhear the pilgrims on the stairs. Go to `#play-shibuya` or `#play-shinjuku`.
-
-| The stairs from the lane at their foot | Reading an ema, under Yotsuya-sanchome's station sign | Riding up SHIBUYA SKY's escalator |
-|---|---|---|
-| ![](docs/images/shibuya/suga-stairs.jpg) | ![](docs/images/shibuya/game-ema.jpg) | ![](docs/images/shibuya/sky-escalator.jpg) |
-
-## Walk it: Lake Pukaki and Aoraki / Mount Cook
-
-An alpine site in the same viewer (`web/reef/`, site kind `alpine`): 38 × 84 km of the Mackenzie District, from the
-south shore of Lake Pukaki up the Tasman Valley to Aoraki / Mount Cook and the Main Divide. It is rebuilt from LINZ's
-1 m LiDAR terrain and 0.3 m aerial photos, a 2025–26 summer satellite mosaic, the lake's glacial-flour colour measured
-from Sentinel-2 and its Secchi depth, and OpenStreetMap's lakes, glaciers and places. One physical sky gives the blue
-distance of the ranges, twilight and the dark-sky reserve's Milky Way. The mountains cast real shadows, the lake mirrors
-them, and tussock and Russell lupins grow round you. Walk from Peter's Lookout, fly round Aoraki from Glentanner, walk
-the Hooker Valley, or wait for dark on the south shore. Choose **Mackenzie** on the title screen, or
-`reef/index.html?city=lake-pukaki`. [docs/cities/lake-pukaki.md](docs/cities/lake-pukaki.md)
-
-| Peter's Lookout, a long lens | The dark-sky reserve |
-|---|---|
-| ![](docs/images/lake-pukaki/hero.jpg) | ![](docs/images/lake-pukaki/night.jpg) |
-
-## Dive it: the Great Barrier Reef
-
-Five Queensland reef sites are marine worlds of their own (`web/reef/`, three.js r186 with WebGPU and a WebGL2
-fallback): the Whitsunday Islands with Whitehaven Beach and Hill Inlet, Heart Reef and the Reefworld pontoon on Hardy
-Reef, Green Island off Cairns, Heron Island and Lady Elliot Island. Each is rebuilt from survey bathymetry, a
-Sentinel-2 composite inverted through the water column, mapped places and Maritime Safety Queensland's tide, under
-the real sun and moon. Walk the beach, wade, snorkel, free-dive or scuba dive among corals, fish, turtles and
-rays; ride the boats, fly the helicopter or the seaplane; talk to a ranger, a skipper, a guide and a dive instructor,
-whose every line is computed from the model or cited. Choose **Great Barrier Reef** on the title screen, or
-`reef/index.html?city=whitsundays`.
-
-- The water: waves, Cox-Munk sun and moon glitter, caustics, refraction, Snell's window, a light field that
-  differs by direction under water, the official tide, twilight and moonlight with an adapting eye.
-  [docs/cities/whitsundays.md](docs/cities/whitsundays.md)
-- The game: quests, a journal, the map and travel between the sites. [docs/GAME_REEF.md](docs/GAME_REEF.md)
-- The handoff for whoever works on it next: [docs/HANDOFF_WHITSUNDAYS.md](docs/HANDOFF_WHITSUNDAYS.md)
-
-| Hill Inlet as the tide falls | On the reef | Talking to the ranger |
-|---|---|---|
-| ![](docs/images/reef/water-hill-inlet.jpg) | ![](docs/images/reef/life-reef.jpg) | ![](docs/images/reef/game-dialogue.jpg) |
-| **The Reefworld pontoon, Hardy Reef** | **A moonlit beach** | **Green Island from the air** |
-| ![](docs/images/reef/site-hardy-reef-pontoon.jpg) | ![](docs/images/reef/water-moon.jpg) | ![](docs/images/reef/site-green-island-aerial.jpg) |
-
-## Cities
-
-| City | Status | What's in it |
-|---|---|---|
-| **Sydney**, Australia | **Live** | 7,962 buildings (4,190 with pitched roofs) and 6,096 trees across 3.0 × 4.8 km. The Opera House stands on the shell ridges OpenStreetMap maps for its roof, and the Harbour Bridge and Sydney Tower are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
-| **Melbourne**, Australia | **Live** | 13,050 buildings (4,530 with pitched roofs) and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. [City notes](docs/cities/melbourne.md) |
-| **Melbourne Bayside**, Australia (a district of Melbourne) | **Live** | Port Phillip's shore from St Kilda to Brighton: 9,335 buildings (6,561 with pitched roofs) and 4,524 trees across 3.2 × 7.7 km. The terrain agrees with 12 surveyed spot heights to 0.21 m at the median. The 96 Brighton bathing boxes and Luna Park's Scenic Railway and Mr Moon are kit-built. In the game, little penguins come ashore on the St Kilda breakwater after the real sunset. [City notes](docs/cities/melbourne-bayside.md) |
-| **Osaka**, Japan | **Live** | 73,267 buildings (32,955 solids with pitched roofs) across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 89% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep (each tier, its eaves and its gables measured from PLATEAU's own 3D model of it), Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |
-| **Kyoto**, Japan | **Live** | 65,738 buildings across 3.0 × 5.0 km, 93% of the footprint area with a height measured from the air by Project PLATEAU, and roofs measured from its LOD2 models (45,866 pitched). GSI laser terrain and aerial photographs. A game with Kyoto people, some in town from Tokyo. [Case study](docs/cities/kyoto.md) |
-| **Tokyo**, Japan | **Live** | 15,395 buildings across 3.2 × 4.8 km, from Marunouchi to Tokyo Tower. 76% of the footprint area stands at a Project PLATEAU surveyed height (median 2.8% off OpenStreetMap on 135 towers). GSI 5 m laser terrain, a parametric Tokyo Tower, and a game with Tokyo's people. [Case study](docs/cities/tokyo.md) |
-| **Shibuya**, Japan (a map of Tokyo) | **Live** | 47,787 buildings across 4.5 × 4.0 km, from Sangenjaya to Harajuku and Meiji Jingu. 87% of the footprint area stands at a Project PLATEAU surveyed height, on GSI's 5 m laser terrain. SHIBUYA SKY's roof is walkable: take the lift, ride the escalator out, stand at SKY EDGE. The scramble and Hachiko, Center Gai and Sangenjaya's backstreets: the real places a game drew. [Case study](docs/cities/shibuya.md) |
-| **Shinjuku**, Japan (a map of Tokyo) | **Live** | 26,697 buildings across 4.5 × 3.1 km, from Nishi-Shinjuku's towers to Yotsuya. 85% of the footprint area at a PLATEAU surveyed height. Suga Shrine and the 52 steps of its 男坂, the stairs of *Your Name*, are set into the slope, with this year's ema; Kabukicho's arch, the east exit's screens, 2-chome and Shinjuku Gyoen. [Case study](docs/cities/shinjuku.md) |
-| **Asakusa**, Japan (a map of Tokyo) | **Live** | Asakusa and the Sumida across 2.6 × 1.6 km at PLATEAU-surveyed heights. Senso-ji built to its published sizes: the Kaminarimon and its 700 kg lantern, Nakamise, the Hozomon, the 53 m pagoda and the main hall; Tokyo Skytree, 634 m, lit Iki and Miyabi on alternate nights, with a lift to the Tembo Deck; the Asahi flame; the Sumida water bus. [Case study](docs/cities/asakusa.md) |
-| **Akihabara**, Japan (a map of Tokyo) | **Live** | Electric Town across 1.8 × 1.5 km at PLATEAU-surveyed heights: Chuo-dori's blade signs, boards and wall prints, lit after dark; Kanda Myojin's gate and Nikolai-do's dome up the hill. [Case study](docs/cities/akihabara.md) |
-| **Ueno**, Japan (a map of Tokyo) | **Live** | Ueno Park and Shinobazu Pond across 1.9 × 1.8 km at PLATEAU-surveyed heights: the pond's water at its own level with the lotus beds, Bentendo on its island, Toshogu's gilt hall and lantern-lined approach, Kan'ei-ji's pagoda, Saigo's statue, and Ameyoko's signs and gate under the tracks. [Case study](docs/cities/ueno.md) |
-| **Ikebukuro**, Japan (a map of Tokyo) | **Live** | Sunshine 60 and Ikebukuro's two sides across 1.8 × 1.6 km at PLATEAU-surveyed heights: Sunshine 60-dori's and Otome Road's signs, the department stores' names on their roofs, and GLOBAL RING over West Gate Park, lit after dark. [Case study](docs/cities/ikebukuro.md) |
-| **Jinbocho**, Japan (a map of Tokyo) | **Live** | The book town and Kanda across 1.8 × 1.5 km: the second-hand bookshops' signs and their carts of cheap books, the Catholic Kanda Church's basilica, and Nikolai-do over Ochanomizu. [Case study](docs/cities/jinbocho.md) |
-| **Roppongi**, Japan (a map of Tokyo) | **Live** | Roppongi Hills to Tokyo Midtown across 1.8 × 1.6 km: Maman the spider, the Mohri Garden's pond, the National Art Center's glass wave, Keyakizaka's lit zelkovas and the crossing's bars. [Case study](docs/cities/roppongi.md) |
-| **Tsukishima**, Japan (a map of Tokyo) | **Live** | The islands at the Sumida's mouth across 1.8 × 1.6 km: Monja Street's signs and gate, Tsukuda's moat, bridge and shrine, the river's bridges as decks you drive on, and Kachidoki Bridge's arches and control houses. [Case study](docs/cities/tsukishima.md) |
-| **Odaiba**, Japan (a map of Tokyo) | **Live** | The islands in the bay across 2.2 × 2.0 km: the Rainbow Bridge's towers, cables and decks, lit after dark and driven on in the game, Fuji TV's titanium sphere, the Statue of Liberty and the Yurikamome's guideway. [Case study](docs/cities/odaiba.md) |
-| **Shinagawa**, Japan (a map of Tokyo) | **Live** | Shinagawa and Takanawa across 1.8 × 1.8 km: Takanawa Gateway Station's folded roof, and the old Tokaido's first post town with its shops and lanterns. [Case study](docs/cities/shinagawa.md) |
-| **Hong Kong**, China | **Live** | 7,513 buildings (842 solids with pitched roofs) across 4.0 × 4.8 km, from Central and Wan Chai to Tsim Sha Tsui and the Peak. 86% of the footprint area carries the top level the Lands Department surveyed, and 12% more is measured from the 2020 LiDAR; against that LiDAR the surveyed roofs agree to 1.2 m at the median, and against 40 published towers to 5.0%. The terrain is the same LiDAR, checked against 101 levelling bench marks (0.6 m). The Bank of China Tower, HSBC, Two IFC, the ICC and Central Plaza are built to their published geometry. [Case study](docs/cities/hong-kong.md) |
-| **Paris**, France | **Live** | 29,087 buildings across 5.6 × 4.0 km, from the Eiffel Tower to the Île Saint-Louis. 99.4% of the footprint area stands at a height measured by IGN's airborne LiDAR (March 2023); three published towers agree to 2.6% at the median. Each roof is read from the laser's profile over IGN's surveyed eaves: half the pitched roofs are mansards or gambrels, with their dormers and chimney stacks. IGN LiDAR terrain (0.12 m from RGE ALTI at the median) under IGN aerial photographs; the Eiffel Tower, 27 Seine bridges and Notre-Dame's spire; *Paris on Foot*, with the Batobus. [Case study](docs/cities/paris.md) |
-| **Amsterdam**, Netherlands | **Live** | 35,479 buildings across 4.0 × 4.05 km, from the IJ to Museumplein. 95.8% of the footprint area takes its height and roof from the 3DBAG, built from the national register and the AHN's airborne laser (83% of it flown in 2023); eleven published heights agree to 8.7% at the median. 29,915 measured roofs, 92% of the pitched ones gabled, and 8,395 canal houses whose 4,303 gables are typed by the register's year of construction. AHN 0.5 m terrain under PDOK aerial photographs; five church towers, 225 bridges and 1,231 houseboats; *Amsterdam on Foot*, with the IJ ferry. [Case study](docs/cities/amsterdam.md) |
-| **Whitsundays**, Australia | **Live** (reef) | 33 × 33 km of the Whitsunday Islands and the inner Great Barrier Reef: AusSeabed 30 m survey bathymetry, a 28-scene Sentinel-2 composite inverted through the water column, 33 mapped places, Maritime Safety Queensland's Shute Harbour tide (fitted to 2.4 cm RMS). [Case study](docs/cities/whitsundays.md) |
-| **Hardy Reef**, Australia | **Live** (reef) | Heart Reef, the Reefworld pontoon on the channel wall, Hook, Line and Bait reefs; the tide from the outer-reef gauge at Bugatti Reef. [Notes](docs/cities/hardy-reef.md) |
-| **Green Island**, Australia | **Live** (reef) | The coral cay off Cairns with Arlington Reef and Michaelmas Cay; the jetty on its mapped line. [Notes](docs/cities/green-island.md) |
-| **Heron Island**, Australia | **Live** (reef) | The cay on the Tropic of Capricorn, its reef flat drying at low tide, and Wistari Reef. [Notes](docs/cities/heron-island.md) |
-| **Lady Elliot Island**, Australia | **Live** (reef) | The southernmost coral cay of the reef. [Notes](docs/cities/lady-elliot-island.md) |
-| New York, United States | Planned | NYC Open Data footprints with LiDAR roof heights; USGS 3DEP 1 m DEM |
-| London, United Kingdom | Planned | Environment Agency 1 m LiDAR DTM; open imagery still to find |
-| Singapore | Planned | OSM heights; open bare-earth DEM and imagery still to find |
-
-The planned list is a roadmap. None of those data sources has been verified
-for this project yet. The order favours cities whose open data includes
-measured heights (LiDAR or 3D cadastre), because heights are the weak point
-of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.md#52-heights-where-they-come-from-matters-more-than-how-many-there-are)).
-
-## What every city gets
-
-- **Buildings that look like their city.**
-  - LOD2 roofs come from a straight skeleton, with eaves. The shape is mapped;
-    measured from a LOD2 model where one is open (Kyoto's 79,889 PLATEAU
-    buildings); ruled; or drawn from the roof shapes mapped across the metro
-    area. The rules are scored against the mapped and the measured roofs.
-  - Facades have floors, windows, curtain walls, shopfronts and awnings, glass
-    with a room behind it, and lights by the local hour.
-  - Flat roofs get parapets and rooftop plant.
-  - Each region has its own rules (Sydney, Japan). See [docs/BUILDINGS.md](docs/BUILDINGS.md).
-- **Buildings with provenance.** Each height has a source:
-  - verified from a cited source;
-  - measured from the air: for Project PLATEAU (the Japanese cities), by
-    IGN's LiDAR HD (Paris), or by the AHN for the 3DBAG (Amsterdam);
-  - surveyed by the city's mapping agency, or measured by airborne LiDAR where
-    the survey has none (Hong Kong);
-  - published;
-  - surveyed in OpenStreetMap;
-  - a floor count times a calibrated storey height;
-  - a bias-corrected ML height blended with its neighbours;
-  - an estimate from nearby known heights;
-  - or, where nothing nearby says anything about it, a typical height for its
-    kind (Amsterdam's houseboats).
-
-  Every estimator is cross-validated, and missing heights are corrected for not
-  being missing at random. The viewer can colour buildings by source.
-- **Bare-earth terrain and aerial imagery** from the best open source for the
-  place, checked against an independent elevation source where one exists.
-  Where no imagery is openly licensed, the ground is drawn from the map data
-  instead of borrowed.
-- **Night as an aerial photograph shows it.** Street lights along every mapped
-  road in the city's own mix of sodium and LED, the light they put on the streets
-  and the lower floors, traffic in white and red, office towers lit by the floor
-  with their crowns lit, red lights on the tallest tops, a deep blue sky with the
-  city's glow on the horizon, and a night grade. See [docs/NIGHT.md](docs/NIGHT.md). The big LED
-  screens light the street, the crowd and the facades in the colour they are playing, a wet street
-  mirrors them, and the grade follows the hour. See [docs/LOOK.md](docs/LOOK.md).
-
-  | Tokyo at 21:00 | Sydney: the bridge, its traffic, the CBD in the harbour |
-  |---|---|
-  | ![](docs/images/night/tokyo-night.jpg) | ![](docs/images/night/sydney-bridge.jpg) |
-- **The real sun.** The NOAA solar position (about 0.01°) is computed in the
-  city's own time zone, with daylight saving taken from the platform's time
-  zone database. The viewer adds live shadow maps, a sky model and lit windows
-  after dark.
-- **Shadow analysis** by ray casting through a 2 m surface model:
-  - sun now on each public place;
-  - a sun-hours map for any day;
-  - a "test a new tower" check, where the city has a sun-access rule.
-- **Uncertainty.** A Monte Carlo over the measured height errors gives a 90%
-  range for each place's sun. It also names the buildings that shade each
-  place, and ranks the heights worth verifying next.
-- **Water that moves with the wind.** Each city's sea or river has FFT waves
-  from its own wind, fetch and depth, after Daniel Greenheck's Tidewater. The
-  water reflects the city and shows the bottom where it is shallow. Foam
-  follows the kind of shore: a lap against seawalls, splash off rock and swash
-  on beaches. The shoreline and the modelled bottom come from the city's own
-  map data.
-- **Landmarks and buildings at their real dimensions.** Landmarks are built in
-  code from published dimensions. Small parts like railings, lamps, mullions,
-  roof tiles and deck markings make them read as built. Every other building
-  gets a curtain-wall, ribbon or punched-window facade from its class and
-  height, with a parapet and its mapped storeys.
-- **A guided tour** written in the city's config, with numbers filled in from
-  the model. The camera flies from stop to stop while the sun eases to the next
-  stop's hour; a segmented bar under the caption shows how far through it is,
-  and after the last stop it ends on a card (explore, play the city, watch
-  again) while the camera turns slowly, rather than starting over.
-- **A flyover.** When a city opens, the camera comes down from above the whole
-  model onto the first tour stop. It is shorter on later visits, and any key or
-  click skips it. Click a landmark's name to fly round it, or turn on **Orbit** to
-  circle whatever you are looking at.
-- **A Blender twin.** `blender/build_scene.py` rebuilds the same scene
-  headless with `bpy` from the same files, and renders it in Cycles.
+The map is Sangenjaya to Shibuya, Harajuku and Yoyogi Park: some 48,000 buildings at
+PLATEAU-surveyed heights, the scramble and Hachiko modelled finely as a hero level, SHIBUYA SKY's
+roof, Center Gai, the trains, the traffic and a crowd, by day, at dusk, at night and in the rain.
+It is three.js in one page, with no build step.
 
 ## Run it
 
-The built scenes are in the repository, so the viewer runs straight away:
+The built map is in the repository:
 
 ```bash
-cd web && python -m http.server 8000
-# open http://localhost:8000 for the title screen, #sydney (or #melbourne, #melbourne-bayside, #osaka, #kyoto, #tokyo, #shibuya, #shinjuku, #hong-kong) for a 3D model,
-# #play-sydney (and so on) for a game,
-# reef/index.html?city=whitsundays (or hardy-reef, green-island, heron-island, lady-elliot-island) for a reef site
+python3 -m http.server 8800 --directory web
+# http://localhost:8800/            the story
+# http://localhost:8800/?walk=1     the same map without the story: walk, drive, fly, ride the trains
 ```
 
-A reef site is rebuilt with the marine pipeline (raw downloads are a few GB):
+It needs WebGL 2. A phone loads its own district of the map (`web/data/shibuya/d/`).
+
+## Check it
 
 ```bash
-python pipeline/fetch_gbr_bathy.py whitsundays              # AusSeabed GBR 30 m, one grid streamed and cached
-python pipeline/fetch_sentinel.py --city whitsundays        # Sentinel-2 L2A passes, the darkest in the near infrared
-python pipeline/build_marine.py --city whitsundays          # terrain, inverted floor colour, habitat, optics (QAA)
-python pipeline/fetch_tide.py --city whitsundays            # MSQ predictions -> harmonic constituents
-python pipeline/check_marine.py --city whitsundays          # places, pontoon and spawn against the built terrain
+pip install -r requirements.txt     # the static checks need numpy, shapely, pyproj and pillow
+tools/check.sh static               # the checks that open no browser
+tools/check.sh story                # the first episode played through in Chromium (needs Playwright)
+tools/check.sh                      # what this branch changed against origin/main
 ```
 
-To rebuild a city from the raw data (about 2 minutes for Sydney), run:
+[docs/CHECKS.md](docs/CHECKS.md) lists every check and what runs on main after landing. For a
+visual change, take stills and look at them: `tools/game_shot.js`, `tools/story_play.js`.
+
+## Rebuild the map
+
+Only needed to change the data. The raw downloads go to `data/raw/shibuya/`, the outputs to
+`web/data/shibuya/`.
 
 ```bash
-pip install -r requirements.txt
-
 # downloads (Overture over anonymous S3; unset injected AWS credentials if your shell has any)
 env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN \
-  python pipeline/fetch_overture.py --city sydney
-python pipeline/fetch_tiles.py --city sydney         # imagery, terrain, Terrarium tiles
-python pipeline/fetch_world.py                        # Natural Earth land and lakes (once)
-python pipeline/fetch_earth.py                        # the title screen's Earth and sky (once; NASA, ESO, Yale)
+  python pipeline/fetch_overture.py --city shibuya
+python pipeline/fetch_tiles.py --city shibuya        # GSI aerial photographs and terrain
+python pipeline/fetch_plateau.py --city shibuya      # PLATEAU building heights
 
-# build
-python pipeline/build_scene.py --city sydney          # -> web/data/sydney
-python pipeline/landmarks.py --city sydney            # -> web/data/sydney/landmarks.json
-python analysis/heights.py --city sydney              # published heights vs model
-python pipeline/build_scene.py --city sydney          # again, to apply reference corrections
-python pipeline/game_data.py --city sydney            # paths, water, wharves, ferry routes for the game
-python pipeline/open_sea.py --city sydney             # the open water past the frame (Overture, 40 km around)
-python pipeline/far_land.py --city sydney             # the land past the frame: relief, land cover, night lights (40 km around)
-python pipeline/road_rules.py sydney                  # one-way streets, banned turns, traffic signals and crossings into a built game.json (after fetch_overture --only segment infrastructure)
-python pipeline/road_lanes.py sydney                  # OSM lane arrows and counts by way id into a built game.json (after fetch_overture --only segment)
-python pipeline/fetch_people.py                       # the game's crowd (once; Quaternius CC0 packs)
-python pipeline/fetch_rocketbox.py                    # the surveyors and the NPCs (once; Microsoft Rocketbox, MIT)
-python blender/build_people.py --npcs                 # every NPC the cities' city.json name (pip install bpy==5.2.3)
-python pipeline/npc_looks.py                          # their looks into web/data/<city>/game.json
+python pipeline/build_scene.py --city shibuya        # buildings, terrain, ground, scene
+python pipeline/landmarks.py --city shibuya          # the landmarks, from cities/shibuya/city.py
+python pipeline/game_data.py --city shibuya          # paths, roads, the game's data
+python pipeline/game_text.py shibuya                 # the game's and the story's text, from city.json alone
+python pipeline/pack.py                              # the .bin packs, vis.bin, skyvis.webp and the phone's district
+python blender/build_hero.py --city shibuya          # the hero level (pip install bpy==5.2.3)
 ```
 
-A city whose mapping agency publishes surveyed building heights (Hong Kong)
-fetches them before the build, and can check every roof against a LiDAR
-surface model after it:
-
-```bash
-python pipeline/fetch_survey.py --city hong-kong      # surveyed building blocks (city.json survey)
-python analysis/lidar_heights.py --city hong-kong     # every roof against the LiDAR; what OSM alone would give
-```
-
-`heights.py` reads the built scene, and `build_scene.py` uses its name matches
-to correct towers that the open data gets grossly wrong. On a fresh checkout,
-that is why the build runs twice. The scores always use the uncorrected
-open-data heights.
-
-Checks and analyses all take `--city` and write to `cities/<city>/analysis/`:
-
-```bash
-python analysis/data_quality.py --city sydney    # ML heights vs floor counts; Terrarium vs bare earth
-python analysis/dem_check.py --city sydney       # terrain vs an independent elevation service
-python analysis/radar_check.py --city sydney     # building mass vs the 2000 SRTM radar surface
-node analysis/sun_access.js --city sydney        # sun on each place, 21st of every month
-node analysis/error_budget.js --city sydney      # numerical error and model-edge effects
-node analysis/uncertainty.js --city sydney 40    # Monte Carlo ranges, shade attribution, fix list
-node analysis/time_basis.js --city sydney        # standard vs clock time readings of a rule
-```
-
-To render in Blender (Python 3.13):
-
-```bash
-pip install bpy==5.2.3
-python blender/build_scene.py --city sydney --samples 48   # views from city.json -> docs/images/sydney
-python blender/build_vehicles.py --render                 # the shared helicopter, ferries and cars -> web/assets/vehicles
-python blender/build_trees.py --render                    # the shared trees -> web/assets/trees
-```
+The shared models are built by `blender/build_vehicles.py`, `build_trees.py`, `build_trains.py`,
+`build_railstock.py` and `build_people.py`. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes
+the pipeline and the renderer, [docs/HERO.md](docs/HERO.md) the hero level,
+[docs/cities/shibuya.md](docs/cities/shibuya.md) the map and its sources.
 
 ## Online, and its version
 
-Every push to main publishes `web/` to GitHub Pages
-(<https://mira190.github.io/open-earth-3d/>) through `.github/workflows/pages.yml`. Each deploy
-gets a version: the major.minor in `VERSION` plus the workflow's run number (`0.1.42`). The
-workflow writes it with the commit and the build time to `web/version.json`, tags the commit
-`v0.1.42`, and the title screen shows it at the bottom right and under About. A local checkout
-has no `version.json` and says "Local build". Raise `VERSION` for a new major or minor release.
+Every push to main publishes `web/` to GitHub Pages through `.github/workflows/pages.yml`. Each
+deploy gets a version: the major.minor in `VERSION` plus the workflow's run number (`0.1.42`),
+written with the commit and the build time to `web/version.json` and tagged. `vercel.json` deploys
+the same folder on Vercel from main.
 
-The same `web/` can also go to Vercel by importing the GitHub repository there: `vercel.json` sets
-everything: no framework, `web` as the output, and a build that writes `version.json` as `0.1.vercel`
-and drops the recorded flyovers under `web/data`, which no page plays since `web/plate.js` replaced
-them. The city films in `web/films` stay; each is `+faststart`, so it streams from its first bytes.
-Only pushes to main deploy, not the working branches. The Hobby plan's 100 MB limit on CLI uploads is
-why it is a GitHub import and not `vercel deploy`. For a
-Claude artifact, `python tools/artifact_bundle.py <dir>` stages a copy that fits its cap on files.
+## The world before
 
-## Visitors and service levels
+Until November 2026 this repository was Open Earth 3D: a globe, some twenty-five city maps, reef
+and alpine sites, films, fishing, postcards and a city model viewer. All of it is kept at the tag
+`archive/world-2026-11`:
 
-`web/telemetry.js` counts visitors, views, play time, load times, frame rate, errors and lost WebGL
-contexts, and sends them to PostHog (EU Cloud). It uses no cookies and honours Do Not Track and Global
-Privacy Control. `tools/slo_report.py` turns the log into a visitor and SLO report.
-[docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) defines each event and SLO target and shows how to send
-the events to PostHog or to a self-hosted collector.
-
-## Add a city
-
-1. Create `cities/<id>/city.json`. It holds:
-   - a bounding box and origin;
-   - imagery and terrain services;
-   - water classes and storey heights;
-   - public places, labels, a tour and Blender views.
-
-   The schema is in [docs/ADDING_A_CITY.md](docs/ADDING_A_CITY.md).
-2. Optionally add `cities/<id>/city.py` for landmark geometry and per-building
-   fixes, and `reference_heights.csv` and `verified_heights.csv` for checks.
-3. Run the pipeline and the checks, and read what they say about the data.
-4. Mark the city `live` in `cities/index.json`.
-
-The title screen picks it up from `web/data/cities.json`.
-
-## How it fits together
-
-```
-cities/<id>/city.json ─┐
-Overture Maps ─────────┼─► pipeline/ ─► web/data/<id>/ ─┬─► web/  (title screen, 3D model viewer, game; world.js, sun.js)
-imagery + terrain ─────┘                                ├─► analysis/  (Python and Node checks)
-                                                        └─► blender/   (bpy + Cycles)
+```bash
+git checkout archive/world-2026-11
 ```
 
-The same files feed the browser, the analyses and Blender, so what you see is
-what was measured. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers:
-- the local frame;
-- the height ladder;
-- the file formats;
-- the sun and shadow code.
-
-| Path | What |
-|---|---|
-| `cities/` | One folder per city: `city.json`, optional `city.py` hooks, reference tables, analysis outputs; `index.json` lists live and planned cities |
-| `pipeline/` | Downloads (Overture, imagery, terrain, Natural Earth), scene build, roofs (`roofs.py`) and building typology (`typology.py`), landmark meshes |
-| `web/` | `index.html` (title screen, model and game views), `title.js` (the title sequence and the menu), `earth.js` (the Earth, its air and the sky, and the lens), `score.js` (the title's sound), `quality.js` (the picture's tier, measured on the device), `world.js` (the city scene the model and the game share), `water.js` (waves, reflections, shores, wakes), `buildings.js` (walls, roofs, facades and rooftops), `trees.js` (the shared trees), `flyover.js` (the loading flyover), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/`, and the people, vehicles and trees every city shares in `web/assets/` |
-| `web/reef/` | The marine worlds: `main.js`, `env.js` (light, sky, water column), `ocean.js`, `ripples.js`, `world.js`, `shore.js`, `post.js`, `tide.js`, `life.js` + `life/`, `boats.js` + `boats/`, `player.js` and the people, `game.js` + `game/`; three.js r186 in `web/vendor/three` |
-| `analysis/` | Height accuracy, data quality, terrain and radar checks, sun access, error budget, uncertainty, time basis |
-| `blender/` | Headless Blender rebuild and Cycles renders (`buildings.py` builds the buildings; `build_vehicles.py` models the game's helicopter, ferries and cars; `build_trees.py` grows the trees) |
-| `tools/` | `check.sh` (the checks to pass before landing on main, picked from what a branch changed), `city_shot.js` (screenshots of the model viewer from listed views), `game_shot.js` (stills of the game, on foot or from the air over its title screen), `game_check.js` (plays a city's game headless: walk, talk, fly, ferries, a taxi and a ride), `clip_check.js` (counts what passes through what in the street), `ride_check.js` (rides over and over, timed), `ferry_check.js` (the ferries over fifteen minutes), `tour_check.js` (plays a city's guided tour in the model viewer: every stop, the end card, no runaway highlight or flat frame), `flyover.js` (records a city's loading flyover), `reef_shot.js` and `page_shot.js` for the reef sites, `title_film.js` (films the title screen's opening, frame by frame, with its score), `title_check.js` (the title on a tablet, a phone and a desktop, and with WebGL faults injected) |
-| `docs/` | Architecture, buildings, the game, adding a city, per-city case studies, images |
+Some of the docs still describe that wider world where the code they explain is shared; each says
+so at its top.
 
 ## Data and licences
 
-Each city lists its sources in `city.json`, and the viewer shows them in its
-Data tab. The shared sources are:
+- **Buildings, land use, water, roads, trees:** Overture Maps Foundation, which is OpenStreetMap
+  contributors (ODbL) and Microsoft ML Buildings (ODbL). A derived database must stay under ODbL.
+- **Building heights and massing:** MLIT Project PLATEAU, Tokyo 23 wards LOD2 building models
+  (CC BY 4.0; 出典：国土交通省 PLATEAU), read as the vector tiles published by indigo-lab (MIT).
+- **Terrain:** Geospatial Information Authority of Japan (GSI), Fundamental Geospatial Data DEM5A,
+  5 m airborne laser survey, bare earth; the 10 m DEM where 5A is absent (GSI terms of use).
+- **Aerial photographs:** GSI seamless photographs (GSI terms of use, source attribution).
+- **Landmarks:** modelled in code from published dimensions and checked against photographs:
+  SHIBUYA SKY (229 m), the scramble's screens at their operators' published sizes, Yoyogi National
+  Gymnasium from OpenStreetMap and Tange's drawings. Signs, screens and shop fronts are indicative.
+- **Reference photographs** (for checking models, never as textures): Wikimedia Commons
+  (`tools/commons.py`) and Openverse (`tools/photos.py`); each photograph's author, licence and
+  page are in [docs/cities/shibuya.md](docs/cities/shibuya.md).
+- **Woods and park canopy:** Meta and World Resources Institute High Resolution Canopy Height Maps
+  (Tolan et al. 2024, CC BY 4.0), through `pipeline/woods.py`.
+- **Land past the map's frame:** Copernicus DEM GLO-30 (© DLR e.V. 2010-2014 and © Airbus Defence
+  and Space GmbH 2014-2018, provided under COPERNICUS by the European Union and ESA); ESA
+  WorldCover 10 m 2021 v200 (CC BY 4.0); the annual VIIRS night lights of 2024 (Elvidge et al.
+  2021; Earth Observation Group, Colorado School of Mines; CC BY 4.0), through
+  `pipeline/far_land.py`. Open water past the frame: Overture's base water and land themes (ODbL),
+  through `pipeline/open_sea.py`.
+- **People:** Microsoft Rocketbox avatars and animations (MIT, © 2020 Microsoft;
+  `web/assets/people/LICENSE-Rocketbox.txt`) for the people you play and meet; Quaternius, Ultimate
+  Modular Men and Women (CC0 1.0), for the crowd.
+- **Vehicles, trains and trees:** modelled from code in this repository (`blender/build_vehicles.py`,
+  `build_trains.py`, `build_railstock.py`, `build_trees.py`), with no third-party assets.
+- **Surfaces:** Poly Haven's CC0 textures for the landmarks' tiled PBR materials
+  (`pipeline/fetch_pbr.py`).
+- **Water:** the wave spectrum and FFT are ported from Tidewater by Daniel Greenheck
+  (github.com/dgreenheck/tidewater, MIT, © 2026 DRG Software Solutions LLC); its licence notice is
+  at the top of `web/water.js`.
+- **3D library:** three.js r186 (MIT) and three-mesh-bvh (MIT), vendored in `web/vendor`.
+- **Fonts:** Google Fonts under the SIL Open Font License, for the interface and for the lettering
+  on signs, plaques and ema (listed in `cities/shibuya/city.json` `sources.fonts`).
 
-- **Buildings, land use, water, trees, piers, addresses:** Overture Maps
-  Foundation. These are OpenStreetMap contributors (ODbL) and Microsoft ML
-  Buildings (ODbL). A derived database must stay under ODbL.
-- **The title screen's Earth:** NASA Earth Observatory's Blue Marble Next
-  Generation (by month), Black Marble 2016 and cloud composite, and GEBCO_08
-  elevation via Blue Marble (public domain); Natural Earth land and lakes
-  (public domain).
-- **The title screen's sky:** the Milky Way panorama by ESO/S. Brunier (CC BY
-  4.0); the Yale Bright Star Catalogue, 5th revised edition.
-- **Fonts:** Google Fonts (Zalando Sans Expanded, Inter Tight and JetBrains Mono
-  for the interface, Shippori Mincho and Noto Serif TC for the cities' own names;
-  Bricolage Grotesque, Public Sans and Noto Sans JP for the names painted on the
-  vessels and the maps).
-- **Vehicles in the game:** modelled from code in this repository
-  (`blender/build_vehicles.py` and `web/game/kit.js`), with no third-party assets.
-- **3D library:** three.js r186 (MIT) and three-mesh-bvh (MIT), loaded as ES
-  modules from a CDN, for the city viewer and its game; three.js r186 (MIT),
-  vendored in `web/vendor/three`, for the reef sites.
-- **Game characters:** Quaternius, Ultimate Modular Men and Ultimate Modular
-  Women (CC0 1.0, public domain), for the crowd; Microsoft Rocketbox avatars and
-  animations (MIT, © 2020 Microsoft; `web/assets/people/LICENSE-Rocketbox.txt`), for
-  the surveyors and the NPCs.
-- **Water:** the wave spectrum and FFT are ported from Tidewater by Daniel
-  Greenheck (github.com/dgreenheck/tidewater, MIT, © 2026 DRG Software
-  Solutions LLC). Its licence notice is at the top of `web/water.js`.
-- **Land cover for beaches and rock:** Overture Maps' land theme (ODbL),
-  through `pipeline/shore.py`.
-- **Woods and park canopy:** Meta and World Resources Institute High Resolution
-  Canopy Height Maps (Tolan et al. 2024, CC BY 4.0), for the trees planted in
-  the mapped woods and parks and the ground under them (`pipeline/woods.py`).
-- **Sydney's street and park trees:** City of Sydney, "Trees" (the council's tree
-  inventory: position, species, height; CC BY 4.0, "City of Sydney"; ArcGIS item
-  15c4713a688a48fcb604fc343118af05, extracted 2026-11-07), for the trees' heights
-  and the trees OpenStreetMap does not map (`pipeline/plateau_veg.py`).
-- **Queenstown's tree heights:** LINZ Otago - Queenstown LiDAR 1m DSM and DEM (2021),
-  Toitū Te Whenua Land Information New Zealand (CC BY 4.0), the crown top over the
-  ground at each mapped tree (`pipeline/plateau_veg.py`, extracted 2026-11-07).
-- **Reference photographs** (for checking models, never as textures): Wikimedia
-  Commons (`tools/commons.py`), and, when Commons rate-limits, Openverse
-  (`tools/photos.py`: api.openverse.org, anonymous, only CC BY, CC BY-SA, CC0 and
-  public-domain images, mostly Flickr's). Each photograph's author, licence and page
-  go in the city's doc. Geograph (CC BY-SA) covers only Britain and Ireland, none of
-  the live maps; Flickr's own API, DigitalNZ, Te Papa and Trove need a key.
-- **Open water past the model's frame:** Overture Maps' base water and land
-  themes (OpenStreetMap's coastline and water bodies, ODbL), 40 km around each
-  city, through `pipeline/open_sea.py` into `web/data/<id>/sea.jpg`. Considered
-  and not used: Natural Earth's 1:10m land (public domain) is a kilometre or so
-  coarse, too rough for the harbours a few hundred metres past the frame, and
-  OSM's own land polygons (osmdata.openstreetmap.de, ODbL) are the same
-  coastline as Overture's ocean polygons, but only as a global download.
-- **Land past the model's frame:** Copernicus DEM GLO-30 (ESA and Airbus,
-  Copernicus DEM licence: free use with attribution, "© DLR e.V. 2010-2014 and
-  © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the
-  European Union and ESA; all rights reserved"), from the AWS open data
-  registry; ESA WorldCover 10 m 2021 v200 (CC BY 4.0, © ESA WorldCover project
-  2021, contains modified Copernicus Sentinel data); the annual VIIRS night
-  lights of 2024 (Annual VNL V2: Elvidge, C. D., Zhizhin, M., Ghosh, T., Hsu,
-  F. C. and Taneja, J., 2021, Remote Sensing 13(5), 922; Earth Observation Group,
-  Payne Institute for Public Policy, Colorado School of Mines; as Cloud-Optimized
-  GeoTIFFs by T. Hengl, OpenGeoHub, Zenodo doi 10.5281/zenodo.7750174, v0.4,
-  CC BY 4.0, read anonymously on 2026-11-07), which replaced NASA Black Marble
-  2016 (public domain, via NASA GIBS: its newest annual layer, and its visual
-  product saturates over a city; NASA's newer VNP46A4 needs an Earthdata login).
-  40 km around each city
-  and 60 km around each reef site, through `pipeline/far_land.py` into
-  `web/data/<id>/far.*`. Considered and not used: FABDEM (bare-earth GLO-30) is
-  CC BY-NC-SA; Sentinel-2 cloudless mosaics after 2016 are CC BY-NC-SA, and a
-  per-city Sentinel-2 composite over 80 km is a large download for a few hazed
-  pixels; the Terrarium tiles are a mix of older sources at this scale.
-- **Vehicles and trees:** modelled from code in this repository
-  (`blender/build_vehicles.py`, `blender/build_trees.py`), with no
-  third-party assets; the leaf atlas is drawn by the script.
-
-Paris also uses these sources, all from IGN's Géoplateforme under the Licence
-Ouverte / Etalab 2.0:
-- LiDAR HD (flown 2-3 March 2023): the normalised surface model for building
-  heights and roofs, and the bare earth for the terrain.
-- BD TOPO buildings: eaves heights, floor counts, construction dates, use, and
-  wall and roof materials from the Fichiers fonciers.
-- BD ORTHO aerial photographs, and RGE ALTI 1 m for the terrain check.
-- Wikipedia's *List of tallest buildings in the Paris region* (CC BY-SA), for
-  reference heights; the Eiffel Tower's dimensions from its operator.
-
-Amsterdam also uses these sources:
-- The 3DBAG (TU Delft 3D geoinformation group and 3DGI, CC BY 4.0), release
-  v2025.09.03: the BAG's footprints and construction years, with heights,
-  LOD1.3 roof tiers and LOD2.2 roofs from the AHN.
-- AHN bare earth (DTM 0.5 m, CC0) and Beeldmateriaal Nederland's aerial
-  photographs (CC BY 4.0), both via PDOK.
-- The Grachtenmuseum's dates for the gable types; Dutch Wikipedia and the
-  buildings' own sites for the reference heights.
-
-The reef sites also use these sources:
-- AusSeabed / Geoscience Australia, *Great Barrier Reef Bathymetry 2020* 30 m (not for navigation).
-- Copernicus Sentinel-2 L2A (Copernicus open licence), via Earth Search on AWS; ESA WorldCover 10 m 2021 (CC BY 4.0).
-- Maritime Safety Queensland tide predictions (CC BY 4.0), Queensland Government open data portal.
-- Places from OpenStreetMap (ODbL) via Overture Maps; Wikipedia and other cited pages for the facts in the game
-  and the species notes (listed in `docs/GAME_REEF.md` and `web/reef/life/species.js`).
-- People: Quaternius character packs (CC0).
-
-Sydney also uses these sources:
-- NSW Spatial Services imagery and 5 m elevation (CC BY 4.0).
-- Geoscience Australia 5 m LiDAR DEM (for the terrain check).
-- Wikipedia's *List of tallest buildings in Sydney* (CC BY-SA), for reference
-  heights.
-- Sydney LEP 2012 cl. 6.18, for the protected places. Their windows were
-  transcribed from secondary sources, so check the official text before
-  relying on them.
-
-Hong Kong also uses these sources (Hong Kong government open data, with
-attribution):
-- the Lands Department's *Building* dataset: surveyed block outlines with top
-  and base levels in mPD;
-- CEDD's 2020 airborne LiDAR terrain and surface models (0.5 m);
-- the Lands Department's geodetic bench marks, for the terrain check;
-- the Lands Department Map API's aerial photograph. Its terms ask for the
-  Lands Department logo and a copyright notice on the map face;
-- Wikipedia's *List of tallest buildings in Hong Kong* (CC BY-SA), with its
-  coordinates.
-
-Melbourne also uses these sources:
-- Geoscience Australia's 5 m LiDAR DEM (CC BY 4.0), for the terrain.
-- Vicmap Elevation spot heights (CC BY 4.0), for the terrain check.
-- Wikipedia's *List of tallest buildings in Melbourne* (CC BY-SA), for
-  reference heights.
-- The Melbourne Planning Scheme (DDO10 and clause 15.01-1L-03), read from the
-  Victorian government's planning API.
-- No aerial imagery: none covering the city is openly licensed.
-
-Melbourne's bayside uses the same terrain, terrain check and synthetic ground.
-It also uses:
-- the Bureau of Meteorology's mean maximum temperatures for Melbourne (Olympic
-  Park), so that people on benches choose sun or shade;
-- facts quoted from Heritage Victoria (the bathing boxes), Luna Park, Parks
-  Victoria and Earthcare St Kilda (the penguins), each cited where it is used.
-
-No licence has been chosen for the code yet. Until one is added, the default
-copyright applies.
+No licence has been chosen for the code yet. Until one is added, the default copyright applies.
 
 ## Limitations
 
-- **Open-data heights are uneven.** In central Sydney, 4% of the footprint area
-  has a surveyed, published or verified height. 81% has a floor count, which
-  converts to a height within 6% (median, against published tower heights).
-  The remaining 14% is estimated, with a measured error. Other cities will
-  differ, and the share is the first thing to check.
-- **Roof shapes and facades are inferred.** About 97% of buildings have no
-  mapped roof shape, so it is ruled or drawn from measured priors. Sydney's
-  rules get flat or pitched right for 69% of the mapped roofs: they find 85%
-  of the flat ones but miss many pitched heritage roofs. Facade styles come
-  from class, height and size.
-- **Setbacks and podiums appear only where OpenStreetMap maps building parts.**
-  Landmarks need hand-written geometry from published dimensions.
-- **Rules are transcribed, not interpreted.** A sun-access rule is encoded as
-  places, periods and windows. How a court reads it (clock or standard time,
-  which baseline) is reported as a range, not decided.
-- **One time slice.** The model is the open data as of its Overture release,
-  not the city on a given date.
+- **Heights are measured, shapes are inferred.** PLATEAU gives each building's height and massing;
+  most roof shapes and every facade outside the hero level are drawn from rules.
+- **The hero level is small.** The hundred metres round the scramble are modelled finely; the rest
+  of the map is the open data as it is.
+- **One time slice.** The map is the open data as of its release, not the place on a given date.
+- **Not checked on real hardware here.** The checks run Chromium on a software renderer; a real
+  GPU, WebGPU, Safari and iOS are checked by hand.

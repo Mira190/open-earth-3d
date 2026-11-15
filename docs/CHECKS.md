@@ -1,147 +1,116 @@
-# The checks, in two tiers
+# The checks
 
-`tools/check.sh` is the one command that decides whether work may land. It used to play every live
-city's game for any change to the shared code, on the machine of whoever was landing: about two
-hours, and main had usually moved by the end, so the round started again. This page is how that wait
-was taken apart, what runs where now, and what was measured on the way.
+`tools/check.sh` is the one command that decides whether work may land. The project is one story on
+one map (Blue Hour, at the Shibuya Scramble; [STORY.md](STORY.md)), so there is one page to check and
+the script is short: a set of checks that open no browser, and a handful that open the page.
 
-## Where the two hours went
+## The targets
 
-The wait was a product of four things, and each had its own cause.
-
-| Factor | What it was | Why |
+| Target | What it does | Tool |
 |---|---|---|
-| What a change selects | Any file under `web/game/`, `web/assets/` or `web/*.js` selected every live city (ten) | Chosen by path, and almost every branch touches `web/game/game.js` (37 commits in one week) |
-| What one check costs | A city's game, clip, memory and tour checks one after the other: 7 minutes for a small map, 15 for Sydney, up to 35 for Shibuya | The game check is some 260 steps of one long scenario in a real browser on a software renderer |
-| How many run at once | Three, on the four cores of the landing session's machine | The cities are independent, but they shared one machine |
-| How often it is run again | Often more than once | Landing only fast-forwards main, and main moved within two hours; and the traffic steps are unsteady, so a round could fail on a step that passes the next time |
+| `static` | Everything that needs no browser, a minute or two together (below) | several |
+| `story` | Plays the episode frame by frame to its last card: the street runs, the Stop comes, the afterimage speaks, the photograph is taken (a frame spent only with the lens on the subject), the world runs on, the last card with its two ways on. A still at each beat | `tools/story_play.js` |
+| `mem` | Opens the page as an iPhone on the low tier and fails it over the memory budget (peak GPU memory, settled JS heap), so that a phone's tab is not killed | `tools/mem_check.js` |
+| `clip` | Measures what passes through what in the free game (`?walk=1`): street furniture in the roads, cars in each other and in posts, people in cars and walls | `tools/clip_check.js` |
+| `gl` | Opens the map as an ordinary device does, with the governor's extras shed and multisampling on, and asks every WebGL call for its error; then as a GPU with sixteen texture units, where every material must still be drawn | `tools/gl_error_probe.js`, `tools/sampler_probe.js` |
+| `touch` | Plays the free game by touch on a phone's page, where no key can be pressed | `tools/touch_check.js` |
+| `astc` | The device-side ASTC encoder (`web/astc.js`) against a real decoder | `tools/astc_check.js` |
+| `game` | The free game's long scenario: walk, talk, the helicopter, your car, a taxi, the trains | `tools/game_check.js` |
 
-The last row matters as much as the others. Three runs of Sydney's game check on the same tree failed
-on three different steps (a level crossing, a car backing out of a one-way street, a junction's
-standing traffic). A two-hour round that fails on a step unrelated to the change costs another round.
+The static checks:
 
-## What runs where now
+- what the characters and the story say (`tools/voice_check.py`): locals, not the map's credits;
+- the map's lines and quests played to the last stamp without a browser (`tools/goals_check.js`);
+- the packs (`buildings.bin`, `landmarks.bin`, `game.bin`, terrain, places, scene, `vis.bin`,
+  `skyvis.webp` and the phone's district under `d/`) made from their JSON as it is now, and decoded
+  by the browser's decoder to the same values (`pipeline/pack.py --check`, `tools/pack_check.js`);
+- the visibility sweep against exact rays (`tools/vis_unit.js`);
+- the frame-time governor on modelled devices (`tools/governor_unit.js`);
+- the building solids valid on their decimetre grid (`pipeline/solid_rings.py --check`);
+- no landmark hanging in the air (`tools/float_check.py`), no sign or screen behind another landmark
+  (`tools/sign_clear.py`), no sign that reads mirrored (`tools/sign_check.py`);
+- the far crowd's copy of every cast member (`pipeline/crowd_cast.py --check`);
+- every shared model meshopt-compressed, and the parts the page loads before and after playable
+  as their model splits now (`pipeline/meshopt_glb.mjs --check`, `pipeline/meshopt.py split`).
 
-**Before landing: the fast tier (about ten minutes).** Plain `tools/check.sh`:
+They need `numpy`, `shapely`, `pyproj`, `pillow` and Node; the browser checks need Playwright's
+Chromium (`NODE_PATH` set to where `playwright` is installed, if it is not global).
 
-- the static checks, which open no browser (packs, voice, daily life, fishing data, visibility,
-  solids, compressed models, signs): a minute;
-- every city and reef site whose own files changed (`cities/<id>/`, `web/data/<id>/`), in full;
-- for a change to the shared code, the smoke cities instead of every live city (`CHECK_SMOKE`,
-  default `sydney:game,tour shibuya:mem`): of the live maps, Sydney plays the whole game check
-  and its guided tour (a quarter of an hour), and Shibuya, the heaviest map on a phone, is measured
-  against the memory budget; Shibuya's and Tokyo's game checks, half an hour each, play on main after landing;
-- the title screen, the loader's hand-over and the telemetry when their files changed, as before;
-- `gl`, when the game, the renderer or a pass with a target of its own changed: Shibuya opened as a device with its
-  extras shed opens it, multisampled, the governor's ladder walked, and every WebGL call asked for its error
-  (`tools/gl_error_probe.js`; every live map in the full tier). The game check walks the same ladder in play.
-  Then the same map as a GPU with sixteen texture units (`?units=16`: Apple's GPUs and most phones have 16, the
-  software renderer 32, so a program over 16 links here and nowhere else; issue 485): every material must end drawn,
-  and the layers that device goes without are printed (`tools/sampler_probe.js`, `web/glcare.js` `fit`).
-- `touch`, when the game, its HUD, the page or `web/quality.js` changed: Shibuya on a phone's page (390 x 844 at
-  3x, touch), where no key can be pressed (`tools/touch_check.js`): the canvas at two device pixels to the CSS
-  pixel, no key named on the screen or in a message, a taxi hailed by a tap at the kerb, the car's pad and its
-  prompt clear of the readout, two fingers zooming, and a taxi ridden as a passenger: the pad one row, the readout
-  across the screen, the car within 0.2 m of the road's surface, Skip and "Get out" by a tap.
+## What runs when
+
+**Before landing: the fast tier.** Plain `tools/check.sh` looks at what the branch changed against
+`origin/main` (after a pass, at what changed since that pass):
+
+- a change to the page or the map (`web/`, `cities/`) runs `static`, `story` and `mem`;
+- a change to one of the checks' own tools runs that check;
+- a change to the build or the plumbing (`pipeline/`, `blender/`, `tools/`, `.github/`) runs `static`;
+- a change to the docs alone runs nothing.
 
 **After landing: the full tier, on main, in GitHub Actions** (`.github/workflows/checks.yml`). Each
 push to main runs `CHECK_TIER=full tools/check.sh --plan` against the commit of the last run that
-passed and gives every target it prints its own runner: `sydney:game`, `sydney:clip,mem,tour`, each
-reef site, `title`, `loader`, `telemetry`, `gl`, `static`. Thirty-two runners start together when the
-shared code changed. Nobody waits for it.
+passed, which adds `clip`, `gl` and `touch` for a change to the page, and gives every target it
+prints its own runner. Nobody waits for it.
 
 - One run at a time. Pushes that arrive while it goes wait as one: the next run covers all of them,
   because it compares with the last pass, not with the push before.
 - A failure opens an issue labelled `main-red` (or comments on the open one) with the shards that
-  failed, links to their logs and stills, and the commits since the last pass. The next pass closes
-  it. Until then every run checks everything changed since the last pass, so a fix is confirmed by
-  the run its own push starts.
-- Reproduce a shard with its name: `tools/check.sh shibuya:game`.
+  failed, links to their logs and stills, and the commits since the last pass. The next pass closes it.
+- Reproduce a shard with its name: `tools/check.sh clip`.
 
-Main can therefore be red for half an hour where it could not before. That is the trade: the cost of
-finding a break moved from every landing (two hours, always) to the landings that break something
-(an issue, sometimes).
-
-## Unsteady steps
-
-A change that breaks something breaks the same step every time. So when a city's game or clip check
-fails, it is run a second time, and the run fails only on a step that failed both times, or on a run
-that ended without naming a step (a crash, a timeout). Two runs with no failed step in common print
-`FLAKY` and pass. On main, each `FLAKY` line is added to the issue labelled `check-flaky`: a step
-that is named there often is the one to make steady (the lockstep work, issue 243, is the cure;
-this is the bookkeeping).
-
-Since #420 the game check plays the same game in every run (docs/GAME.md, "the test"): the traffic's trips,
-the dispatch's tie-breaks and the talk draw from seeded runs, the date is pinned (the weather is a hash of it),
-Play is pressed once the title card is up whatever the load took (#423), and nothing a held frame does steps the
-world. A failed step therefore fails the second run too, and the second run is there for what the simulation
-doesn't decide: a renderer that crashed, a timeout. A `FLAKY` line now means something still lets the machine
-into the run: `DIGEST=2` writes a digest after every step of the world, and the first one two runs disagree on
-names the step. `tools/game_soak.sh` runs every live city's check a few times, three at a time, and says per
-city whether every run played the same game.
+**By name only: `game`.** `tools/game_check.js` was written for the game before the story: some 260
+steps of one scenario, half an hour on a software renderer. Its steps for what was removed (fishing,
+the daily life) are gone and it opens the free game, but it has not been run since the cut-back and
+steps that expect the old game's fares, phone or ferries may fail. It is in neither tier until it has
+been run and trimmed: `tools/check.sh game`.
 
 ## The command
 
 ```
 tools/check.sh                      # the fast tier, for what this branch changed
 tools/check.sh --plan               # the targets that would run, one a line
-tools/check.sh sydney:game          # one kind of one city's checks (game, clip, mem, tour)
-tools/check.sh sydney:clip,mem      # two kinds
 tools/check.sh static               # the checks that open no browser
-CHECK_TIER=full tools/check.sh      # every live city for a shared change, as it was
+tools/check.sh story                # one target; several: tools/check.sh story mem
+tools/check.sh all                  # static story mem clip gl touch astc
+CHECK_TIER=full tools/check.sh      # as main runs it
 CHECK_BASE=<commit> tools/check.sh  # what changed since that commit
+CHECK_FULL=1 tools/check.sh         # the whole branch, not only what changed since the last pass
 CHECK_STATIC=0 tools/check.sh ...   # without the static checks (a runner's shard)
 ```
 
-A change to one of the checks' own scripts selects only its kind: `tools/tour_check.js` the tours,
-`tools/mem_check.js` the memory, `tools/game_check.js` and the `tools/*_step.js` it loads the game.
+Logs and stills go to `$CHECK_OUT` (default `/tmp/oe-check`). The free game's clock is pinned
+(`GAME_TIME`, default `2026-11-02T10:00` in Tokyo's time, `tools/pin_clock.js`), so a run does not
+depend on the hour it is started at. Under `xvfb-run` (when it is installed) Chromium draws with
+Mesa's llvmpipe; without it, headless with SwiftShader. Where `timeout` is missing (macOS) a check
+runs for as long as it takes.
 
-## Measured
+## Unsteady steps
 
-On GitHub's runners (four cores, Mesa's llvmpipe under Xvfb, one shard a runner), the first full run
-of every target, 13 November 2026:
+A change that breaks something breaks the same step every time. So when the clip or the game check
+fails, it is run a second time, and the run fails only on a step that failed both times, or on a run
+that ended without naming a step (a crash, a timeout). Two runs with no failed step in common print
+`FLAKY` and pass. On main, each `FLAKY` line is added to the issue labelled `check-flaky`: a step
+that is named there often is the one to make steady.
 
-| Shard | Time, with a minute and a half of setup |
-|---|---|
-| A reef site | 1.5 min |
-| `static` | 1.5 min |
-| `clip,mem,tour` of a city | 4 to 14 min |
-| `loader`, `telemetry`, `title` | 4 to 7.5 min |
-| `game` of a small map (Tetsugaku, Kamakura) | 5 to 6.5 min |
-| `game` of a large one (Kyoto, Shibuya, Queenstown) | 13 to 15 min |
-| `game` that failed once and ran again | 11 to 34 min |
-| The whole run, every target | 29 and 34 min |
+The free game plays the same game in every run: the traffic's trips, the dispatch's tie-breaks and
+the talk draw from seeded runs, the date is pinned (the weather is a hash of it), and nothing a held
+frame does steps the world. `DIGEST=2` writes a digest after every step of the world, and the first
+one two runs disagree on names the step (`tools/game_soak.sh`).
 
-In both runs the game check failed its first pass in about half of the ten cities, on steps of the
-traffic, and the code was main's. Run again, most of them passed or failed on another step. In the
-second run two steps failed twice in a row: cars backing out of a one-way street to the junction
-behind (Sydney), and a ride that had not arrived (Fushimi Inari).
+## What is not checked
 
-On a session's machine, the game check alone: Tetsugaku 7 minutes with another city beside it,
-Sydney 9 alone and 15 with one beside it.
+- The story past its first episode: `tools/story_play.js` plays episode one. A new episode adds its
+  beats there.
+- A real GPU, WebGPU, Safari and iOS: the checks run Chromium on a software renderer.
+- What a person sees. For a visual change take stills (`tools/game_shot.js`, `tools/story_play.js`,
+  `tools/scramble_shot.js`) on a desktop and a phone, at day, dusk and night, and look at them.
 
-Two things were measured and found not to be the cost, so nothing was built for them:
+## How it came to this
 
-- **Drawing.** The frames the page draws while the check holds the world do not slow the simulation:
-  `advance(30)` took 2.0 s in Tetsugaku and 4.4 s in Sydney with the frames drawn and with them
-  stopped. Skipping the draw would save nothing.
-- **One slow step.** Sydney's 529 s are spread over 256 lines; the longest gap is 61 s (the NPCs'
-  characters loading) and only seven are over 20 s. There is no step to remove that would halve it.
-
-## What is next
-
-- The logic the game check asserts through a browser (junction cycles, queues, routes, the daily
-  life's ranks) run without one: `web/game/junctions.js`, `cars.js`, `nav.js` and `route.js` touch
-  `window` and `document` in a handful of places each, and the world already steps a thirtieth of a
-  second at a time under a harness. Those steps then cost milliseconds and can run in the fast tier
-  for every city.
-- `web/game/game.js` (6,300 lines, some 200 names on `window.__game`) split by responsibility, so
-  that a change to the trains selects the maps with a railway and two branches stop meeting in one
-  file.
-
-## What was adopted
-
-The shape is the common one for a repository with expensive end-to-end tests: a short presubmit and
-a full postsubmit that reports rather than blocks (Google's TAP and Chromium's commit queue are the
-published descriptions), with the postsubmit split by target across machines (a GitHub Actions
-matrix). No code was taken from either.
+Until November 2026 the project built some twenty-five maps, and the check played every live one's
+game for any change to the shared code: two hours on the landing session's machine. It was split
+into a fast tier before landing and a full tier on main afterwards, one runner a target, reporting
+rather than blocking (the common shape for a repository with expensive end-to-end tests; Google's
+TAP and Chromium's commit queue are the published descriptions, and no code was taken from
+either). The two tiers and the `main-red` issue remain; the maps, the smoke cities and the
+per-city shards went with the cut-back to one story on one map (the tag `archive/world-2026-11`
+has them).

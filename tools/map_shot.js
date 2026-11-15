@@ -6,7 +6,7 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
-const [,, city = 'tokyo', outDir = '.', kind = 'desktop'] = process.argv;
+const [,, city = 'shibuya', outDir = '.', kind = 'desktop'] = process.argv;
 const phone = kind === 'phone';
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -17,7 +17,7 @@ const phone = kind === 'phone';
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   fs.mkdirSync(outDir, { recursive: true });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
   // the title card comes up once the loader has faded, which on a loaded machine is well after window.__game:
   // wait for it, then play (through the DOM, which a busy page cannot time out)

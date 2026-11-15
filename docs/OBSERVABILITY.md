@@ -1,5 +1,10 @@
 # Observability: visitors, play time and service levels
 
+> **Scope, November 2026.** The project is now one story on one map: Blue Hour, at the Shibuya Scramble
+> ([STORY.md](STORY.md)). This page was written while the project built many maps, a globe and a model viewer.
+> Where it names another city, the title screen, the viewer or the reef sites, it describes work kept at the tag
+> `archive/world-2026-11`; the shared code it explains is the code Shibuya runs.
+
 The site is static (GitHub Pages), so it has no server logs. Every page loads `web/telemetry.js` first. The
 script watches the page from outside and sends a few small events in batches. The game and renderer
 code does not change for it: what the visitor is doing inside a view is read from the handles each view
@@ -249,23 +254,9 @@ another region). The script finds the dashboard and the insights by name and upd
 
 - `?telemetry=debug` logs each batch to the console.
 - On localhost, `?telemetry=<url>` sends JSONL to that collector, even from an automated browser.
-- `tools/telemetry_check.js` (run by `tools/check.sh` when the telemetry, the router or the game
-  changes, or with `tools/check.sh telemetry`) checks the following on Sydney:
-  - an automated browser sends nothing by default;
-  - the globe, model and game views arrive, and both loads arrive ready with their times;
-  - play time and frame rate are counted, and the page timings arrive;
-  - every event has its session, device and tier;
-  - the report can be built from the log;
-  - the game saves where the player stands when the page closes;
-  - the model's tour reports each stop and its end, and later events say it was watched to the end;
-  - the game reports leaving its title screen, its spot and mode on every play event, time on foot by
-    spot, and engaged time;
-  - the page's `exit`, the view each view came from, and a dead page left by an earlier visit reported
-    once as a `crash`;
-  - the load stages: the title screen's load (once, with its textures and first frame before ready), and the
-    model's, the game's and a reef site's (Hardy Reef) with data fetched, decoded, built and first frame, in
-    order and within `ms`;
-  - the report's load stages and its table by release.
+- `tools/telemetry_server.py` is the collector to point it at, and `tools/slo_report.py` builds the report from its log.
+  The end-to-end check that drove the globe, the viewer and a reef site (`tools/telemetry_check.js`) went with them;
+  one for the story's page is not written yet.
 
 ## Prior art
 

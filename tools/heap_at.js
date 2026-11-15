@@ -12,7 +12,7 @@ const [city = 'shibuya', at = '3.5', out = 'load.heapsnapshot'] = process.argv.s
   await ctx.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); localStorage.setItem('oe3d-onboard', '1'); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'low');
   const p = await ctx.newPage(), cdp = await ctx.newCDPSession(p);
   const t0 = Date.now();
-  p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || ''}#play-${city}`).catch(() => {});
+  p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || '?walk=1'}#play-${city}`).catch(() => {});
   await new Promise(r => setTimeout(r, +at * 1000));
   const fd = fs.openSync(out, 'w');
   cdp.on('HeapProfiler.addHeapSnapshotChunk', e => fs.writeSync(fd, e.chunk));

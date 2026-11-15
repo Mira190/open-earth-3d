@@ -6,7 +6,7 @@ const { chromium } = require('playwright');
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
   for (const city of process.argv.slice(2)) {
     const p = await b.newPage({ viewport: { width: 640, height: 400 } });
-    await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game && window.__game.roadsNow', null, { timeout: 300000 });
     const r = await p.evaluate(() => {
       const g = window.__game, R = g.roadsNow;

@@ -4,7 +4,7 @@
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/build_hash.js kyoto [game]      (NOWORKER=1: with Worker taken away, the page's own path)
 const { chromium } = require('playwright');
-const [,, city = 'sydney', mode = 'viewer'] = process.argv;
+const [,, city = 'shibuya', mode = 'viewer'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
   const p = await b.newPage({ viewport: { width: 960, height: 600 } });

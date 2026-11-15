@@ -559,8 +559,6 @@ def cut_game(G, P, scene, R, city):
         doors = {d.get("id") for d in out.get("doors", [])}
         gone = {d.get("id") for d in G.get("doors", [])} - doors
         out["interiors"] = [i for i in G["interiors"] if not (set(i.get("doors", [])) & gone) and (not i.get("at") or inr(i["at"]))]
-    if isinstance(G.get("fishing"), dict) and isinstance(G["fishing"].get("spots"), list):
-        out["fishing"] = dict(G["fishing"], spots=[s for s in G["fishing"]["spots"] if inr(s.get("at"))])
     if isinstance(G.get("shows"), list):
         out["shows"] = [s for s in G["shows"] if not s.get("at") or inr(s["at"])]
     # strips and decks walked on: by their origin (a strip that starts inside is whole: the bridge's deck)

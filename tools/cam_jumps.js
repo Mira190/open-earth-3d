@@ -135,7 +135,7 @@ async function open(city, { width = 1100, height = 650 } = {}) {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
   const p = await b.newPage(process.env.PHONE ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { viewport: { width, height } }); // (PHONE=1: a phone, its district and its touch controls)
   p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 300)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady());
   await startPlay(p);

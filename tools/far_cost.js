@@ -7,7 +7,7 @@
 // a file the city's start, from 2 m and from 300 m up. TIER=low|medium|high (default high).
 const { chromium } = require('playwright');
 const fs = require('fs');
-const [,, city = 'sydney', viewsFile = '', size = '1440x900'] = process.argv;
+const [,, city = 'shibuya', viewsFile = '', size = '1440x900'] = process.argv;
 const [w, h] = size.split('x').map(Number);
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -27,7 +27,7 @@ const [w, h] = size.split('x').map(Number);
     if (!hook()) window.addEventListener('three-ready', hook, { once: true });
   });
   const p = await ctx.newPage();
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__renderer', null, { timeout: 300000 });
   await p.waitForTimeout(4000);
   const G = JSON.parse(fs.readFileSync(`web/data/${city}/game.json`, 'utf8'));

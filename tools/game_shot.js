@@ -31,7 +31,7 @@ const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
-const [,, city = 'sydney', viewsFile, outDir = '.', size = '1440x900'] = process.argv;
+const [,, city = 'shibuya', viewsFile, outDir = '.', size = '1440x900'] = process.argv;
 const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
 (async () => {
   const [w, h] = size.split('x').map(Number);
@@ -50,7 +50,6 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   if (process.env.LV) await p.addInitScript(n => { try { localStorage.setItem('oe3d-lv', n); } catch (e) { /* storage blocked */ } }, process.env.LV);
   // a player who has been through the HUD tour (web/onboard.js), so that its card is not in the stills
   await p.addInitScript(() => { try { localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } });
-  await p.addInitScript({ content: fs.readFileSync(path.join(__dirname, 'plush.js'), 'utf8') }); // (the plush traveller, for "plush")
   await p.addInitScript(() => {
     const get = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (type, opts) {
@@ -61,7 +60,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   p.on('console', m => { if (m.text().startsWith('[clear]')) console.log(m.text()); else if (['error', 'warning'].includes(m.type())) logs.push(`${m.type()}: ${m.text().slice(0, 300)}`); });
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   fs.mkdirSync(outDir, { recursive: true });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || ""}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || "?walk=1"}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.flyover', null, { timeout: 600000 });
   // and the loader gone: the game draws its first frame only once its shaders and uploads are done (world.js
   // compile), so a view from the air grabbed before that was black (issue 313)

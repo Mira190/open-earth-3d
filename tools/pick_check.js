@@ -7,14 +7,14 @@
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/pick_check.js tokyo
 const { chromium } = require('playwright');
-const [,, city = 'tokyo'] = process.argv;
+const [,, city = 'shibuya'] = process.argv;
 const AGREE = +(process.env.AGREE || 0.9);
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
   const p = await b.newPage({ viewport: { width: 960, height: 600 } });
   await p.addInitScript(() => { try { localStorage.setItem('oe3d-quality', 'high'); localStorage.setItem('oe3d-onboard', '1'); } catch (e) { /* storage blocked */ } });
   p.on('pageerror', e => console.log('  page error:', e.message));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction(() => window.__game && document.querySelector('#g-loader').hidden, null, { timeout: 900000, polling: 500 });
   const r = await p.evaluate(() => {
     const g = window.__game, nav = g.nav, cells = [];

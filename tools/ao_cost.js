@@ -16,7 +16,7 @@ const [,, city = 'shibuya', frames = '40', size = '1440x900'] = process.argv;
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
   const errs = [];
   p.on('pageerror', e => errs.push(String(e).slice(0, 200)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.atmos', null, { timeout: 600000 });
   await p.waitForTimeout(8000);
   const out = await p.evaluate(async n => {

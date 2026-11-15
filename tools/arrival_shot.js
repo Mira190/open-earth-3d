@@ -30,7 +30,7 @@ const VIEW = { desktop: { width: 1440, height: 900 }, phone: { width: 390, heigh
   fs.mkdirSync(outDir, { recursive: true });
   const tag = `${city}${point ? '@' + point : ''}-${size}`;
   const still = async name => fs.writeFileSync(path.join(outDir, `${tag}-${name}.png`), await p.screenshot());
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}${point ? '@' + point : ''}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}${point ? '@' + point : ''}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
   await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 600000 });
   await p.waitForTimeout(1500);

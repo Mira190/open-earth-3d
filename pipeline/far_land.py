@@ -171,7 +171,7 @@ def photo_samples(C, box):
     pieces = []
     if isinstance(ground, list):
         pieces = [(g["file"], g["x0"], g["x1"], g["y0"], g["y1"]) for g in ground]
-    elif isinstance(ground, dict) and "strips" in ground:   # an alpine site's ground in strips (build_alpine.py)
+    elif isinstance(ground, dict) and "strips" in ground:   # ground imagery in strips
         px = ground["px_m"]
         pieces = [(s["file"], C.x0, C.x0 + ground["w"] * px, C.y1 - (s["row0"] + s["rows"]) * px, C.y1 - s["row0"] * px) for s in ground["strips"]]
     elif isinstance(ground, dict):

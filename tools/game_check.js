@@ -1,4 +1,4 @@
-// Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
+// Smoke-test the free game (the map without the story, ?walk=1) headlessly (software WebGL through SwiftShader): load it, start
 // it, walk, walk right up to the things the city names to see up close (tools/close_step.js), into the rooms it
 // opens and out again (tools/interior_step.js), take a seat and watch what plays before it (tools/seat_step.js), travel
 // from the map to a landmark and run there, talk to the first quest giver, find every NPC in light and
@@ -15,12 +15,11 @@
 // (tools/autopilot_step.js), swing the
 // chase camera round walls in tight spots
 // frame by frame (it must ease, never jump), watch the signalled junctions round you for three minutes
-// (no movement left standing in one for more than two cycles), live a day of the daily life (tools/life_step.js: the day
-// passing, a rank earned, a job done, the save read back), and lose the WebGL context on purpose and get it
+// (no movement left standing in one for more than two cycles), and lose the WebGL context on purpose and get it
 // back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
-//   GAME_TIME=22:00 xvfb-run -a node tools/game_check.js osaka out_dir   # at that local hour in the city
+//   GAME_TIME=22:00 xvfb-run -a node tools/game_check.js shibuya out_dir   # at that local hour in the city
 // GAME_TIME (HH:MM, or YYYY-MM-DDTHH:MM) pins the page's clock to that wall time in the city's own
 // time zone, so a game that starts at the live hour plays the same traffic and light on every run;
 // tools/check.sh pins it (GAME_TIME=live leaves the real clock).
@@ -28,7 +27,7 @@ const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
-const [,, city = 'sydney', outDir = '.'] = process.argv;
+const [,, city = 'shibuya', outDir = '.'] = process.argv;
 // places where a line of the crowd's meets a wall inside a hero level, known and listed in issue 496 (the hero step below):
 // Tokyo's seven single points north and south of the station square, Shibuya's two where a footway goes down a subway stair
 const BARRED_KNOWN = { tokyo: 7, shibuya: 3 };
@@ -93,7 +92,7 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
   };
   const check = (ok, what) => { if (process.env.DIGEST === '2') p.evaluate(w => { window.__lastCheck = w; }, what.slice(0, 80)).catch(() => {}); console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) fails.push(what); };
   const t0 = Date.now();
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   console.log(`loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   // lockstep (#243): the world held for the whole run, so that only the check's advance() calls move
@@ -840,17 +839,6 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
     const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw }; });
     for (const r of await require('./foyer_walk')(p)) check(r.ok, `walks the levels of ${r.id}${r.ok ? ` (${r.legs.filter(l => l.want != null).map(l => l.z.toFixed(1)).join(' → ')} m)` : `: ${r.why}`}`);
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { mode: 'foot', auto: null, x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
-  }
-
-  // fishing (game.json "fishing", docs/FISHING.md): nothing of it loaded until you are near a spot; then at each
-  // spot E takes you to the edge, a cast lands on the water, a bite comes, an easy fish is landed with the one
-  // button and logged, five draw calls at most with the line out, and nothing left drawn once you have walked away
-  // (tools/fishing_step.js). A city without spots skips it whole.
-  if (await p.evaluate(() => !!(window.__game.fishing && window.__game.fishing()))) {
-    const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw, dist: g.cam.dist, pitch: g.cam.pitch }; });
-    const bad = await require('./fishing_step').fishingStep(p, shot);
-    check(!bad.length, `fishes every spot: a cast, a bite, a fish landed, logged and let go${bad.length ? `: ${bad.join('; ')}` : ''}`);
-    await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); Object.assign(g.cam, { yaw: k.yaw, yawTo: null, dist: k.dist, distTo: 0, pitch: k.pitch }); g.advance(0.2); }, keep);
   }
 
   // the doorways' frames (game.json doors[].frames, #326): the collision world's quarter-metre cells took up to a cell
@@ -2274,9 +2262,6 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
   });
   for (const h of seasons) check(h.ok && h.m === h.want[0] && h.d === h.want[1] && h.bloom !== 0 && h.dz < 1.5 && h.d2 < 20, `travels to ${h.name} out of season: the date moves to ${h.d}/${h.m} (its best ${h.want[1]}/${h.want[0]}), its trees ${h.bloom === null ? 'not looked at' : h.bloom ? 'in flower' : 'not in flower'}, ${h.d2.toFixed(0)} m from it and ${h.dz.toFixed(1)} m off its level`);
 
-  // the daily life (issue #357, tools/life_step.js): a day passing, a rank earned, a job done, the save read back
-  await require('./life_step').lifeStep(p, check, city);
-  await shot('life');
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)

@@ -10,7 +10,7 @@
 // same machine, and read the counts of uploads and compiles in the walk before their milliseconds.
 const { chromium } = require('playwright');
 const fs = require('fs');
-const [,, city = 'sydney', secs = '40', speed = '9'] = process.argv;
+const [,, city = 'shibuya', secs = '40', speed = '9'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
   const ctx = await b.newContext({ viewport: { width: +(process.env.W || 640), height: +(process.env.H || 400) }, deviceScaleFactor: 1 });
@@ -77,7 +77,7 @@ const [,, city = 'sydney', secs = '40', speed = '9'] = process.argv;
   const p = await ctx.newPage();
   const errors = [];
   p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction(() => window.__game && !document.querySelector('#g-title').hidden && document.querySelector('#g-loader').hidden, null, { timeout: 900000, polling: 500 });
   let pending0 = null;
   // PLAY=1: the frames from the press of Play through the arrival (the survey's start, issue 265), not a walk

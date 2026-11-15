@@ -12,7 +12,7 @@ const [,, city = 'shibuya'] = process.argv;
   const p = await ctx.newPage();
   const errors = [];
   p.on('pageerror', e => errors.push(String(e).slice(0, 200)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction(() => window.__game && document.querySelector('#g-loader').hidden, null, { timeout: 600000, polling: 500 });
   const res = await p.evaluate(() => {
     const Wd = window.__game.Wd, su = Wd.su, out = [], RAD = Math.PI / 180, cov0 = su.cloudCoverage ? su.cloudCoverage.value : 0;

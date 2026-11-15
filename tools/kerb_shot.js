@@ -5,7 +5,7 @@ const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const fs = require('fs');
 const { pinClock } = require('./pin_clock');
-const [,, city = 'sydney', outDir = '.', n = '3', size = '1440x900'] = process.argv;
+const [,, city = 'shibuya', outDir = '.', n = '3', size = '1440x900'] = process.argv;
 (async () => {
   const [w, h] = size.split('x').map(Number);
   const b = await chromium.launch({ headless: !process.env.DISPLAY, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
@@ -13,7 +13,7 @@ const [,, city = 'sydney', outDir = '.', n = '3', size = '1440x900'] = process.a
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
   await pinClock(p, city);
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.cars', null, { timeout: 400000 });
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); if (g.lateReady) await g.lateReady(); });
   await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)

@@ -1,5 +1,10 @@
 # Weather
 
+> **Scope, November 2026.** The project is now one story on one map: Blue Hour, at the Shibuya Scramble
+> ([STORY.md](STORY.md)). This page was written while the project built many maps, a globe and a model viewer.
+> Where it names another city, the title screen, the viewer or the reef sites, it describes work kept at the tag
+> `archive/world-2026-11`; the shared code it explains is the code Shibuya runs.
+
 The game has weather in every city: clear, overcast, fog, drizzle, rain, thunderstorms and snow, with
 wind that gusts, ground that wets and dries and snow that settles and melts (`web/game/weather.js`).
 Issue #95 began it, from Shinjuku Gyoen's rainy-season mornings, where Kaede's quest offers "Wait for
@@ -8,18 +13,8 @@ the rain in the shelter"; issue #356 gave it one state that the whole game reads
 Shinjuku in the June rain, desktop (the street and Gyoen's shelter at day, dusk and night, the
 crowd under umbrellas, the pond) and phone:
 
-![Shinjuku in the rain, desktop](images/weather/shinjuku-rain-desktop.jpg)
-![Shinjuku in the rain, phone](images/weather/shinjuku-rain-phone.jpg)
-
 Snow at Kiyomizu-dera and over Queenstown, fog at dawn at the Harbour Bridge, a thunderstorm over Shinjuku
 and the light after rain at the Opera House (issue #356), on a desktop and, below, on a phone:
-
-![Kiyomizu-dera in snow](images/weather/356-kiyomizu-snow.jpg)
-![Queenstown in snow](images/weather/356-bay-snow.jpg)
-![The Harbour Bridge in dawn fog](images/weather/356-bridge-dawn-fog.jpg)
-![Lightning over Shinjuku](images/weather/356-skyline-storm-flash.jpg)
-![The Opera House after rain, with a rainbow](images/weather/356-opera-house-after-rain.jpg)
-![The same five on a phone](images/weather/356-phone.jpg)
 
 The views are `tools/views/weather-356-<city>.json` (`xvfb-run -a node tools/game_shot.js <city> <views> <out> [390x844]`;
 a view's `"flash"` and `"rainbow"` hold a lightning flash and a bow for the still). A film of a storm arriving

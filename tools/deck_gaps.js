@@ -6,13 +6,13 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/deck_gaps.js tokyo [--all] [--walker]
 const { chromium } = require('playwright');
-const [,, city = 'tokyo', flag] = process.argv; // --walker: as before issue 119 (a walker's floor, at the line's height)
+const [,, city = 'shibuya', flag] = process.argv; // --walker: as before issue 119 (a walker's floor, at the line's height)
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 800, height: 500 } });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.waitForFunction('window.__game.ways.ready', null, { timeout: 300000 }).catch(() => {});
   const r = await p.evaluate(raw => {

@@ -17,7 +17,7 @@ const [,, city = 'shibuya', outDir = '.', size = '1440x900', which = '0'] = proc
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   fs.mkdirSync(outDir, { recursive: true });
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/?walk=1#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
   await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   for (const [name, time] of [['day', '12:00'], ['dusk', 'sunset'], ['night', '22:00']]) {
