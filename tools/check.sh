@@ -41,6 +41,7 @@
 #   tools/check.sh voice                # what the characters say only (it runs with every target)
 #   tools/check.sh loader               # the loading screen's hand-over only
 #   tools/check.sh telemetry            # the visitor and SLO events, and the game's save, only
+#   tools/check.sh gl                   # the map opened as a device with its extras shed opens it: no refused WebGL call
 #   tools/check.sh all                  # every city, every reef site and the title
 #   tools/check.sh static               # the checks that open no browser only (packs, voice, life, rings...)
 #   tools/check.sh sydney:game          # one kind of a city's checks (game, clip, mem, tour; sydney:clip,mem)
@@ -77,7 +78,7 @@ PARKED=$(tools/live_cities.sh --parked)
 REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || [ ! -f "web/data/$d/scene.json" ] || echo "$d"; done)   # a reef site: its scene built, no city game
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
 
-cities=() reefs=() title=0 loader=0 voice=0 telemetry=0 shared= fish=0
+cities=() reefs=() title=0 loader=0 voice=0 telemetry=0 gl=0 shared= fish=0
 declare -A want=()   # the kinds to run for each city
 add_city() {   # a city, and the kinds of its checks to run (all of them when none is named)
   local c=$1 k
@@ -104,12 +105,13 @@ all_reefs() { for r in $REEFS; do add_reef "$r"; done; }
 if [ $# -gt 0 ]; then
   for t in "$@"; do
     case "$t" in
-      all) all_cities; all_reefs; title=1; loader=1; telemetry=1 ;;
+      all) all_cities; all_reefs; title=1; loader=1; telemetry=1; gl=1 ;;
       voice|static) voice=1 ;;
       *:*) add_kinds "$t" ;;
       title) title=1 ;;
       loader) loader=1 ;;
       telemetry) telemetry=1 ;;
+      gl) gl=1 ;;
       *) if is_in "$t" "$CITIES" || is_in "$t" "$PARKED"; then add_city "$t"
          elif is_in "$t" "$REEFS"; then add_reef "$t"
          else echo "unknown target: $t (cities: $(echo $CITIES); reef sites: $(echo $REEFS))"; exit 2; fi ;;
@@ -144,8 +146,11 @@ else
       web/title.js|web/earth.js) title=1; telemetry=1 ;;   # (the title screen's load stages: tools/telemetry_check.js)
       web/title.*|tools/title_*|web/score.js|web/film.*|web/fonts.css) title=1 ;;
       web/telemetry.js|tools/telemetry_*|tools/slo_*) title=1; telemetry=1 ;;   # watches every page, sends nothing
-      web/index.html|web/quality.js) shared_change; title=1; loader=1; telemetry=1 ;;
-      web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) shared_change; loader=1; telemetry=1 ;;
+      web/index.html|web/quality.js) shared_change; title=1; loader=1; telemetry=1; gl=1 ;;
+      web/plate.js|web/city.js|tools/load_check.js) shared_change; loader=1; telemetry=1 ;;
+      web/game/game.js) shared_change; loader=1; telemetry=1; gl=1 ;;
+      web/world.js|web/glcare.js|web/mirror.js|web/water.js|web/lens.js|web/game/atmosphere.js|web/game/ao.js|web/game/weather.js) shared_change; gl=1 ;;   # what draws into a target of its own: the passes a device's governor turns on and off
+      tools/gl_error_probe.js) gl=1 ;;
       web/game/fishing.js|tools/fishing_*|pipeline/fishing.py)   # the cities with fishing spots only (docs/FISHING.md)
         if [ "$TIER" = full ]; then for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && add_city "$id"; done; else fish=1; fi ;;
       tools/game_check.js|tools/*_step.js|tools/*_walk.js|tools/npc_night.js|tools/ride_queue.js) shared_change game ;;   # a check's own script: that kind of check
@@ -180,11 +185,11 @@ if [ $plan -eq 1 ]; then   # the targets of this run, each one an argument to th
     [ -n "$rest" ] && echo "$c:$rest"
   done
   for r in "${reefs[@]}"; do echo "$r"; done
-  [ $title -eq 1 ] && echo title; [ $loader -eq 1 ] && echo loader; [ $telemetry -eq 1 ] && echo telemetry
+  [ $title -eq 1 ] && echo title; [ $loader -eq 1 ] && echo loader; [ $telemetry -eq 1 ] && echo telemetry; [ $gl -eq 1 ] && echo gl
   exit 0
 fi
 
-if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ] && [ $telemetry -eq 0 ]; then
+if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ] && [ $telemetry -eq 0 ] && [ $gl -eq 0 ]; then
   echo "nothing to check: no change to a city, a reef site, the game, the renderer or the title"
   stamp "$@"
   exit 0
@@ -282,6 +287,17 @@ run_loader() {
     else echo "FAIL loader $m   ($(grep '^FAIL' "$OUT/load-$m.log" | head -1); see $OUT/load-$m.log)"; fi
   done
 }
+run_gl() {   # the map as an ordinary device opens it (issue 485; tools/gl_error_probe.js): the governor's extras shed from the
+  # first frame, the scene multisampled, the ladder walked in play, and every WebGL call asked for its error. Shibuya,
+  # the heaviest map, before landing; every live map in the full tier
+  local c list=shibuya
+  [ "$TIER" = full ] && list=$CITIES
+  for c in $list; do
+    if START=0.8/0.5 Q=msaa=on WALK=1 timeout 1800 $X node tools/gl_error_probe.js "$c" >"$OUT/gl-$c.log" 2>&1; then
+      echo "ok   gl     $c: opened with the extras shed and multisampling on, the ladder walked: WebGL refused no call"
+    else echo "FAIL gl     $c: $(grep -o '"call":"[^"]*"' "$OUT/gl-$c.log" | head -2 | cut -c9-160 | paste -sd ';' -)   (see $OUT/gl-$c.log)"; fi
+  done
+}
 run_telemetry() {   # the visitor and SLO events end to end, and the game's save on leaving (tools/telemetry_check.js)
   if TPORT=$((PORT + 21)) timeout 1500 $X node tools/telemetry_check.js sydney "$OUT/telemetry" >"$OUT/telemetry.log" 2>&1; then
     echo "ok   telemetry  $(grep -c '^ok' "$OUT/telemetry.log") steps: views, loads, play time, frame rate, tour, spots, exit, crash, the SLO report, the save"
@@ -341,6 +357,10 @@ EOF
   # nothing a ray reaches may be reported hidden. Half a minute.
   if EYES=12 node tools/vis_unit.js >"$OUT/vis.log" 2>&1; then echo "ok   vis    $(grep -c '^ok' "$OUT/vis.log") live cities: the sweep hides nothing an exact ray reaches"
   else echo "FAIL vis    $(grep -E '^FAIL|Error' "$OUT/vis.log" | head -2 | cut -c6-160 | paste -sd ';' -)   (see $OUT/vis.log)"; fi
+  # the frame-time governor on modelled devices (tools/governor_unit.js, issue 485): it settles where a device's
+  # limit lies between two steps, still gives way to a heavier scene, and comes back. No browser; a second
+  if node tools/governor_unit.js >"$OUT/governor.log" 2>&1; then echo "ok   governor  $(grep -c '^ok' "$OUT/governor.log") cases: a device at its limit settles, gives way and comes back"
+  else echo "FAIL governor  $(grep '^FAIL' "$OUT/governor.log" | head -2 | cut -c6-170 | paste -sd ';' -)   (see $OUT/governor.log)"; fi
   # every live city's solids valid on the decimetre grid they are stored on (pipeline/solid_rings.py): else the browser
   # draws one shape and the collision tests another, and a walker or a helicopter stands inside a drawn block
   if python3 pipeline/solid_rings.py --check $(bash tools/live_cities.sh) >"$OUT/rings.log" 2>&1; then
@@ -385,6 +405,7 @@ EOF
   [ $loader -eq 1 ] && run_loader
   [ $title -eq 1 ] && run_title
   [ $telemetry -eq 1 ] && run_telemetry
+  [ $gl -eq 1 ] && run_gl
 } | tee "$OUT/summary.txt"
 grep -q '^FAIL' "$OUT/summary.txt" && exit 1
 stamp "$@"
