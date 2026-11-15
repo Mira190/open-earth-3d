@@ -3094,7 +3094,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     dress: (date, light, wx) => {
       const [m, d] = date || [clock.m, clock.d];
       setClock(clock.y, m, d, S.presetTime(light, clock.y, m, d));
-      if (wx && weather) weather.set(wx);
+      if (wx && weather) weather.set(wx, { now: true }); // (as it has been for a while: the street already wet in the opening's first frame)
     },
     walkIn: secs => {
       const j = junctions.J.find(q => q.scramble && Math.hypot(q.x - player.x, q.y - player.y) < 80);
