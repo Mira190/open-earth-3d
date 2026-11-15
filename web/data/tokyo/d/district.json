@@ -15,9 +15,9 @@
   "buildings": 8082,
   "solids": 10949,
   "skyline": 3058,
-  "meshes": 154,
+  "meshes": 153,
   "skyline_meshes": 8,
-  "materials": 121,
+  "materials": 120,
   "quests": [
    "eki",
    "air",
@@ -62,15 +62,15 @@
  },
  "files": {
   "buildings.bin": 500163,
-  "game.bin": 177778,
-  "landmarks.bin": 1793265,
+  "game.bin": 177772,
+  "landmarks.bin": 1744540,
   "places.bin": 56985,
   "scene.bin": 12597,
   "shore.png": 18605,
   "vis.bin": 148852,
   "woods.webp": 186560
  },
- "bytes": 2894805,
- "whole_bytes": 3629042,
- "sha256": "5d757b836e9bbc07622ea36402a440805197ccab99a78037e2e8d8c0e46ef7cf"
+ "bytes": 2846074,
+ "whole_bytes": 3580288,
+ "sha256": "16b7f5b56a5714e54d2932ab7fd3fc57caa00b2fa25840f97184e29f7f6431f9"
 }

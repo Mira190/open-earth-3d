@@ -2204,6 +2204,10 @@ const npcNight = require('./npc_night');
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)
   await p.evaluate(() => { const g = window.__game; g.clock.frozen = true; }); // the light held still, to compare before and after
+  // (and the ground dry: the score's step above leaves rain behind it, and by day a street still drying is darker in the
+  // frame before the context is lost than in the one after, seconds later; by night the two were alike, so the step
+  // passed or failed by the hour the steps before it had run the clock to)
+  await p.evaluate(() => { const g = window.__game, W = g.weather, S = window.OEWeather && OEWeather.S; if (!W || !S) return; W.set({ rain: 0, cloud: 0 }); for (let i = 0; i < 40 && S.wet > 0.01; i++) W.update(30, g.t()); });
   // (a hero level by where you stand, let go while the checks above travelled away, is back before the frames are compared)
   await p.evaluate(async () => {
     const g = window.__game, H = g.hero && g.hero(), pl = g.player;

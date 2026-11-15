@@ -731,10 +731,14 @@ def _rail_deck():
     return L["deck"] if L else None
 
 
-def eagle(m, p, n, t, span=2.1):
+def eagle(m, p, n, t, span=2.1, up=None):
     """One of the eight eagles under the dome (2.1 m across the wings): the body, the head turned to its left, and
     each wing a fan of feathers, in plaster relief standing off the wall at p (3D), which faces n."""
-    p, n3, t3, up = np.asarray(p, float), np.array([n[0], n[1], 0.0]), np.array([t[0], t[1], 0.0]), np.array([0, 0, 1.0])
+    # (n and t may be 3D, with `up` the way its head points: on the dome's ring it looks down into the hall, head to the crown)
+    p = np.asarray(p, float)
+    n3 = np.array([n[0], n[1], n[2] if len(n) > 2 else 0.0])
+    t3 = np.array([t[0], t[1], t[2] if len(t) > 2 else 0.0])
+    up = np.array([0, 0, 1.0]) if up is None else np.asarray(up, float)
     Q = lambda s, z, d: tuple(p + t3 * s + up * z + n3 * d)
     m.box(Q(0, -0.05, 0.16), Q(0, 0.85, 0.2), 0.42, 0.3, up=tuple(n3))            # the breast
     m.box(Q(0, 0.85, 0.2), Q(0.1, 1.12, 0.24), 0.22, 0.2, up=tuple(n3))           # the neck and head
@@ -799,7 +803,11 @@ def hall(K, c, R, g, e, t, w_door, d_front, d_back, Z):
         slab(white, a, tt, nn, L / 2 - WAY_W / 2 - 0.25, L / 2 + WAY_W / 2 + 0.25, g + H_WAY, g + H_WAY + 0.35, 0, 0.1, "fbt")
         slab(stone, a, tt, nn, 0, L, g, g + 0.3, 0, 0.05, "ft")
         # the first cornice, the wall above in yolk-yellow plaster with its openings
-        slab(white, a, tt, nn, 0, L, g + H_GROUND, g + H_GROUND + 0.5, 0, 0.3, "fbt")
+        # (the gallery's edge: a grey-green cornice standing out over the hall, and the iron rail on it)
+        slab(K["tks_hall_green"], a, tt, nn, 0, L, g + H_GROUND, g + H_GROUND + 0.5, 0, 0.55, "fbt")
+        slab(K["tks_iron"], a, tt, nn, 0, L, g + H_GROUND + 1.5, g + H_GROUND + 1.56, 0.45, 0.5, "fbt")
+        for sx in np.arange(0.15, L, 0.3):
+            slab(K["tks_iron_fine"], a, tt, nn, sx - 0.012, sx + 0.012, g + H_GROUND + 0.5, g + H_GROUND + 1.5, 0.46, 0.485, "f")
         zs, zsp, wa = g + H_3F[0], g + H_3F[1], H_3F[2]
         holes = [(L / 2 + dx, 1.25, g + H_2F[0], g + H_2F[1], False) for dx in (-2.5, 0.0, 2.5)] + [(L / 2, wa, zs, zsp, False)]
         ol = ak.holed_wall(wall, ak.WORLD, a, b, g + H_GROUND + 0.5, g + H_ENT, holes)
@@ -848,48 +856,50 @@ def hall(K, c, R, g, e, t, w_door, d_front, d_back, Z):
         vt = np.array([-vin[1], vin[0]])
         pc = V[k] + vin * 0.42
         roundel(K, (*pc, g + 16.1), vin)
-        eagle(rel, (*(V[k] + vin * 0.5), g + H_ENT - 1.45), vin, vt)
-    # ---- the inner dome: eight gores of plaster between white ribs, three rings, coffers with a clematis in each, and
-    # the wheel at the crown
-    rows = 8
+    # ---- the inner dome, as the photographs show it: plaster gores; an octagonal ring of dark red-brown ribs half way
+    # up, with a rib from the crown's disc to each of its corners and an eagle on each corner; below the ring a rib down
+    # each corner and three down each side, with a white panel between them at the foot; the disc with its wheel, and
+    # white clematis round it
+    rows, RING = 8, 4
+    rib = K["tks_hall_rib"]
     prof = [(Ri * math.cos(math.radians(88 * j / rows)), g + H_SPRING + (H_CROWN - H_SPRING) * math.sin(math.radians(88 * j / rows))) for j in range(rows + 1)]
     P3 = lambda k, j, f=1.0: (*(c + (V[k % 8] - c) * (prof[j][0] / Ri) * f), prof[j][1])
+    drop = np.array([0, 0, 0.05])
+    side = lambda k, j, f: np.asarray(P3(k, j, 0.994)) * (1 - f) + np.asarray(P3(k + 1, j, 0.994)) * f - drop
     for k in range(8):
         for j in range(rows):
             wall.quad(P3(k + 1, j), P3(k, j), P3(k, j + 1), P3(k + 1, j + 1))
-        pts = [np.asarray(P3(k, j, 0.992)) - np.array([0, 0, 0.05]) for j in range(rows + 1)]
-        for p0, p1 in zip(pts, pts[1:]):   # the rib up the corner
-            K["tks_hall_rib"].box(tuple(p0), tuple(p1), 0.34, 0.16)
-        for j in (2, 4, 6):                # the rings
-            K["tks_hall_rib"].box(tuple(np.asarray(P3(k, j, 0.994)) - np.array([0, 0, 0.04])), tuple(np.asarray(P3(k + 1, j, 0.994)) - np.array([0, 0, 0.04])), 0.2, 0.1)
-        for j0, n_c in ((0, 3), (2, 3), (4, 2)):   # the coffers between the rings: a white frame, the flower in it
-            for i in range(n_c):
-                f0, f1 = (i + 0.14) / n_c, (i + 0.86) / n_c
-                lerp = lambda j, f: np.asarray(P3(k, j, 0.996)) * (1 - f) + np.asarray(P3(k + 1, j, 0.996)) * f - np.array([0, 0, 0.03])
-                A, B, C_, D = lerp(j0, f0) * 0.82 + lerp(j0 + 2, f0) * 0.18, lerp(j0, f1) * 0.82 + lerp(j0 + 2, f1) * 0.18, lerp(j0, f1) * 0.18 + lerp(j0 + 2, f1) * 0.82, lerp(j0, f0) * 0.18 + lerp(j0 + 2, f0) * 0.82
-                for p0, p1 in ((A, B), (B, C_), (C_, D), (D, A)):
-                    rel.box(tuple(p0), tuple(p1), 0.09, 0.05)
-                mid = (A + B + C_ + D) / 4
-                nrm = np.cross(B - A, D - A)
-                nrm = nrm / np.linalg.norm(nrm)
-                if nrm[2] > 0:
-                    nrm = -nrm
-                disc(rel, mid + nrm * 0.04, nrm, 0.3 if j0 < 4 else 0.22, 8, depth=0.05)
+        pts = [np.asarray(P3(k, j, 0.992)) - drop for j in range(rows + 1)]
+        for j, (p0, p1) in enumerate(zip(pts, pts[1:])):   # the rib up the corner, heavier above the ring
+            rib.box(tuple(p0), tuple(p1), 0.42 if j >= RING else 0.3, 0.16)
+        rib.box(tuple(side(k, RING, 0.0)), tuple(side(k, RING, 1.0)), 0.42, 0.14)   # the ring
+        for f in (0.25, 0.5, 0.75):                        # the three ribs down each side below it
+            for j in range(RING):
+                rib.box(tuple(side(k, j, f)), tuple(side(k, j + 1, f)), 0.24, 0.1)
+        for f0, f1 in ((0.03, 0.22), (0.28, 0.47), (0.53, 0.72), (0.78, 0.97)):   # the white panels at the foot, between the ribs
+            A, B, C_, D = side(k, 0, f0) + drop * 0.4, side(k, 0, f1) + drop * 0.4, side(k, 2, f1) + drop * 0.4, side(k, 2, f0) + drop * 0.4
+            A, D = A * 0.92 + D * 0.08, A * 0.08 + D * 0.92
+            B, C_ = B * 0.92 + C_ * 0.08, B * 0.08 + C_ * 0.92
+            white.quad(tuple(B), tuple(A), tuple(D), tuple(C_))
+        # the eagle on the ring's corner, looking into the hall
+        corner = np.asarray(P3(k, RING, 0.97))
+        vin = (c - V[k]) / np.linalg.norm(c - V[k])
+        eagle(rel, (*(corner[:2] - vin * 0.55), corner[2] - 0.32), (0.0, 0.0, -1.0), (-vin[1], vin[0], 0.0), up=(vin[0], vin[1], 0.0))
     zc = prof[-1][1]
     rc = prof[-1][0]
     wall_top = [(*(c + (V[k] - c) * (rc / Ri)), zc) for k in range(8)]
     for k in range(8):
         wall.tri((*c, zc + 0.02), wall_top[k], wall_top[(k + 1) % 8])
     dn = np.array([0, 0, -1.0])
-    disc(K["tks_hall_rib"], np.array([*c, zc - 0.06]), dn, 2.0, 24)                 # the red-brown disc at the crown, its wheel in white
-    disc(rel, np.array([*c, zc - 0.1]), dn, 1.7, 24, r_in=1.45, depth=0.1)
-    disc(rel, np.array([*c, zc - 0.1]), dn, 0.45, 12, depth=0.14)
-    for k in range(12):   # and the clematis round it
-        q = math.pi * k / 6
-        disc(rel, np.array([c[0] + 2.35 * math.cos(q), c[1] + 2.35 * math.sin(q), zc - 0.12]), dn, 0.26, 8, depth=0.06)
+    disc(rib, np.array([*c, zc - 0.08]), dn, 2.1, 24, depth=0.12)                    # the red-brown disc at the crown, and its wheel
+    disc(rib, np.array([*c, zc - 0.14]), dn, 1.9, 24, r_in=1.7, depth=0.06)
+    disc(rib, np.array([*c, zc - 0.14]), dn, 0.5, 12, depth=0.08)
     for k in range(16):
         q = math.pi * k / 8
-        rel.box((c[0] + 0.4 * math.cos(q), c[1] + 0.4 * math.sin(q), zc - 0.12), (c[0] + 1.35 * math.cos(q), c[1] + 1.35 * math.sin(q), zc - 0.12), 0.07, 0.05)
+        rib.box((c[0] + 0.45 * math.cos(q), c[1] + 0.45 * math.sin(q), zc - 0.16), (c[0] + 1.72 * math.cos(q), c[1] + 1.72 * math.sin(q), zc - 0.16), 0.08, 0.05)
+    for k in range(16):   # and the clematis round it, white
+        q = math.pi * (k + 0.5) / 8
+        disc(rel, np.array([c[0] + 2.55 * math.cos(q), c[1] + 2.55 * math.sin(q), zc - 0.2 - 0.02]), dn, 0.3, 8, depth=0.06)
     # ---- the ways through: the vestibule on the plaza's side behind the pavilion's doorways, the passage on the tracks'
     box_ = lambda u0, u1, hw: Polygon([tuple(W(u0, -hw)), tuple(W(u1, -hw)), tuple(W(u1, hw)), tuple(W(u0, hw))])
     hw = VEST_W / 2
@@ -1549,6 +1559,6 @@ def meshes(level="far"):
         if m.mat.startswith("tks_hall") and "floor" not in m.mat:   # under the dome: what the sky gives a room through its windows
             m.sky, m.bounce = 0.5, "#b9a37a"
     if not HERO:   # the landmark model goes without the parts only the streamed level's fine model shows
-        out = [m for m in out if m.mat not in ("tks_sash", "tks_stone_fine", "tks_iron_fine")]
+        out = [m for m in out if m.mat not in ("tks_sash", "tks_stone_fine", "tks_iron_fine", "tks_hall_relief")]
     HERO = False
     return mats, out, hidden, trees, props
