@@ -126,6 +126,16 @@ window.OENav = (function () {
         if (x < p.x0 || y < p.y0 || x >= p.x1 || y >= p.y1) continue;
         const c = Math.floor((x - p.x0) / p.cell), r = Math.floor((y - p.y0) / p.cell), v = p.z[r * p.nx + c];
         if (v === -32768) continue;
+        // (a smooth patch, "smooth": 1, holds a surface sampled at its cells' middles, not walls and risers: a hero level's
+        // drawn ground, pipeline/hero_floor.py; read between the four nearest, as the triangles it was sampled on run)
+        if (p.smooth) {
+          const fx = (x - p.x0) / p.cell - 0.5, fy = (y - p.y0) / p.cell - 0.5, c0 = Math.floor(fx), r0 = Math.floor(fy), tx = fx - c0, ty = fy - r0;
+          if (c0 >= 0 && r0 >= 0 && c0 + 1 < p.nx && r0 + 1 < p.ny) {
+            const k = r0 * p.nx + c0, a = p.z[k], b = p.z[k + 1], d = p.z[k + p.nx], e = p.z[k + p.nx + 1];
+            if (a !== -32768 && b !== -32768 && d !== -32768 && e !== -32768) return [((a * (1 - tx) + b * tx) * (1 - ty) + (d * (1 - tx) + e * tx) * ty) / 100, null];
+          }
+          return [v / 100, null];
+        }
         const U = p.up, uc = U ? c - U.i0 : -1, ur = U ? r - U.j0 : -1;
         const u = U && uc >= 0 && ur >= 0 && uc < U.nx && ur < U.ny ? U.z[ur * U.nx + uc] : -32768;
         return [v / 100, u === -32768 ? null : u / 100];
