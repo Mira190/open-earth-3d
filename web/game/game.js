@@ -110,6 +110,9 @@ window.OpenEarthGame = async function game(cityId) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: QC.antialias && !(QC.post && window.OELens && window.OEAtmos && (G.sky || {}).post !== false), powerPreference: 'high-performance', reversedDepthBuffer: true });
   // (a load traced from the context's first call, where the last one here raised an error no later frame did, or
   // where the address asks: glCheck, below)
+  // (a program this GPU will not link: its material is compiled again with less, until it is drawn; glcare.js fit)
+  let fitRoot = null;
+  if (window.OEGLCare && OEGLCare.fitWatch) OEGLCare.fitWatch(renderer, { roots: () => [fitRoot], key: `game|${cityId}` });
   let glLoad = null;
   try {
     const asked = /[?&]gltrace=1\b/.test(location.search), due = asked || localStorage.getItem('oe3d-gl-trace') === '1';
@@ -159,6 +162,7 @@ window.OpenEarthGame = async function game(cityId) {
   const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg, small: QC.small, shadow: QC.shadow, game: true, nearCars: ((G.crowd || {}).radius_m || 450) + 100,
     groundAt: G.start && G.start.at }); // (the aerial tiles round the start before the game opens, the rest after it: issue 335)
   const world = Wd.world, U = Wd.U;
+  fitRoot = world;
   // After dark, a soft fill that goes with you: the city's lights are drawn as an aerial photograph shows
   // them, and between the lamps (a hillside track, a shrine's woods, a deck above the town) the ground was
   // as black as the sky, so a spawn or a hop could land you where nothing at all could be seen. A light

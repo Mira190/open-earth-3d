@@ -149,8 +149,8 @@ else
       web/index.html|web/quality.js) shared_change; title=1; loader=1; telemetry=1; gl=1 ;;
       web/plate.js|web/city.js|tools/load_check.js) shared_change; loader=1; telemetry=1 ;;
       web/game/game.js) shared_change; loader=1; telemetry=1; gl=1 ;;
-      web/world.js|web/glcare.js|web/mirror.js|web/water.js|web/lens.js|web/game/atmosphere.js|web/game/ao.js|web/game/weather.js) shared_change; gl=1 ;;   # what draws into a target of its own: the passes a device's governor turns on and off
-      tools/gl_error_probe.js) gl=1 ;;
+      web/world.js|web/glcare.js|web/mirror.js|web/water.js|web/surface.js|web/lens.js|web/game/atmosphere.js|web/game/ao.js|web/game/weather.js) shared_change; gl=1 ;;   # what draws into a target of its own: the passes a device's governor turns on and off
+      tools/gl_error_probe.js|tools/sampler_probe.js) gl=1 ;;
       web/game/fishing.js|tools/fishing_*|pipeline/fishing.py)   # the cities with fishing spots only (docs/FISHING.md)
         if [ "$TIER" = full ]; then for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && add_city "$id"; done; else fish=1; fi ;;
       tools/game_check.js|tools/*_step.js|tools/*_walk.js|tools/npc_night.js|tools/ride_queue.js) shared_change game ;;   # a check's own script: that kind of check
@@ -296,6 +296,12 @@ run_gl() {   # the map as an ordinary device opens it (issue 485; tools/gl_error
     if START=0.8/0.5 Q=msaa=on WALK=1 timeout 1800 $X node tools/gl_error_probe.js "$c" >"$OUT/gl-$c.log" 2>&1; then
       echo "ok   gl     $c: opened with the extras shed and multisampling on, the ladder walked: WebGL refused no call"
     else echo "FAIL gl     $c: $(grep -o '"call":"[^"]*"' "$OUT/gl-$c.log" | head -2 | cut -c9-160 | paste -sd ';' -)   (see $OUT/gl-$c.log)"; fi
+    # the same map as a GPU with sixteen texture units in a fragment shader (Apple's, most phones'; the software
+    # renderer has 32): every program that does not link there is compiled again with less until it does, and no
+    # material is left undrawn (tools/sampler_probe.js, glcare.js fit)
+    if Q=units=16 timeout 1800 $X node tools/sampler_probe.js "$c" >"$OUT/units-$c.log" 2>&1; then
+      echo "ok   gl     $c: as a 16-unit GPU every material drawn$(grep -o 'goes without: .*' "$OUT/units-$c.log" | sed 's/^/, /')"
+    else echo "FAIL gl     $c: as a 16-unit GPU a material is left undrawn: $(tail -3 "$OUT/units-$c.log" | head -1 | cut -c1-200)   (see $OUT/units-$c.log)"; fi
   done
 }
 run_telemetry() {   # the visitor and SLO events end to end, and the game's save on leaving (tools/telemetry_check.js)

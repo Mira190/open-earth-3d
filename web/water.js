@@ -634,6 +634,8 @@ vec4 shoreAt(vec2 xz) {
   return vec4((s.r * 255.0 - 128.0) * 0.5, s.g, s.b, 1.0);
 }`;
     function patchGround(sh) {
+      // (a map with no shoreline, or a GPU short of texture units, glcare.js fit: no band, and no sampler asked for)
+      if (!shore || (window.OEGLCare && OEGLCare.fit.off('shore'))) return;
       Object.assign(sh.uniforms, { uShore: u.uShore, uShoreOn: u.uShoreOn, uShoreBox: u.uShoreBox, uTime: u.uTime, uHs: u.uHs });
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vShoreWP;')
         .replace('#include <project_vertex>', '#include <project_vertex>\nvShoreWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');

@@ -35,6 +35,9 @@ standing traffic). A two-hour round that fails on a step unrelated to the change
 - `gl`, when the game, the renderer or a pass with a target of its own changed: Shibuya opened as a device with its
   extras shed opens it, multisampled, the governor's ladder walked, and every WebGL call asked for its error
   (`tools/gl_error_probe.js`; every live map in the full tier). The game check walks the same ladder in play.
+  Then the same map as a GPU with sixteen texture units (`?units=16`: Apple's GPUs and most phones have 16, the
+  software renderer 32, so a program over 16 links here and nowhere else; issue 485): every material must end drawn,
+  and the layers that device goes without are printed (`tools/sampler_probe.js`, `web/glcare.js` `fit`).
 
 **After landing: the full tier, on main, in GitHub Actions** (`.github/workflows/checks.yml`). Each
 push to main runs `CHECK_TIER=full tools/check.sh --plan` against the commit of the last run that

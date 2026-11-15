@@ -94,7 +94,11 @@ window.OpenEarthCity = async function main(cityId) {
   resize();
 
   // ------------------------------------------------------------ the shared world (world.js)
+  // (a program this GPU will not link: its material is compiled again with less, until it is drawn; glcare.js fit)
+  let fitRoot = null;
+  if (window.OEGLCare && OEGLCare.fitWatch) OEGLCare.fitWatch(renderer, { roots: () => [fitRoot], key: `model|${(D.scene.city || {}).id || ''}` });
   const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg, small: QC.small, shadow: QC.shadow });
+  fitRoot = Wd.world;
   // (a far land past the default far plane, Kamakura's out to Mount Fuji: the camera takes it in)
   if ((Wd.world.userData.farHalf || 0) * 1.45 > camera.far) { camera.far = Wd.world.userData.farHalf * 1.45; camera.updateProjectionMatrix(); }
   const { world, groundMeshes, buildings, bGeo, U, SRC } = Wd;

@@ -132,13 +132,20 @@ window.OEWeather = (function () {
   const GLSL = `
 uniform float uOeWet; uniform float uOeRain; uniform float uOeT; uniform float uOeSnow; uniform float uOeSnowfall; uniform vec4 uOeWind; uniform float uOeGlint;
 uniform sampler2D uOeOcc; uniform vec4 uOeOccBox; uniform float uOeOccOn; uniform float uOeOccBase;
-uniform sampler2D uOeTrail; uniform vec4 uOeTrailBox; uniform float uOeTrailOn;
+uniform vec4 uOeTrailBox; uniform float uOeTrailOn;
+#ifndef OE_NO_TRAIL
+uniform sampler2D uOeTrail;
+#endif
 // how trodden the snow is at p (three.js world), 0..1, from the trail round the player; 0 beyond it
 float oeTrail(vec3 p) {
+#ifdef OE_NO_TRAIL
+  return 0.0; // (a GPU short of texture units goes without the tracks first: glcare.js fit)
+#else
   if (uOeTrailOn < 0.5) return 0.0;
   vec2 uv = (vec2(p.x, -p.z) - uOeTrailBox.xy) * uOeTrailBox.z;
   if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return 0.0;
   return textureLod(uOeTrail, uv, 0.0).r * smoothstep(0.0, 0.08, min(min(uv.x, uv.y), min(1.0 - uv.x, 1.0 - uv.y)));
+#endif
 }
 // 1 where something stands over p (a roof, a deck, a tree) by more than lift metres, from the
 // occlusion map round the camera; 0 in the open or beyond the map
@@ -215,7 +222,7 @@ vec2 oeRipple(vec2 xz, float camD) {
     }
     // (a material the mirror patched first carries the mirror's stand-in for oePuddle: the weather's own takes its place)
     sh.fragmentShader = sh.fragmentShader.replace(/\nfloat oePuddle\(vec2 xz\) \{[^\n]*\}/, '').replace('#include <common>', `#include <common>
-varying vec3 vOeW; varying vec3 vOeN;
+varying vec3 vOeW; varying vec3 vOeN;${window.OEGLCare && OEGLCare.fit.off('trail') ? '\n#define OE_NO_TRAIL' : ''}
 ${GLSL}`);
     const porous = (o.porous ?? 0.4).toFixed(3), puddles = o.puddles || '0.0', gloss = o.gloss || '1.0', tread = o.tread || '0.0';
     // (no puddles where none can stand, the people's clothes and skin: their noise and the ripples are left out of
