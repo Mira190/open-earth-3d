@@ -1,0 +1,76 @@
+{
+ "note": "A phone's district of this map (pipeline/district.py): the packs here are cut from the whole map's and are never edited by hand.",
+ "v": 1,
+ "x": [
+  -500,
+  1300
+ ],
+ "y": [
+  0,
+  2300
+ ],
+ "km2": 4.14,
+ "of_km2": 15.36,
+ "kept": {
+  "buildings": 8082,
+  "solids": 10949,
+  "skyline": 3058,
+  "meshes": 118,
+  "skyline_meshes": 8,
+  "materials": 106,
+  "quests": [
+   "eki",
+   "air",
+   "loop",
+   "sun",
+   "ginza",
+   "arches",
+   "done"
+  ]
+ },
+ "cut": {
+  "travel": [
+   "t-shimbashi"
+  ],
+  "npcs": [
+   "aoki",
+   "ren"
+  ],
+  "close": [
+   "Tokyo Tower, the foot of leg 1",
+   "Tokyo Tower, the foot of leg 2",
+   "Tokyo Tower, the foot of leg 3",
+   "Tokyo Tower, the foot of leg 4",
+   "Tokyo Tower, Foot Town under the legs",
+   "Kabuki-za, the doors under the porch"
+  ],
+  "surfaces": 106,
+  "wharves": [
+   "hamarikyu",
+   "hinode",
+   "takeshiba",
+   "harumi"
+  ],
+  "stations": [
+   "shimbashi"
+  ],
+  "quests": [
+   "water",
+   "heli",
+   "tower"
+  ]
+ },
+ "files": {
+  "buildings.bin": 500163,
+  "game.bin": 175544,
+  "landmarks.bin": 1539192,
+  "places.bin": 56985,
+  "scene.bin": 12597,
+  "shore.png": 18605,
+  "vis.bin": 149573,
+  "woods.webp": 186560
+ },
+ "bytes": 2639219,
+ "whole_bytes": 3375996,
+ "sha256": "21627d43d850477e15723737c7c5450e95090a78e3416989773cf03ff5622f8e"
+}

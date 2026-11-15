@@ -33,10 +33,18 @@ window.OEWorld = (function () {
     // the download is most of the wait for a big city, so it is counted as it streams in, against
     // the size cities.json gives for the model or the game (raw bytes, as the streams deliver them)
     const entry = (window.OE_CITIES || []).find(c => c.id === cityId) || {};
-    const want = (entry.load_bytes || {})[game ? 'game' : 'model'] || 0, mb = b => (b / 1e6).toFixed(1);
+    // A phone's game loads its district of the map (pipeline/district.py: the packs under d/, cut offline to a few
+    // square kilometres round the start, and the play area is that): what the page builds, unpacks and holds then
+    // scales with the district, not with the map (issues 443 and 335). ?district=off: the whole map's packs, to
+    // compare (?map=whole too, which also builds its buildings whole: create() below); ?district=on: the district on
+    // any device.
+    const QL = window.OEQuality ? OEQuality.city() : null, query = new URLSearchParams(location.search), distQ = query.get('district');
+    const LP = game && entry.lean_pack && query.get('map') !== 'whole' && distQ !== 'off' && (distQ === 'on' || (QL && QL.lean)) ? entry.lean_pack : null;
+    const CUT = ['scene', 'buildings', 'places', 'landmarks', 'game'];
+    const want = LP ? LP.bytes : (entry.load_bytes || {})[game ? 'game' : 'model'] || 0, mb = b => (b / 1e6).toFixed(1);
     // a district that shares a bigger map (index.html route: Sangenjaya, on Shibuya's): the loader says both
     // (after this map's page died on this device, quality.js died: a lighter set, and the loader says so)
-    const QL = window.OEQuality ? OEQuality.city() : null, lighter = QL && QL.lean && QL.deaths ? ' (a lighter set: the last visit ran out of memory here)' : '';
+    const lighter = QL && QL.lean && QL.deaths ? ' (a lighter set: the last visit ran out of memory here)' : '';
     const D = game && window.OE_DISTRICT, what = (D ? `${D.name}, on the ${entry.name} map` : entry.name || 'the city') + lighter;
     let got = 0, shown = 0;
     const report = () => {
@@ -74,12 +82,12 @@ window.OEWorld = (function () {
     const getPacked = async (name, keep = name === 'buildings') => {
       if (window.OEPack && OEPack.supported() && (entry.packed || []).includes(name)) {
         try {
-          const buf = await (await fetchFile(name + '.bin')).arrayBuffer();
+          const buf = await (await fetchFile((LP && CUT.includes(name) ? LP.dir : '') + name + '.bin')).arrayBuffer();
           const lean = small && name === 'landmarks';
           if (OEPack.decodeIn) return await OEPack.decodeIn(buf, keep ? name : null, lean);
           const o = await OEPack.decode(buf);
           return lean && OEPack.dropDetail ? OEPack.dropDetail(o) : o;
-        } catch (e) { console.warn(`${name}.bin:`, e); }
+        } catch (e) { console.warn(`${name}.bin:`, e); if (LP && CUT.includes(name)) throw e; } // (a district has no JSON beside its packs, and half a district is no map)
       }
       return getJSON(name + '.json');
     };
@@ -116,8 +124,10 @@ window.OEWorld = (function () {
     S.roofs(B); // surface models follow the pitched roofs
     const ti = new Int16Array(terrBuf);
     const T = { data: Float32Array.from(ti, v => v * scene.terrain.scale), nx: scene.terrain.nx, ny: scene.terrain.ny,
-      cell: scene.terrain.cell, x0: scene.frame.x[0], y1: scene.frame.y[1] };
-    return { id: cityId, DATA, scene, B, P, LM, UNC, G, N, CITY, T, T0: T, ground: (x, y) => Math.max(0, S.terrainAt(T, x, y)) };
+      cell: scene.terrain.cell, x0: scene.terrain.x0 ?? scene.frame.x[0], y1: scene.terrain.y1 ?? scene.frame.y[1] }; // (a district's terrain is the whole map's)
+    // the frame of what is drawn past the play area: the whole map's under a district (scene.world), else the frame
+    scene.worldFrame = scene.world ? Object.assign({}, scene.frame, scene.world) : scene.frame;
+    return { id: cityId, DATA, PACKS: DATA + (LP ? LP.dir : ''), district: LP, scene, B, P, LM, UNC, G, N, CITY, T, T0: T, ground: (x, y) => Math.max(0, S.terrainAt(T, x, y)) };
   }
 
   // surface patterns for parametric landmark materials (landmarks.json "pattern"), drawn
@@ -836,7 +846,7 @@ vec3 steepRock(vec3 c, float k) {
     world.fog.near *= clarity; world.fog.far *= clarity;
     // landings past the frame (outposts.js): the far land leaves them open and the haze treats them as the frame
     const outHoles = window.OEOutposts && D.G ? OEOutposts.list(D.G).map(o => ({ x0: o.x0, x1: o.x1, y0: o.y0, y1: o.y1, band: o.band })) : [];
-    const edgeFade = edgeHaze(scene.frame, 150, farOn, outHoles);
+    const edgeFade = edgeHaze(scene.worldFrame, 150, farOn, outHoles);
 
     // ------------------------------------------------------------ terrain and imagery
     loadMsg('Draping aerial imagery on the terrain', 0.35);
@@ -888,6 +898,7 @@ vec3 steepRock(vec3 c, float k) {
       const tex = new THREE.DataTexture(one, w, h, THREE.RedFormat, THREE.UnsignedByteType);
       tex.unpackAlignment = 1; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
       tex.needsUpdate = true;
+      if (LEAN && game) tex.onUpdate = () => { tex.onUpdate = null; tex.image.data = null; }; // (a phone: the mask is the GPU's alone once sent, 11 MB in Tokyo; near() reads the bits)
       // within a clip region, or a metre and a half from one (a landmark's own seawall runs along its edge)
       const near = (x, y) => {
         const c = Math.round((x - x0) / res + 1), r = Math.round((y1 - y) / res + 1);
@@ -1242,7 +1253,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     // Drawn only within the frame: the tiles' grid overhangs it by up to 800 m, which past the frame is
     // only haze and would lie over the open sea there, cutting it off along a straight line (issue 57).
     function tileGeometry(t, Tg) {
-      const F = scene.frame, x0 = Math.max(t.x0, F.x[0]), x1 = Math.min(t.x1, F.x[1]), y0 = Math.max(t.y0, F.y[0]), y1 = Math.min(t.y1, F.y[1]);
+      const F = scene.worldFrame, x0 = Math.max(t.x0, F.x[0]), x1 = Math.min(t.x1, F.x[1]), y0 = Math.max(t.y0, F.y[0]), y1 = Math.min(t.y1, F.y[1]);
       if (x1 <= x0 || y1 <= y0) { // wholly outside: nothing to draw (kept, so groundMeshes stays one to a tile)
         const e = new THREE.BufferGeometry();
         for (const [k, n] of [['position', 3], ['normal', 3], ['uv', 2]]) e.setAttribute(k, new THREE.Float32BufferAttribute([], n));
@@ -1479,7 +1490,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     let far = null;
     const farData = await farLoad;
     if (farData) try {
-      far = OEFarLand.create(farData, { frame: scene.frame, ground: D.ground, small, PG, PHOTO_GRADE, holes: outHoles });
+      far = OEFarLand.create(farData, { frame: scene.worldFrame, ground: D.ground, small, PG, PHOTO_GRADE, holes: outHoles });
       world.add(far.mesh);
       if (seaTex) for (const m of [water.material, waterMat]) m.defines = Object.assign({}, m.defines, { OE_FARLAND: '' });
     } catch (e) { console.warn('far land: none drawn', e); far = null; }
@@ -1723,7 +1734,7 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     const BLD = await OEBuildings.create(D, { lin, U, renderer, SRC, small, job: bldJob, cells: MAP, onCell, photoGrade: PHOTO_GRADE, night: NIGHT, pictures: pics,
       progress: f => loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5 + 0.14 * f) });
     const bGeo = BLD.geometry, buildings = BLD.mesh;
-    const fr = scene.frame;
+    const fr = scene.worldFrame;
     U.uFrame.value.set(fr.x[0], fr.y[0], 1 / (fr.x[1] - fr.x[0]), 1 / (fr.y[1] - fr.y[0]));
     // drawn as cells over a grid (buildings.js cells), the one mesh kept out of the scene for picking (game.js) and
     // for the bounds-tree; the cells share its geometry's buffers and its material
@@ -2069,6 +2080,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       if (m.detail && small) continue; // (a hero level's finest parts, landmarks.json "detail": the high and medium tiers only)
       const g = lmGeometry(m);
       if (m.material === 'rail_steel' && lmMats.rail_steel) { railDirections(g); railGlint(lmMats.rail_steel); } // (the sun's glint along the rail)
+      // (a phone: a landmark's vertex arrays are the GPU's alone once sent, 22 MB of Tokyo's page; the walking model reads
+      // landmarks.bin's own lists, and nothing casts a ray at these. The screens keep theirs: neon.js lights the street from them)
+      if ((LM.materials[m.material] || {}).pattern !== 'led_screen') shed(g);
       const mesh = new THREE.Mesh(g, lmMaterial(m));
       if (m.far) { g.computeBoundingSphere(); farAt(mesh, g.boundingSphere.center.clone(), g.boundingSphere.radius, m.far * (small ? 0.6 : 1)); } // (a room's furnishings: nearer on a small device)
       mesh.castShadow = mesh.receiveShadow = true;

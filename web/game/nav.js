@@ -871,7 +871,10 @@ window.OENav = (function () {
     // adds to them) are not walls: the landmark's own mesh is, and a measured piece wider than the drawn
     // tower round it would stand as an invisible wall in front of it (issue #91)
     const hidden = new Set((D.scene && D.scene.hidden_solids) || []);
-    const shown = D.B.s.filter((s, i) => !hidden.has(i));
+    // (in a phone's district, pipeline/district.py, the solids past the play area are scenery: drawn, never met)
+    const PX1 = x0 + DSM.nx * DSM.cell, PY0 = y1 - DSM.ny * DSM.cell;
+    const inPlay = !D.district ? null : s => { const r = s[4]; for (let k = 0; k < r.length; k += 2) if (r[k] >= x0 * 10 && r[k] <= PX1 * 10 && r[k + 1] >= PY0 * 10 && r[k + 1] <= y1 * 10) return true; return false; };
+    const shown = D.B.s.filter((s, i) => !hidden.has(i) && (!inPlay || inPlay(s)));
     for (const s of shown) col.add(s, (s[1] + s[2]) / 10, (s[1] + s[3]) / 10, BUILDING, s[0], 10, 4); // (its rings in decimetres, s[4...])
     // the posts a canopy (an arcade, a gate: pipeline/arcades.py) stands on, as buildings.js draws them
     const PH = OEBuildings.POST / 2;

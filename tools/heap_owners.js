@@ -4,7 +4,8 @@
 // array the page made by length and keeps only in a closure is invisible to mem_check.js OWNERS; here it has a name.
 //   SNAP=/tmp/%c.heapsnapshot xvfb-run -a node tools/mem_check.js tokyo
 //   node --max-old-space-size=8000 tools/heap_owners.js /tmp/tokyo.heapsnapshot [depth=6] [top=40]
-// Also lists the plain objects by constructor (count and self size) for the largest kinds.
+// Also lists the plain objects by constructor (count and self size) for the largest kinds, and with PLAIN=5 the
+// arrays, numbers, objects and strings by the first five steps of the path that holds them.
 'use strict';
 const fs = require('fs');
 const [,, file, depthArg = '6', topArg = '40'] = process.argv;
@@ -84,7 +85,44 @@ for (let i = 0; i < n; i++) {
     const k = `${tn} ${nm}`; const o = kinds.get(k) || { n: 0, sz: 0 }; o.n++; o.sz += sz; kinds.set(k, o);
   }
 }
+// PLAIN=k: the plain arrays, boxed numbers and objects too, by the first k steps of the path that holds them from
+// the roots (who owns the tree they are in, where the array buffers' list names the last steps): a page's parsed
+// data and the structures built from it are mostly these (issue 443)
+const PLAIN = +(process.env.PLAIN || 0), plain = new Map();
+if (PLAIN) {
+  const up = new Int32Array(n).fill(-2), upE = new Uint32Array(n);
+  const parent = i => {
+    if (up[i] !== -2) return up[i];
+    let best = -1, be = 0;
+    for (let k = rc[i]; k < rc[i + 1]; k++) { const f = rFrom[k]; if (dist[f] >= 0 && dist[f] < dist[i] && (best < 0 || dist[f] < dist[best])) { best = f; be = rEdge[k]; } }
+    up[i] = best; upE[i] = be;
+    return best;
+  };
+  const label = new Map();
+  const owner = i => {
+    const chain = [];
+    let cur = i;
+    while (cur > 0 && dist[cur] > PLAIN + 2) { const f = parent(cur); if (f < 0) break; cur = f; }
+    if (label.has(cur)) return label.get(cur);
+    const top = cur;
+    while (cur > 0 && dist[cur] > 0) { const f = parent(cur); if (f < 0) break; const en = edgeName(upE[cur]), tn = type(f), nm = name(f); chain.push(tn === 'closure' ? `${en} (in ${nm || 'fn'}())` : en); cur = f; }
+    const l = chain.reverse().slice(-PLAIN).join(' . ');
+    label.set(top, l);
+    return l;
+  };
+  for (let i = 0; i < n; i++) {
+    const tn = type(i);
+    if (tn !== 'array' && tn !== 'number' && tn !== 'object' && tn !== 'string' && tn !== 'concatenated string' && tn !== 'sliced string') continue;
+    if (dist[i] < 0) continue;
+    const k = owner(i), o = plain.get(k) || { n: 0, sz: 0 }; o.n++; o.sz += N[i * NF + nSizeI]; plain.set(k, o);
+  }
+}
 const MB = v => (v / 1048576).toFixed(1);
+if (PLAIN) {
+  console.log('arrays, numbers, objects and strings, by who holds them:');
+  for (const [k, o] of [...plain].sort((a, b) => b[1].sz - a[1].sz).slice(0, TOP)) console.log(`${MB(o.sz).padStart(7)} MB ${String(o.n).padStart(8)}  ${k}`);
+  console.log('');
+}
 console.log(`array buffers ${MB(total)} MB, by who holds them:`);
 for (const [k, o] of [...by].sort((a, b) => b[1].sz - a[1].sz).slice(0, TOP)) console.log(`${MB(o.sz).padStart(7)} MB ${String(o.n).padStart(6)}  ${k}`);
 console.log('\nobjects by kind (self size):');

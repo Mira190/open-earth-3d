@@ -1711,6 +1711,13 @@ def write_index():
             f = lambda n: n + (".bin" if n in c["packed"] else ".json")
             model = size([f("scene"), f("buildings"), f("places"), f("landmarks"), f("terrain"), "uncertainty.json"])
             c["load_bytes"] = {"model": model, "game": model + size([f("game")])}
+            # a phone's district of the map (pipeline/district.py): its packs, cut round the start, and what a phone's
+            # game downloads with them
+            dm = os.path.join(data, "d", "district.json")
+            if os.path.exists(dm):
+                m = json.load(open(dm, encoding="utf8"))
+                c["lean_pack"] = {"dir": "d/", "x": m["x"], "y": m["y"],
+                                  "bytes": sum(v for k, v in m["files"].items() if k.endswith(".bin") and k != "vis.bin") + size([f("terrain")])}
         if os.path.exists(os.path.join(data, "flyover.json")):  # the loading flyover (tools/flyover.js, web/flyover.js)
             fly = json.load(open(os.path.join(data, "flyover.json"), encoding="utf8"))
             c["flyover"] = {k: fly[k] for k in ("video", "webm", "poster", "seconds") if k in fly}
