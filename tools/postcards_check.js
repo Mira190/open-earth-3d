@@ -97,6 +97,14 @@ check('data: the index is up to date with cities/<id>/postcards.json (python pip
   check('journey: two or three cards in a map, then on', stays.length > 20 && stays.every(n => n >= 1 && n <= 3) && stays.filter(n => n >= 2).length > stays.length * 0.7, stays.slice(0, 30));
   check('journey: it gets round every map', seen.size === Object.keys(M.cities).length, [...seen]);
   check('journey: the album keeps the newest', st.cards.length <= P.ALBUM && st.cards.every((k, i) => !i || k.t >= st.cards[i - 1].t), st.cards.length);
+  // an album from before a map was taken off the globe: its cards cannot be shown, and are not let go for that
+  {
+    const t0 = Date.UTC(2026, 10, 1), s2 = Object.assign(P.fresh(t0), { at: t0, n: 5, where: 'off-the-globe', left: 2, cards: [0, 1, 2, 3, 4].map(i => ({ c: 'off-the-globe', s: `s${i}`, l: 'day', t: t0 - (5 - i) * HOUR, k: 0, seen: 1 })) });
+    let t = t0, came = 0;
+    for (let v = 0; v < 40; v++) { t += 19 * HOUR; came += P.plan(s2, t, M, cities).length; }
+    const kept = s2.cards.filter(k => k.c === 'off-the-globe').length, shown = s2.cards.length - kept;
+    check('journey: a parked map\'s cards stay in the album, outside the newest it keeps of the live maps', kept === 5 && came > P.ALBUM && shown === P.ALBUM && s2.cards.every(k => k.c === 'off-the-globe' || cities.some(c => c.id === k.c)), { kept, came, shown });
+  }
   const a = P.arrival(M, st.cards[0].c, `pc-${st.cards[0].s}.dusk`);
   check('journey: a card names where the game starts', a && a.postcard && a.light === 'dusk' && a.at.length >= 2 && P.arrival(M, st.cards[0].c, 'pc-nowhere.dusk') === null && P.arrival(M, st.cards[0].c, 't-shibuya') === null, a);
   void prev;

@@ -92,7 +92,10 @@
       out.push(card);
     }
     state.cards.sort((a, b) => a.t - b.t);
-    if (state.cards.length > ALBUM) state.cards.splice(0, state.cards.length - ALBUM);
+    // the album keeps the newest of the maps on the globe; a card from a map that is off it for now cannot be shown,
+    // so it is not counted and not let go: it is there when its map comes back
+    let over = state.cards.filter(k => maps.some(c => c.id === k.c)).length - ALBUM;
+    if (over > 0) state.cards = state.cards.filter(k => !(over > 0 && maps.some(c => c.id === k.c) && over--));
     state.at = now;
     return out;
   }

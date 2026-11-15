@@ -102,12 +102,19 @@ Sources: [Culture Trip on Travel Frog](https://theculturetrip.com/asia/china/art
 
 - **A link to a card** (`#play-<city>@pc-<spot>.<light>`): the game's own title card over that spot, with
   "As on the postcard" chosen as the time to start at. Play starts you where the photographer stood.
-- **The passport** of each map lists the postcards that came from it.
+- **The passport** of each map lists the postcards that came from it, and under them the rest of the
+  album, from the other maps on the globe, each with its map's name.
 
 ## How a journey is worked out
 
-`web/postcards.js`, with no server, when the title screen opens. The state is one entry in `localStorage` (`oe3d-postcards`): a
+`web/postcards.js`, with no server, when the title screen opens and when a game starts (a link straight
+into a game never passes the title). The state is one entry in `localStorage` (`oe3d-postcards`): a
 seed, the time of the last visit, where the traveller is, and the album.
+
+`localStorage` belongs to one browser and one address (scheme, host and port): the album on one host is
+not the album on another, a private window starts without one, and clearing the site's data clears it.
+Nothing in the game removes it: a game's "New game" starts that map's passport and diary again and
+leaves the postcards as they are.
 
 - A visit brings `floor(hours away / 6)` cards, three at most. The first visit ever brings one, so a
   new player meets the idea at once. A visit sooner than six hours after the last brings none.
@@ -119,10 +126,12 @@ seed, the time of the last visit, where the traveller is, and the album.
   map, a spot the album does not have yet.
 - The light of a card is the sun's over that city at that minute: `day` above 8°, `night` below -5°,
   between them `dawn` while it is rising and `dusk` while it is setting.
-- The album keeps the newest 48.
+- The album keeps the newest 48 from the maps on the globe. A card from a map that has been taken off
+  the globe (parked, `cities/index.json`) has no entry in the index, so no page can show it; it stays in
+  the album, outside the 48, and is listed again when its map comes back.
 
 Telemetry (through `web/telemetry.js`, which sends nothing from automated browsers or with Do Not
-Track): `postcards_came` (how many new), when the title adds a visit's cards to the album.
+Track): `postcards_came` (how many new), when the title or a game adds a visit's cards to the album.
 
 ## The stills
 

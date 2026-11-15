@@ -772,7 +772,11 @@ Sydney Tower's 56 cables steady the shaft, Eikan-do's 2026 night openings run 20
 
 The phone (<kbd>N</kbd>) is the hub: beside the ride app it lists Messages, Diary, Work, Map
 and Camera (`web/game/phone.js`). Messages come as a part of the day begins: someone you know
-is free, something on the calendar has started, something is on tomorrow.
+is free, something on the calendar has started, something is on tomorrow. One thing said is one
+message: the calendar writes once for each run of an event (a season of four weeks is one message,
+keyed by the run's first day, not one for each day you visit in it), the same words from the same
+sender replace their earlier copy, and the list is in the order of the city's clock, newest first.
+A save from before that rule is put right as it is read (`tidy()` in `phone.js`).
 
 ### How it is built
 
