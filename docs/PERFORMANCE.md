@@ -393,6 +393,145 @@ to 0, 0.60, then half rate and back up; fast again: 1.00 with every extra) and t
 0.6; `tools/game_check.js` checks the order and the way back in every city. Not checkable here: how it
 feels on a real display, where the frame time is a GPU's and not a simulation's.
 
+### A choice that settles, and the state a device plays in (issue 485)
+
+**What the device said.** The owner's Apple M3 (Chrome, tier high, device pixel ratio 2, a 1001 x 894 window) held
+59 frames a second in Shibuya by moving: its `quality` events show the scale stepping 0.6, 0.65, 0.7, 0.75 five
+seconds apart, falling back to 0.6 in three steps a second apart, and starting again half a minute later, all
+session. The governor's only memory was of a try that failed within four seconds; that device's tries held four
+seconds and failed in the ninth, as the player walked on, so nothing was learned and the next try came on time.
+
+**From first principles.** A step of resolution is seen when it happens; five percent of headroom left unused is
+not. So down stays prompt (a missed frame is seen) and up is rationed by what was learned:
+
+- the step a try failed at is remembered (`top`), and a failure counts as the try's for as long as the wait that
+  is running, not for four seconds. The way back up to the step under it is as quick as before (four seconds a
+  step); the step itself is asked for again after half a minute, and that wait doubles each time a try fails
+  again, to eight minutes, and starts over once the failures stop coming;
+- a step the frames stop fitting at with no try behind it (the scene got heavier) is left alone for half a minute
+  and no more (`bad`), so the way back is not climbed while the heavy scene lasts and is quick once it has passed;
+- the extras have the same memory (a minute, doubling to sixteen): multisampling and the shadow map's size coming
+  and going are seen more than any step of resolution. A try of the extras that fails is taken back as the
+  extras, where before it cost resolution;
+- a record from an earlier visit starts settled (`resume`): the step above what the device held waits its turn;
+- half the display's rate, taken when the floor cannot be met, ends as soon as frames come at the full rate
+  again (before, the resolution climbed to its ceiling under the half rate, and one heavy half minute left a
+  device at thirty frames a second for the rest of the visit).
+
+`tools/governor_unit.js` (in `tools/check.sh`'s static checks; no browser) plays modelled devices through vertical
+sync for twenty-two minutes each. Changes of resolution in the twenty minutes after the first two:
+
+| device | before | now |
+|---|---|---|
+| its limit between 0.65 and 0.70 | 36 | 6 |
+| on the edge at 0.80 with half the extras | 36 | 6 |
+| a scene that drifts by a tenth as the player walks (a try holds, then fails seconds later) | 41 | 13 |
+
+A fast device with no record is still at its ceiling in twenty seconds, a scene 1.6 times heavier is given way to
+within six, and the resolution and the full rate are back a minute after it has passed. Not checkable here: the
+real device's own trace, which the `quality` events of its next sessions will show (a settled device sends two
+or three in ten minutes, not thirty).
+
+**The state no check drew.** Under a harness the governor stands still and the software renderer is given no
+multisampling, so every check and still opened the map at its ceiling, single-sampled, in clear weather: a state
+an ordinary desktop is never in. Three switches put a check where a device is:
+
+- `?gov=0.8/0.5` opens the map as a device with that record does (the extras shed from the first frame);
+- `?msaa=on` draws the scene with the tier's samples on a software renderer too;
+- `?gltrace=1` traces the load (below).
+
+`tools/game_check.js` now walks the ladder drawn: every step down and back (some twenty states), in clear weather,
+in the rain and after dark, two frames each, the samples set to four, two and none with the extras, and the context
+asked for its error after every call. `tools/gl_error_probe.js` (`tools/check.sh gl`: Shibuya before landing, every
+live map on main) opens the map with the extras shed and multisampling on and does the same from the context's
+first call. Both pass on all three live maps: 130,000 calls a load and 11,000 to 34,000 a frame, none refused.
+
+**What was not found.** The M3 reported `WebGL error 0x502` (INVALID_OPERATION) after the first frame of both
+loads it made once the game asked (`glCheck`), with the shadow map on the GPU and its pass on, at 0.8/0 and at
+0.8/0.5. Mesa's llvmpipe raises none in the same states, with or without multisampling, rain, night, or a walk of
+the ladder, so the call is one a software renderer accepts and Apple's driver does not, and the flag does not
+name it. The owner's screenshots of the pale ground were all taken before the fix for the page opened after dark
+(#483) was deployed, so whether this error is that picture is not known either. The device is asked instead:
+after an error, the next three frames are traced (`glcare.js` `trace`: the error asked for after every call) and
+the call, its arguments and the lines of the page that made it go to the telemetry; an error that the first frame
+had and those three do not was raised once while the map loaded, and the next load of that map on that device
+is traced from its first call (one slower load). The next visit from that device names the call.
+
+**What the trace found here.** Run in the game check, the game's own watch reported `0x502` under llvmpipe after
+all, and the trace named it: after a lost context comes back, a render target made before the loss still carries
+the listener of the renderer's old state, and its next `dispose()` or `setSize()` deletes a framebuffer, a
+renderbuffer and a texture of the dead context beside the live ones (`world.js` `setShadowSize` from the
+governor's rung, the shadow cache's `resize`, the scene's target changing samples or size, the sky's light made
+again in `restoreGPU`). Each is INVALID_OPERATION. Nothing is drawn wrong by it, but it raises the one flag the
+watch reads, on any device whose context was ever restored (a laptop woken from sleep, a GPU process restarted)
+and whose governor then moves. `glcare.js` now leaves a delete of an object the context does not know unsent once
+a context has been restored (`spareTheDead`), for the game and the viewer alike, and `tools/gl_restore_probe.js`
+traces a loss, the restoration and the rungs after it: nothing refused. Whether the M3's two reports were this
+(a context restored while the map loaded) or another call, its next visit says.
+
+### Two samples where the display is dense (issue 375)
+
+Four samples a pixel are for a scene drawn a pixel to the CSS pixel. On a dense display the high tier draws the
+scene at up to two device pixels each way, so every CSS pixel already has up to four of them under it, each
+multisampled. `quality.js` `samplesAt(w, h)` gives the view two samples where the scene has one and a half device
+pixels or more to the CSS pixel each way (the canvas's pixel ratio times the scene's ceiling), and the tier's four
+elsewhere: a 1x display, and a 4K or 5K display filled at 2x, where the scene's budget brings it back to about a
+pixel each. The governor's rung follows the window (`game.js` `msaaFor`); the viewer takes the same count.
+
+| view (high tier) | scene pixels | samples a frame, before | now |
+|---|---|---|---|
+| 1001 x 894 at 2x (the M3's window) | 3.58 M | 14.3 M | 7.2 M |
+| 1440 x 900 at 2x | 3.69 M | 14.7 M | 7.4 M |
+| 1920 x 1080 at 2x (scene at 1.33) | 3.69 M | 14.7 M | 14.7 M |
+| 1440 x 900 at 1x | 1.30 M | 5.2 M | 5.2 M |
+
+At eight bytes of colour and four of depth a sample, that is 86 MB less written and resolved a frame on the M3.
+Stills of Shibuya at 2x with four samples and with two (`DPR=2 QUERY='?msaa=on' tools/game_shot.js`, day, dusk
+and night), enlarged three times at the roof lines and the signs' edges: no difference to be seen. A phone and
+the medium tier are not touched (no samples, and two). What a real GPU has to confirm: the milliseconds; the
+count of samples is exact.
+
+### What is left of issues 375 and 358, by what was measured
+
+One frame on foot at the spawn, high tier, 1440 x 900 at 1x, 15:30 (`FOOT=1 FREEZE=1 tools/frame_cost.js`), after
+the work above:
+
+| map | draws | triangles | of them the sun's shadow pass | full-screen passes | written by them |
+|---|---|---|---|---|---|
+| Shibuya | 510 | 2.72 M | 0.78 M in 185 draws | 17 | 26.4 MB |
+| Tokyo | 927 | 3.01 M | 0.63 M in 227 draws | 65 (45 the sea's FFT at 128 x 128) | 38.0 MB |
+| Sydney | 461 | 1.81 M | 0.38 M in 139 draws | 65 (45 the sea's FFT) | 38.0 MB |
+
+The one device that reports GPU time is bound by its pixels, so the items were ordered by the pixels and samples
+they take off, which is the count that carries from a software renderer to a GPU:
+
+- **Done: two samples on a dense display** (above): half the scene's samples there.
+- **Done: a governor that settles** (above): no pixels saved, but the resolution the device can hold is held.
+- **Cut: `BatchedMesh` with per-instance culling.** It was for the static props in the shadow pass. Since the
+  still casters' cache, those are drawn into the shadow map only when the light or the box moves; the 0.4 to 0.8
+  million triangles the pass draws every frame are the crowd, the cars and the trees, which move and are instanced
+  and culled by their own systems (the crowd and cars by the visibility sweep). In the view the props are
+  already left out by cell. Nothing is left for it to cull that a frame pays for.
+- **Cut: shadow cascades.** The pass is 8 to 14% of a frame and a cascade adds passes to it; the far sun's field
+  showed that nothing past the box is missed (under 0.1 of 255); the ladder halves the map on a device that is
+  short. It would buy sharper near shadows, which is the look's question, not the budget's.
+- **Cut: temporal anti-aliasing in place of MSAA (358 C2), and the contact shadows shrunk to a near field.** The
+  cost it was to remove is now removed where it was paid: four samples became two on dense displays, and the
+  governor takes them to none at the floor, where the sharpened upscale carries the edges. On medium and low it
+  would add a full-size resolve and a history target to the tiers that are shortest of fill and memory. The
+  contact shadows are six taps at half size on a rung of their own: 4% of a frame with the bloom and the lens.
+- **Cut: reprojection to the display's rate (358 C3), the cached far layer (C1) and the far shell (B3).** The far
+  layer and the shell were measured at 4 to 7% of Shibuya's triangles for a second facade path and a seam. The
+  reprojection answers a device held at thirty frames a second; the governor now holds the display's rate by
+  resolution and returns to it as soon as it fits, and what a warped frame does at a disocclusion can only be
+  judged on a real display.
+- **Cut: a purpose-built city material.** The measurement behind it (the ground and the walls a fifth of their
+  time when unlit) is a software rasteriser's, where a texture lookup costs many times a GPU's. The part with no
+  effect on the picture was taken (dark spot lights passed over: 8% of the scene pass). The rest (the
+  environment's diffuse lookup, 10% of the scene pass in software) changes the light on every surface of every
+  map, which is the look's to decide with a GPU's timer beside it: the `gpu_ms` of the M3's sessions after this
+  lands say whether shading still bounds it once the samples are halved.
+
 ### Scene renders nobody sees
 
 - **The sea, inland.** The ocean's wave transform (45 passes into 128 px targets), its wake field and, on a

@@ -31,12 +31,15 @@ standing traffic). A two-hour round that fails on a step unrelated to the change
   default `sydney:game,tour shibuya:mem`): of the live maps, Sydney plays the whole game check
   and its guided tour (a quarter of an hour), and Shibuya, the heaviest map on a phone, is measured
   against the memory budget; Shibuya's and Tokyo's game checks, half an hour each, play on main after landing;
-- the title screen, the loader's hand-over and the telemetry when their files changed, as before.
+- the title screen, the loader's hand-over and the telemetry when their files changed, as before;
+- `gl`, when the game, the renderer or a pass with a target of its own changed: Shibuya opened as a device with its
+  extras shed opens it, multisampled, the governor's ladder walked, and every WebGL call asked for its error
+  (`tools/gl_error_probe.js`; every live map in the full tier). The game check walks the same ladder in play.
 
 **After landing: the full tier, on main, in GitHub Actions** (`.github/workflows/checks.yml`). Each
 push to main runs `CHECK_TIER=full tools/check.sh --plan` against the commit of the last run that
 passed and gives every target it prints its own runner: `sydney:game`, `sydney:clip,mem,tour`, each
-reef site, `title`, `loader`, `telemetry`, `static`. Thirty-two runners start together when the
+reef site, `title`, `loader`, `telemetry`, `gl`, `static`. Thirty-two runners start together when the
 shared code changed. Nobody waits for it.
 
 - One run at a time. Pushes that arrive while it goes wait as one: the next run covers all of them,

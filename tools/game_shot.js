@@ -42,7 +42,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   const lean = !!process.env.LEAN;
   const ctx = lean ? await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 3, isMobile: true, hasTouch: true,
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1' }) : b;
-  const p = lean ? await ctx.newPage() : await b.newPage({ viewport: { width: w, height: h } });
+  const p = lean ? await ctx.newPage() : await b.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: +(process.env.DPR || 1) }); // (DPR=2: a dense display)
   // a software renderer picks the low tier for itself; stills are taken at the desktop one
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || (lean ? 'low' : 'high'));
   // LV=n: a phone's set at level n (quality.js level: 0 the fullest, 2 what a phone starts at, 3 the lightest), with LEAN=1
