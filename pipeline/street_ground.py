@@ -401,11 +401,6 @@ def level(T, G, game, keep, on=None, laid=None):
     # much disagreement is a junction's, blended; more is two levels)
     two = spread > SPREAD_M + gmax * JUNCTION_M
     alpha[~has | keep | ((move > MAX_MOVE_M) & ~freed) | ((umin > 0) & (move > BANK_M)) | two] = 0
-    if os.environ.get('SG_DEBUG'):
-        for q in os.environ['SG_DEBUG'].split(';'):
-            x, y = map(float, q.split(','))
-            r, c = int(round((G.y1 - y) / cell)), int(round((x - G.x0) / cell))
-            print('DEBUG', (x, y), dict(T=T[r, c], target=round(float(target[r, c]), 2), alpha=round(float(alpha[r, c]), 2), keep=bool(keep[r, c]), freed=bool(freed[r, c]), umin=round(float(umin[r, c]), 1), fd=round(float(fd[r, c] / max(den[r, c], 1e-9)), 2), spread=round(float(spread[r, c]), 2), two=bool(two[r, c]), move=round(float(move[r, c]), 2), gmax=round(float(gmax[r, c]), 3)), file=__import__('sys').stderr)
     new = T + alpha * (target - T)
     # a pit by a street, a node or two wide and more than PIT_M under the nodes round it (a hole in the survey, a trench
     # dug when it flew: a construction site's, Sakuragaoka's south of Shibuya Station, 3 m deep under a street that runs
