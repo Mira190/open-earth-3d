@@ -367,6 +367,32 @@ signs and the crossing's tenant stacks now leave a front that `streets.py` dress
 police box. Also in `tools/check.sh`. And a sign's lower line was cut off because `pipeline/meshkit.py` kept two
 decimal places of an atlas coordinate (20 to 40 pixels of a 2048 x 4096 atlas): it keeps five.
 
+**One plan for what is drawn and what is solid** (the owner's review, November 2026: a wall no one could see
+in the middle of the east crosswalk, guard pipes across the crosswalks' ends with the crowd walking through
+them, feet in the paving). Each had the same cause: two generations of the junction side by side. The landmarks
+drew the ground and the guard pipes first; the level drew them again from its own kerb line and hid the
+landmarks' meshes, which went on being solid and being stood on where they had been.
+
+- The junction's plan is one object, `scramble.Plan` (carriageways, pavements, kerb, stair wells), and the guard
+  pipes one function, `scramble.guard_runs`: the landmarks make them solid, the level draws the same runs finely.
+- Where they stand follows the rule the road authority's fences follow (防護柵の設置基準, 横断防止柵: a fence where
+  crossing is to be stopped, open at every crossing): none within a crosswalk's band carried 4 m past its ends,
+  none within 2.5 m of any mapped footway that leaves the pavement for the carriageway, none round a stair
+  well or against a building, and no run of fewer than three posts. The lamp posts keep off the footways too,
+  and are solid (`game.hero[].posts`).
+- Paint lies on the asphalt only (`Level.paint`): a stop line measured to a straight kerb ran on over a kerb
+  that bulges, onto the square's paving.
+- Whoever stands in a level stands on its paving: `game.hero[].lift` (metres over the game's ground;
+  `web/game/nav.js` `lift`), and the ground meshes a level hides are not stood on (`navcells.js` `unwalkedOf`):
+  at the spawn the hidden tactile strip had the player 20 cm up, and elsewhere the crowd's soles were 5 cm under
+  the paving drawn.
+- `tools/unseen_walls.js <city>` audits a level against the picture (a wall with nothing drawn at it, a footway
+  with something solid on it, the floor's height over the ground drawn), and `tools/game_check.js` fails a level
+  with a wall on one of the crowd's lines or a floor off its lift. Sydney's level had no unseen wall and no
+  barred footway; its floor was 4.5 cm under its paving (now `lift` 0.045; at the quay's edge, where the paving
+  climbs to the coping, it is still up to 14 cm under). Tokyo's stands on its paving; seven single points of its
+  crowd's lines meet a wall, and Shibuya's meet one where two footways go down a subway stair (issue 496).
+
 ## Circular Quay West (Sydney)
 
 From First Fleet Park's edge to the taxi rank under the Overseas Passenger Terminal: 135 m of the quay in

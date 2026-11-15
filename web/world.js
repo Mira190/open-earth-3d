@@ -936,7 +936,7 @@ vec3 steepRock(vec3 c, float k) {
     // and, in the game, the landmarks laid on the walking model's grid there next (game/navcells.js; nav.js takes them)
     if (game && window.OENavCells && window.OEPack && OEPack.rasterIn && D.G) {
       const grid = OENavCells.grid(scene.frame), t0 = performance.now();
-      D.navJob = OEPack.rasterIn('landmarks', { strips: OENavCells.strips(D.G), grid }).then(r => {
+      D.navJob = OEPack.rasterIn('landmarks', { strips: OENavCells.strips(D.G), grid, unwalked: OENavCells.unwalkedOf(D.G) }).then(r => {
         console.info(`nav cells: ${Math.round(r.ms)} ms in a worker, back after ${Math.round(performance.now() - t0)} ms`);
         return Object.assign(r, { grid: `${grid.nx}x${grid.ny}` });
       }, e => { console.warn('nav cells: laid on the page,', e.message || e); return null; });

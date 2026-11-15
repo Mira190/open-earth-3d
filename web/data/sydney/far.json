@@ -36,5 +36,19 @@
    178
   ],
   "vnl_radiance_max": 29.2
+ },
+ "photo": {
+  "file": "far_photo.jpg",
+  "box": [
+   -3500.0,
+   -4400.0,
+   3500.0,
+   4400.0
+  ],
+  "px_m": 5.0,
+  "w": 1400,
+  "h": 1760,
+  "zoom": 15,
+  "source": "NSW Spatial Services NSW_Imagery (CC BY 4.0; includes (c) AAM and (c) Jacobs imagery)"
  }
 }
