@@ -399,7 +399,7 @@ async function kerbStep() {
       if (c.park) { parked++; continue; }
       const h = c.v < 0.3 && c.front && c.front.park ? (heldT.get(c) || 0) + 0.5 : 0;
       heldT.set(c, h);
-      if (h > out.held) { out.held = h; out.heldWhy = `car ${A.C.indexOf(c)} ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''} behind parked car ${A.C.indexOf(c.front)} on a ${L[c.line].c} street`; }
+      if (h > out.held) { out.held = h; out.heldWhy = `car ${A.C.indexOf(c)} ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''} behind parked car ${A.C.indexOf(c.front)} on a ${L[c.line].c} street (${L[c.line].c} ${c.line} at ${c.x.toFixed(1)}, ${c.y.toFixed(1)}; the parked one at ${c.front.x.toFixed(1)}, ${c.front.y.toFixed(1)} on ${c.front.line}, ${c.front.lat != null ? `${c.front.lat.toFixed(2)} m off the line` : ''})`; }
       if (t % 2 === 0) { // (its body in a parked car's)
         for (const o of A.C) if (o.park && o.line >= 0 && Math.abs(o.x - c.x) < 7 && Math.abs(o.y - c.y) < 7 && Math.abs(o.z - c.z) < 2) { // (on its level: not one parked on a bridge over the street, Shibuya 808,-1674, 5 m up)
           const fx = Math.sin(o.h), fy = Math.cos(o.h), dx = c.x - o.x, dy = c.y - o.y, cs = Math.abs(Math.sin(c.h - o.h)), cc = Math.abs(Math.cos(c.h - o.h));
