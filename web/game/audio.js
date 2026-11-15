@@ -370,6 +370,8 @@ window.OEAudio = (function () {
     for (const [at, n] of BASS[w]) tone(d, t + at, 1.3, 'triangle', hz(n), 0, 0.5, 0.02);
     bar(d, t + 5.9, hz(MELODY[w][MELODY[w].length - 1][1] + (w ? 5 : 0)), 2.2, 0.7);
   }
+  // the Stop (story.js): the street's sound falls away, and comes back
+  function hush(on) { if (master && !muted) ramp(master.gain, on ? 0.09 : 0.55, on ? 0.25 : 1.2); }
   function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); if (m && window.speechSynthesis) window.speechSynthesis.cancel(); }
   function stop() { if (ctx) { ctx.close(); ctx = null; mbus = null; } }
   // for the score (game/music.js): the context it plays on, and a bus into the master, so that the
@@ -380,5 +382,5 @@ window.OEAudio = (function () {
     if (!mbus || mbus.context !== ctx) { mbus = ctx.createGain(); mbus.connect(master); }
     return mbus;
   }
-  return { start, get ctx() { return ctx; }, musicBus, murmur, screens, piyo, kakko, walkCall, train, clack, platformChime, doorChime, melody, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, thunder, cicadas, car, skid, beep, step, horn, honk, chime, bell, kan, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
+  return { start, get ctx() { return ctx; }, musicBus, murmur, screens, piyo, kakko, walkCall, train, clack, platformChime, doorChime, melody, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, thunder, hush, cicadas, car, skid, beep, step, horn, honk, chime, bell, kan, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
 })();

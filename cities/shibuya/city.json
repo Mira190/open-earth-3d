@@ -1038,6 +1038,19 @@
         "note": "The Scramble and Hachiko Square within 100 m of the junction: carriageway, paint, kerbs, pavements, street furniture and the fronts a player sees, modelled finely (cities/shibuya/hero.py, blender/build_hero.py, docs/HERO.md)"
       }
     ],
+    "story": {
+      "note": "The story (web/game/story.js; asked for with ?story=1 while it is being made): Blue Hour, in episodes. Each is one evening: the world runs for lead_s seconds, then stops, and whoever carries the camera walks on among the people standing still. The afterimage is someone of another year who alone moves in the stopped world. Sumiko and the promise are invented; the place, the date and the hour are real (10 October, the blue hour after a sunset at 17:14).",
+      "title": "Blue Hour",
+      "frames": 7,
+      "episodes": [
+        {"id": "late", "no": 1, "title": "You came late", "date": [10, 10], "light": "blue", "weather": "rain", "walk_in_s": 2.5, "lead_s": 9, "stop_s": 540,
+         "afterimage": {"character": "R_Female_Adult_04", "name": "Sumiko 澄子", "year": 1964, "at": [364.5, -994.5], "reach_m": 3.2,
+           "lines": ["遅かったね。 You came late.",
+                     "Sixty years I have stood on this corner, every tenth of October, at this hour. I was not waiting for you.",
+                     "There are seven frames left in my camera. When the last is gone, so am I. Find the one I waited for."]},
+         "after": ["The lights changed. Nobody else saw the crossing stop.", "In your hand, an old rangefinder camera. Its counter reads 7."]}
+      ]
+    },
     "overture": {
       "note": "The overture (docs/OVERTURE.md, web/game/overture.js): Crossing. A petal (a ginkgo leaf in autumn, a snowflake in winter, a mote of light in summer) leaves the edge of SHIBUYA SKY, falls 229 m to the scramble, passes Hachiko, and the screens, and ends on the scramble from across it, into the sun, before the game begins at the kerb (game.start). Crowds are kept at a distance: no shot comes close to them. Points name the landmarks in scene.json, so a rebuilt map moves them.",
       "title": {"name": "渋谷", "reading": "Shibuya", "line": "交差  ·  Crossing"},

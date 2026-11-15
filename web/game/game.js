@@ -3035,6 +3035,40 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const k of ['OEStyle', 'OEBonds', 'OEJobs', 'OEKeeps', 'OEPhone', 'OEFares', 'OEFx']) if (window[k]) window[k].create(life);
     fetch('data/life.json', { signal: ac.signal }).then(r => r.json()).then(ix => (ix.maps.includes(cityId) ? fetch(`data/${cityId}/life.json`, { signal: ac.signal }).then(r => r.json()) : null)).then(d => life.load(d)).catch(() => {});
   }
+  // ------------------------------------------------------------ the story (story.js): a map's episodes, and the Stop, in which
+  // the world is given no time while the player walks on. Asked for with ?story=1 while it is being made.
+  const story = window.OEStory && G.story && new URLSearchParams(location.search).has('story') ? OEStory.create({
+    story: G.story, stage, player, toast: t => H.toast(t), flash: () => {},
+    say: (who, lines, done) => dlg.show(Object.assign({ color: '#9fc4ff' }, who), lines.map(l => fill(l)), null, done),
+    hush: on => { if (A.hush) A.hush(on); },
+    dress: (date, light, wx) => {
+      const [m, d] = date || [clock.m, clock.d];
+      setClock(clock.y, m, d, S.presetTime(light, clock.y, m, d));
+      if (wx && weather) weather.set(wx);
+    },
+    walkIn: secs => {
+      const j = junctions.J.find(q => q.scramble && Math.hypot(q.x - player.x, q.y - player.y) < 80);
+      if (j) { junctions.walkIn(j, secs); cars.clearBox(j.x, j.y, 45); musterScramble(); }
+    },
+    // an afterimage: someone of another year, pale and half there, who alone moves in the stopped world
+    figure: (a, at) => {
+      const rig = makeRig({ character: a.character, scale: 1 }), z = Math.max(0, nav.terrain(at[0], at[1]));
+      const tint = new THREE.Color(0x9fc4ff);
+      rig.root.traverse(o => {
+        if (!o.isMesh || !o.material) return;
+        o.castShadow = false;
+        o.material = o.material.clone();
+        Object.assign(o.material, { transparent: true, opacity: 0.66 });
+        if (o.material.color) o.material.color.lerp(tint, 0.55);
+        if (o.material.emissive) { o.material.emissive.set(0x4f78d0); o.material.emissiveIntensity = 0.6; }
+      });
+      rig.root.position.copy(W(at[0], at[1], z));
+      world.add(rig.root);
+      let t = 0;
+      return { x: at[0], y: at[1], z, face: (x, y) => { rig.root.rotation.y = Math.PI - Math.atan2(x - at[0], y - at[1]); },
+        animate: dt => { t += dt; rig.animate(dt, 0, 'ground', t); }, remove: () => world.remove(rig.root) };
+    },
+  }) : null;
   function renderPassport() {
     $('#gp-stamps').innerHTML = LINES.flatMap(l => l.quests).map(q => {
       const got = qs.stamps.find(s => s.id === q.id);
@@ -5144,9 +5178,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const dv = W(player.x, player.y, player.z).sub(W(...was));
     if (dv.lengthSq() > 1) { camera.position.add(dv); titleLook.add(dv); }
     const skip = OEOnboard.done() && $('#gt-skip-on').checked;
-    const then = () => (cont ? OEOnboard.markDone(CITY.id) : skip ? welcome(true) : startTour(() => welcome(false)));
+    const then = () => (story && !cont ? story.begin() : cont ? OEOnboard.markDone(CITY.id) : skip ? welcome(true) : startTour(() => welcome(false)));
+    if (story && !cont) story.dress(); // (the evening its first episode is set in, before the opening shot)
     // the map's overture (overture.js) the first time here, unless you continue or arrive at a district; else the opening shot
-    if (overture && !cont && !arrive && !reduced && OEOverture.due(CITY.id) && overture.play(then)) { renderPassport(); return; }
+    if (overture && !story && !cont && !arrive && !reduced && OEOverture.due(CITY.id) && overture.play(then)) { renderPassport(); return; }
     if (openingHere()) { // (#110: the opening shot, the scramble's walk turning green as it comes down)
       const j = junctions.J.find(q => q.scramble && Math.hypot(q.x - player.x, q.y - player.y) < 80);
       if (j) { junctions.walkIn(j, OPENING.walkIn); cars.clearBox(j.x, j.y, 45); musterScramble(); }
@@ -5370,7 +5405,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     gov.raf(now);
     if (!gov.due(now)) { requestAnimationFrame(frame); return; } // (the frame-rate cap on a faster display: this frame is not drawn)
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); // the first frame can be stamped before the loop started
-    last = now; if (!simHold) clockT += dt; // (a harness's hold: only advance() moves the world's clock)
+    last = now; if (!simHold && !(story && story.stopped)) clockT += dt; // (the Stop holds the world's clock; a harness's hold: only advance() moves the world's clock)
     U.uTime.value = clockT;
     const titleOn = preTitle || !hud('#g-title').hidden, paused = titleOn || !hud('#g-menu').hidden || (window.OEMetro && OEMetro.isOpen()) || photo.on || simHold;
     stage.classList.toggle('titled', titleOn);
@@ -5396,7 +5431,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (!paused) checkSteps();
     }
     if (!paused) simulate(dt);
-    if (!paused) { crossingSound(dt); if (!(overture && overture.active)) walkCalls.update(dt, camera); } // (the overture's score has the birds' calls in it)
+    if (!paused && !(story && story.stopped)) { crossingSound(dt); if (!(overture && overture.active)) walkCalls.update(dt, camera); } // (the overture's score has the birds' calls in it)
     else { if (places) places.hush(); if (trains) trains.hush(); } // a paused game (the title, the menu, photo mode) shows no caption
     if (player.mode !== 'heli' && !simHold) nav.prefetch(player.x, player.y); // the landmarks' fine collision ahead of the walker or the car, a few ms a frame (held by a harness: advance() lays them, below)
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
@@ -5411,11 +5446,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (hero) hero.update(camera, dt);
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) applyDensity();
     if (atmos) atmos.update(clockUtc, now / 1000, U);
-    weatherTick(simHold ? 0 : dt, titleOn, titleOn || paused || photo.on); // (held by a harness: the weather eases on only with advance(), which ticks it; stepped by the frames too, it eased by however many the machine drew, #420)
+    weatherTick(simHold || (story && story.stopped) ? 0 : dt, titleOn, titleOn || paused || photo.on); // (held by a harness: the weather eases on only with advance(), which ticks it; stepped by the frames too, it eased by however many the machine drew, #420)
     if (show) show.tick(now);
     if (window.OEKit) OEKit.setNight(U.uNight.value); // cabin windows and navigation lights
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
     if (life && !simHold) life.tick(dt, paused, titleOn); // (held by a harness: the day moves on only with advance())
+    if (story && !paused) story.tick(dt);
     if (!simHold) dlg.tick(dt); // (held by a harness: a conversation goes on only as it asks, dlg.tick, so that one closing on the real clock starts nothing at another step of its run)
     // HUD
     const ob = titleOn ? null : objective();
@@ -5573,6 +5609,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       A.engine(0.3 + Math.min(1, Math.abs(v.speed) / 9) * 0.7);
       player.rig.animate(dt, 0, 'ground', clockT);
     }
+    if (story && story.stopped) dt = 0; // the Stop: you have moved; from here on the world is given no time
     if (fish) fishTick(dt, held ? 0 : Math.max(-1, Math.min(1, side)));
     if (coachHeli) coachHeli.update(dt); // (on into the step out, once landed)
     if (player.mode !== 'heli') { heli.update(dt, {}, []); A.rotor(heli.st.rotor * Math.max(0, 1 - Math.hypot(heli.st.x - player.x, heli.st.y - player.y) / 300)); }
