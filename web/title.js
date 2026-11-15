@@ -524,7 +524,9 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     if (!d) return false;
     const el = document.createElement('div');
     el.className = 'ts-story';
-    el.innerHTML = '<button class="ts-btn primary" id="ts-begin">Begin</button>';
+    const safe = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+    el.innerHTML = `<small>A story in episodes · ${safe(STORY.c.district || STORY.c.name)}</small><b>${safe(STORY.title)}</b><button class="ts-btn primary" id="ts-begin">Begin</button>`;
+    app.classList.add('story');
     app.appendChild(el);
     requestAnimationFrame(() => el.classList.add('on'));
     let gone = false;
@@ -536,7 +538,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       el.classList.remove('on');
       dive(d, true, d.sites ? STORY.c : null, null);
     };
-    on(el.firstChild, 'click', go);
+    on(el.querySelector('button'), 'click', go);
     after(9000, go); // nobody pressed: it begins by itself (the sound waits for a first touch, as a browser has it)
     return true;
   }

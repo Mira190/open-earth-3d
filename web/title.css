@@ -241,7 +241,10 @@
 .ts-prog { font: 400 9px/1 var(--t-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); }
 .ts-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 /* a story's link: one button under its title, and nothing to choose (title.js storyOpen) */
-.ts-story { position: absolute; left: 50%; bottom: max(12vh, 72px); transform: translateX(-50%); z-index: 6; opacity: 0; transition: opacity 1.4s ease; }
+.ts-story { position: absolute; left: 50%; bottom: max(12vh, 72px); transform: translateX(-50%); z-index: 6; opacity: 0; transition: opacity 1.4s ease; display: grid; justify-items: center; gap: 14px; text-align: center; color: #f4efe6; text-shadow: 0 2px 28px rgba(0, 0, 0, 0.8); }
+.ts-story small { font: 600 12px/1 var(--sans, "Public Sans", system-ui, sans-serif); letter-spacing: 0.3em; text-transform: uppercase; color: var(--amber, #ffb066); }
+.ts-story b { font: 300 clamp(40px, 8vw, 92px)/1 var(--sans, "Public Sans", system-ui, sans-serif); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 10px; }
+.title-app.story .ts-open-tools .ts-skip, .title-app.story #ts-skip { display: none; }
 .ts-story.on { opacity: 1; }
 .ts-story .ts-btn { min-width: 200px; justify-content: center; letter-spacing: 0.18em; text-transform: uppercase; }
 .ts-btn { flex: 1; min-width: 140px; border: 1px solid var(--line); background: rgba(236, 232, 225, 0.03); cursor: pointer; padding: 13px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
