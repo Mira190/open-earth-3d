@@ -868,8 +868,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 4042712,
-   "game": 4604161
+   "model": 4042722,
+   "game": 4604171
   },
   "story": "Blue Hour",
   "lean_pack": {
@@ -882,7 +882,7 @@
     -2100,
     450
    ],
-   "bytes": 1537945
+   "bytes": 1537954
   },
   "group_meta": {
    "native": "\u6771\u4eac",

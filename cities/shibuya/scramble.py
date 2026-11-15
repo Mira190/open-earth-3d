@@ -1713,7 +1713,7 @@ class Build:
         if "center_gai" in self.lm:
             center_gai_gate(K, self.A, self.D, self.lm["center_gai"])
         for e in self.entrances:
-            clip.append({"ring": entrance(K, self.A, e)})
+            clip.append({"ring": entrance(K, self.A, e), "well": True})   # (a stair well the crowd keeps out of while the station below is not built: game.js WELLS; drop the mark when it opens)
             hidden.append(e["si"])
         guard_rails(K, self.D, Plan(self.D, [c["ring"] for c in clip]))
         return K.out(), hidden, clip, getattr(self.D, "props", [])

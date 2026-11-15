@@ -109,6 +109,11 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
   // umbrellas are off for now: the hand on the handle doesn't read right yet, so nobody carries one,
   // closed or open, and the rain falls on bare heads. Set true to bring them back.
   const UMBRELLAS = true;
+  // People and what they carry are no roof: the weather's map of what is under cover (weather.js, drawn from
+  // above every so often) leaves them out, or the wet paving showed a dry patch wherever an umbrella had been
+  // when the map was last drawn. uncovered: every one of them, which the weather hides for that pass.
+  const uncovered = [];
+  const noCover = o => { uncovered.push(o); return o; };
   const noUmb = ids => (UMBRELLAS || !ids ? ids : ids.filter(id => id !== 'umbrella' && id !== 'umbrella_open'));
   const umbrellaHold = hd => {
     const dir = V3(...UMB_D).normalize(), grip = hd.clone().add(V3(-0.1, -0.32, 0.17));
@@ -556,7 +561,7 @@ ${PAT_GLSL}`)
     }
     const T = lib.tpl[look.character], speeds = T.speeds || lib.info.ground_speed[T.pack];
     const alias = n => (T.bones && T.bones[n]) || n; // the old characters' bone names on a main character's rig
-    const model = THREE.SkeletonUtils.clone(T.scene);
+    const model = noCover(THREE.SkeletonUtils.clone(T.scene));
     let mesh = null, head = null;
     const bone = {};
     model.traverse(o => { if (o.isSkinnedMesh && !mesh) mesh = o; if (o.isBone) bone[o.name] = o; });
@@ -1075,7 +1080,7 @@ transformed = crowdPose(transformed, false);`);
       geo.setAttribute('iUmb', new THREE.InstancedBufferAttribute(new Float32Array(n), 1).setUsage(THREE.DynamicDrawUsage));
       const { mat, depth } = cast ? castMaterial(L, U) : crowdMaterial(L.extras, U);
       litMaterial(mat);
-      const mesh = new THREE.InstancedMesh(geo, mat, n);
+      const mesh = noCover(new THREE.InstancedMesh(geo, mat, n));
       mesh.customDepthMaterial = depth;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       geo.attributes.aAnim.setUsage(THREE.DynamicDrawUsage);
@@ -1118,7 +1123,7 @@ transformed = crowdPose(transformed, false);`);
       // colour; nothing is drawn for those not held, and only the slots taken go to the GPU: issue 375)
       if (!clear) { m.setColorAt(0, umbCol[0]); m.instanceColor.setUsage(THREE.DynamicDrawUsage); }
       m.count = 0;
-      m.castShadow = clear !== true; m.frustumCulled = false; m.visible = false; m.userData.noRefl = true;
+      m.castShadow = clear !== true; m.frustumCulled = false; m.visible = false; m.userData.noRefl = true; noCover(m);
       world.add(m);
       return m;
     })());
@@ -1245,5 +1250,5 @@ transformed = crowdPose(transformed, false);`);
     return { begin, place, hide, end, setRain, meshes, active, umbrellas: umbMeshes };
   }
 
-  return { load, person, randomLook, pickCharacter, crowdRenderer, colours, setStyle, setLight };
+  return { load, person, randomLook, pickCharacter, crowdRenderer, colours, setStyle, setLight, uncovered };
 })();

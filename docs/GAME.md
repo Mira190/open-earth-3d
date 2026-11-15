@@ -465,6 +465,14 @@ round you as control comes, a couple of seconds into the walk; a car moving in o
 near the box as the walk is forced green comes back elsewhere (`clearBox`). The travel menu's
 Shibuya stop is the same kerb, and Aoi, the guide the onboarding sends you to,
 waits across the diagonal by QFRONT, so the first walk is the crossing.
+Once the game is under way nobody of the crowd is put where the camera can see
+(`actors.js` `seen`: within 170 m, ahead of it, with no building between): a walker
+comes into view on foot, from round a corner or from far off, and a scramble's kerbs
+in your sight fill with those who walk up to them. A subway entrance whose station is
+not built yet is shut to the crowd (the landmarks' ground clip marked `"well"`,
+`game.js` `WELLS`): nobody is put in its stair well, its stub of footway is not
+walked and its mouth is a wall to the crowd, since there is nothing to stand on down
+the stairs. An entrance that is built through drops the mark and is walked again.
 `game.start.car` puts your car at a kerb away from the start when the start's own
 kerb is no place for it (Shibuya's: at the scramble's mouth; it waits by Hachiko),
 and no car is left within 36 m of a scramble when another kerb will do.

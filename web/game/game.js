@@ -718,12 +718,36 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return f.slice(0, cast / 2).concat(m.slice(0, cast - Math.min(f.length, cast / 2)));
   };
   let crowdDraw = null; // the crowd's renderer (people.js), for umbrellas in the rain
+  // the stair wells of the subway's entrances (the landmarks' ground clips marked "well"): the crowd is not put
+  // in one and does not walk the stub of footway that ends in it, for as long as the station under it cannot be
+  // entered (nothing to stand on down the stairs: the walkers hung in the air over them). An entrance that is
+  // built through drops the mark in its city's landmarks (cities/shibuya/scramble.py) and the crowd uses it again.
+  const WELLS = ((D.LM && D.LM.clip) || []).filter(c => c.well && c.ring && c.ring.length >= 3).map(c => {
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (const [x, y] of c.ring) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    return { ring: c.ring, x0: x0 - 0.5, x1: x1 + 0.5, y0: y0 - 0.5, y1: y1 + 0.5 };
+  });
+  const wellAt = WELLS.length ? (x, y) => {
+    for (const w of WELLS) {
+      if (x < w.x0 || x > w.x1 || y < w.y0 || y > w.y1) continue;
+      const r = w.ring; let inside = false, near = false;
+      for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+        const ax = r[i][0], ay = r[i][1], bx = r[j][0], by = r[j][1];
+        if ((ay > y) !== (by > y) && x < ax + (bx - ax) * (y - ay) / (by - ay)) inside = !inside;
+        const ex = bx - ax, ey = by - ay, t = Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / (ex * ex + ey * ey || 1)));
+        if (Math.hypot(x - ax - ex * t, y - ay - ey * t) < 0.5) near = true; // (nor on its rim)
+      }
+      if (inside || near) return true;
+    }
+    return false;
+  } : null;
   // the box-built fallback figures can't sit, so only the realistic crowd uses the benches
   // the walkers there are room for: on the medium and high tiers a city's peak (game.crowd.pedestrians_peak),
   // on the low tier its usual number, so a phone draws no more people than it did
   const crowdPool = QC.name === 'low' ? CR.pedestrians || 300 : CR.pedestrians_peak || CR.pedestrians || 300;
   const crowd = OEActors.crowd(world, crowdNet, U, crowdPool, CR.radius_m || 450, lib && (P => (crowdDraw = OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 10 : QC.name === 'high' ? 24 : 14, style: CR.style, camera, real: realCast(), realHeight: CR.height }))),
-    { benches: lib ? benches : null, ground: lineGround, wall: (x, y, z) => nav.solid(x, y, z, 0.2), posts, clear: (x, y, z) => nav.room(x, y, z, 0.3) });
+    { benches: lib ? benches : null, ground: lineGround, wall: wellAt ? (x, y, z) => nav.solid(x, y, z, 0.2) || wellAt(x, y) : (x, y, z) => nav.solid(x, y, z, 0.2), posts,
+      clear: wellAt ? (x, y, z) => nav.room(x, y, z, 0.3) && !wellAt(x, y) : (x, y, z) => nav.room(x, y, z, 0.3), eye: camera, shut: wellAt }); // (a shut well is a wall to the crowd: nobody cuts across its mouth)
   // the side of the road the city keeps to: game.keep, its trams', or the country's rule
   const KEEP = G.keep || ((G.rail || {}).tram || {}).keep || (/^(Australia|Japan|United Kingdom|Ireland|New Zealand|Singapore|Malaysia|Indonesia|Thailand|India|South Africa)$/.test(CITY.country)
     || /^(Hong Kong|Macau)/.test(CITY.name) ? 'left' : 'right');

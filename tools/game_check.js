@@ -369,6 +369,27 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
   });
   check(crowdWalls.n > 0 && crowdWalls.inWall <= 0.02 * crowdWalls.n, `the crowd keeps out of the walls (${crowdWalls.inWall} of ${crowdWalls.n} walkers in a wall, at most 2%)`);
 
+  // nobody appears where the camera can see (actors.js seen: a walker put on a footway or at a scramble's kerb
+  // once the game is under way is out of sight, and walks into view), and nobody is in a subway entrance's shut
+  // stair well (game.js WELLS: its stub of footway is not walked, its mouth is a wall to the crowd)
+  const crowdSeen = await p.evaluate(() => {
+    const g = window.__game, C = g.crowd, last = new Map();
+    let moved = 0, seen = 0, inWell = 0, n = 0;
+    for (let k = 0; k < 80; k++) {
+      g.advance(0.25);
+      for (let i = 0; i < C.active; i++) {
+        const q = C.P[i];
+        if (q.line < 0) { last.delete(i); continue; }
+        const l = last.get(i);
+        if (k > 0 && (!l || Math.hypot(q.x - l[0], q.y - l[1]) > 4)) { moved++; if (C.seen(q.x, q.y, q.z)) seen++; }
+        last.set(i, [q.x, q.y]);
+        n++; if (C.shut && C.shutLine(q.line) && q.state === 'walk' && !q.pz) inWell++;
+      }
+    }
+    return { moved, seen, inWell, n, wells: !!C.shut };
+  });
+  check(crowdSeen.n > 0 && crowdSeen.seen === 0 && crowdSeen.inWell === 0, `nobody of the crowd appears in the camera's sight (${crowdSeen.seen} of ${crowdSeen.moved} put somewhere new in 20 s were in sight)${crowdSeen.wells ? `, and nobody walks a shut stair well's footway (${crowdSeen.inWell})` : ''}`);
+
   // the crowd crosses a major road only at a crosswalk (its signals, a zebra or a scramble: actors.js roadEntries,
   // tools/jaywalk_probe.js), not wherever a footway steps off the kerb
   const jay = await p.evaluate(() => {

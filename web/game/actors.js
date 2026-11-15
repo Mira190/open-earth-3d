@@ -202,6 +202,9 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
     [0.36, 0.16, 0.05, 0.62, 0.72, 2.21, 6, 0], [0.36, 0.16, 0.05, -0.62, 0.72, 2.21, 6, 0],
     [0.36, 0.14, 0.05, 0.62, 0.74, -2.21, 7, 0], [0.36, 0.14, 0.05, -0.62, 0.74, -2.21, 7, 0],
   ]);
+  // the traffic is no roof to the weather's map of what is under cover, any more than the people are (people.js
+  // uncovered): drawn into it, a car on the move left a dry strip of road behind it until the map was next made
+  const noCover = m => { if (window.OEPeople && OEPeople.uncovered) OEPeople.uncovered.push(m); return m; };
   function instanced(geo, mat, n) {
     for (const a of ['aC0', 'aC1', 'aC2', 'aC3', 'aAnim']) geo.setAttribute(a, new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3));
     const m = new THREE.InstancedMesh(geo, mat, n);
@@ -453,7 +456,13 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
   // wall(x, y, z): is that inside a building's wall? posts: the lamp posts and trunks (streets.js), solid;
   // clear(x, y, z): whether someone standing there is clear of the walls (a facade the footway runs along)
   const WALL_LOOK = 1.5; // how far ahead a walker looks for a wall beside its line (m)
-  function crowd(world, net, U, n, radius, makeRenderer, { benches: BN = null, ground = null, wall = null, posts: PO = null, clear = null } = {}) {
+  // eye: the camera: once the game is under way nobody is put where it can see (seen, below); shut(x, y): is
+  // that a place nobody is put and no footway is walked into: a subway entrance's stair well while the station
+  // under it is not built (the walkers hung in the air over its stairs, went in to the dead end and came out
+  // again, and new ones appeared in its mouth). A well that opens stops being shut and is walked like any footway.
+  const SEEN = 170;      // beyond this a walker put on the street is a few pixels: not seen to appear (m)
+  const SEEN_NEAR = 30;  // nearer than this the camera has only to turn (m)
+  function crowd(world, net, U, n, radius, makeRenderer, { benches: BN = null, ground = null, wall = null, posts: PO = null, clear = null, eye = null, shut = null } = {}) {
     const P = [], tmp = {}, ahead = {};
     for (let i = 0; i < n; i++) P.push({ line: -1, s: 0, dir: 1, speed: 1.1 + rnd() * 0.6, phase: rnd() * 6.28, side: 0.6 + rnd() * 1.2, spread: rnd() * 2 - 1, lat: null, dodge: 0, v: 0, vx: 0, vy: 0,
       pause: 0, x: 0, y: 0, z: 0, h: 0, scale: 0.92 + rnd() * 0.16, state: 'walk', mode: 'ground', seat: null, t: 0, rest: rnd() * 30 });
@@ -478,6 +487,35 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       return out;
     }
     function release(p) { if (p.seat) { p.seat.by = -1; p.seat = null; } }
+    // can the camera see someone standing at (x, y, z)? Near it, or ahead of it and within sight with no
+    // building between (the walls, sampled along the line from the eye to the walker's head)
+    const look = new THREE.Vector3();
+    function seen(x, y, z) {
+      if (!eye) return false;
+      const ex = eye.position.x, ey = -eye.position.z, ez = eye.position.y, dx = x - ex, dy = y - ey, d = Math.hypot(dx, dy); // (sim y is -z)
+      if (d > SEEN) return false;
+      if (d < SEEN_NEAR) return true;
+      eye.getWorldDirection(look);
+      const h = Math.hypot(look.x, look.z); // (looking down from high up, all round it)
+      if (h > 0.3 && (dx * look.x - dy * look.z) / (d * h) < 0.2) return false;
+      if (!wall) return true;
+      const k = Math.ceil(d / 2.5), dz = z + 1.5 - ez;
+      for (let i = 1; i < k; i++) if (wall(ex + dx * i / k, ey + dy * i / k, ez + dz * i / k)) return false;
+      return true;
+    }
+    // a footway that leads into a place that is shut (most of it there, or a short one that ends there)
+    const shutLines = new Map();
+    function shutLine(li) {
+      if (!shut) return false;
+      let v = shutLines.get(li);
+      if (v !== undefined) return v;
+      const l = net.L[li], k = Math.max(2, Math.ceil(l.len)), q = {};
+      let inside = 0, end = false;
+      for (let i = 0; i <= k; i++) { net.at(li, l.len * i / k, q); if (shut(q.x, q.y)) { inside++; if (i === 0 || i === k) end = true; } }
+      v = inside > (k + 1) / 2 || (end && l.len < 12);
+      shutLines.set(li, v);
+      return v;
+    }
     function respawn(p, cx, cy, rMin) {
       release(p);
       if (p.pz) { if (p.gc) { p.gc.n--; p.gc = null; } p.pz = p.g = null; } // (off a scramble's kerbs, taken off its gate's count)
@@ -486,22 +524,30 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       // (a share of them where the crowd gathers, api.hot: a scramble; out of the player's way there)
       const H = api.hot && api.hot.filter(h => Math.hypot(h.x - cx, h.y - cy) < radius);
       const hot = H && H.length && rnd() < H.reduce((a, h) => a + h.share, 0) ? H[Math.floor(rnd() * H.length)] : null;
-      const cand = hot ? net.near(hot.x, hot.y, 0, hot.r).filter(i => near1(net.L[i], hot.x, hot.y, hot.r)) : net.near(cx, cy, rMin, radius);
-      const rMe = hot ? Math.min(rMin, HOT_MIN) : 0;
+      // (with the game under way, rMin > 0, only where the camera cannot see: a walker comes into view on foot, from
+      // round a corner or from far off, and where the crowd gathers in the player's sight it is those who fill it)
+      const unseen = rMin > 0 && !!eye;
       p.line = -1;
-      for (let k = 0; k < (hot ? 8 : 4) && cand.length; k++) { // somewhere clear of the cars and benches
+      if (hot && place(p, net.near(hot.x, hot.y, 0, hot.r).filter(i => near1(net.L[i], hot.x, hot.y, hot.r)), 8, cx, cy, hot, Math.min(rMin, HOT_MIN), unseen)) return;
+      place(p, net.near(cx, cy, rMin, radius), 4, cx, cy, null, 0, unseen);
+    }
+    function place(p, cand, tries, cx, cy, hot, rMe, unseen) {
+      for (let k = 0; k < tries && cand.length; k++) { // somewhere clear of the cars and benches
         const line = cand[Math.floor(rnd() * cand.length)], s = rnd() * net.L[line].len, dir = rnd() < 0.5 ? 1 : -1;
         lineAt(line, s, tmp);
         const x = tmp.x - tmp.hy * dir * p.side, y = tmp.y + tmp.hx * dir * p.side;
         if (hot && (Math.hypot(x - hot.x, y - hot.y) > hot.r || Math.hypot(x - cx, y - cy) < rMe)) continue;
+        if (shut && (shut(x, y) || shutLine(line))) continue; // (not in a subway entrance's stair well)
+        if (unseen && seen(x, y, tmp.z)) continue;
         const X = api.crossings && api.crossings.byLine.get(line);
         if (X && X.some(q => Math.abs(q.s - s) < q.kerb + 0.5)) continue; // (not out in a road at a crossing)
         if (api.crossings && api.crossings.major && api.crossings.road && api.crossings.road(tmp.x, tmp.y) && api.crossings.major(tmp.x, tmp.y)) continue; // (nor out in a major road)
         gather(x, y, p, true, tmp.z);
         if (blocked(x, y) > 0 || (wall && wall(x, y, tmp.z)) || crowded(x, y, p, CLOSE + 0.1)) continue;
         p.line = line; p.s = s; p.dir = dir;
-        return;
+        return true;
       }
+      return false;
     }
     const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, kerbWaits: [], hot: null, plazas: null, muster };
     // where footway li steps off the kerb onto a road with no crossing marked there, each way along it
@@ -574,7 +620,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       }
       return null;
     }
-    const banned = (li, dir) => { const C = api.crossings; if (!C || !C.road || !C.major) return false; const B = roadEntries(li).banned; return !!(B && B[dir > 0 ? 1 : 0]); };
+    const banned = (li, dir) => { if (shutLine(li)) return true; const C = api.crossings; if (!C || !C.road || !C.major) return false; const B = roadEntries(li).banned; return !!(B && B[dir > 0 ? 1 : 0]); };
     function onward(p, end) {
       let nx = nextOk(p.line, end);
       const h = nx && api.hot && api.hot.find(q => Math.hypot(p.x - q.x, p.y - q.y) < q.r * 1.6);
@@ -776,7 +822,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
     function spotAt(g, u, depth, out, road = null) {
       for (let k = 0; k < 6; k++) {
         out.x = g.x + g.ox * depth - g.oy * u * SCR_HW; out.y = g.y + g.oy * depth + g.ox * u * SCR_HW;
-        if (!road || !road(out.x, out.y)) return out;
+        if ((!road || !road(out.x, out.y)) && !(shut && shut(out.x, out.y))) return out; // (on the pavement, and not in a shut stair well)
         u *= 0.6; depth = 0.8 + (depth - 0.8) * 0.6;
       }
       // (still in a road at the kerb: further back from it, on the stripes' line, where the pavement is; a spot left
@@ -816,10 +862,13 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
           const q = P[i];
           if (q.pz || q.state !== 'walk' || (t >= 1 && q.line >= 0 && Math.hypot(q.x - cx, q.y - cy) < 120)) continue;
           const g = G[Math.floor(rnd() * G.length)];
+          if (t >= 1 && seen(g.x, g.y, g.z)) continue; // (not put at a kerb the camera sees: those who walk up to it join, toPlaza)
+          const was = [q.line, q.x, q.y, q.z];
           q.pz = pz; q.state = 'scr'; q.mode = 'ground'; q.line = Math.max(0, q.line); q.g = null; q.pause = 0;
           toGate(q, g);
           q.x = q.T.x; q.y = q.T.y; q.z = g.z; q.ph = 'wait'; q.v = q.vx = q.vy = 0; q.h = Math.atan2(-g.ox, -g.oy);
           gather(q.x, q.y, q, true, q.z);
+          if (t >= 1 && seen(q.x, q.y, q.z)) { uncount(q); q.pz = q.g = null; q.state = 'walk'; [q.line, q.x, q.y, q.z] = was; continue; } // (its own spot along that kerb is in sight: it stays where it was)
           if (carDepth(q.x, q.y) > 0) { uncount(q); q.pz = q.g = null; q.state = 'walk'; q.line = -1; continue; } // (not put inside a car waiting there)
           have++;
         }
@@ -854,7 +903,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       return true;
     }
     function toFootway(q) {
-      const near = net.nearest(q.x, q.y, 6, q.z, 2);
+      const near = net.nearest(q.x, q.y, 6, q.z, 2, 0, shut ? shutLine : null); // (not onto a footway that leads down a shut stair)
       if (!near) return false;
       const X = api.crossings && api.crossings.byLine.get(near.line);
       if (X && X.some(x => Math.abs(x.s - near.s) < x.kerb + 0.5)) return false; // (not out in the road)
@@ -1033,9 +1082,12 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         // centre), shoulders brushing out on the crossing or squeezing through (0.32 m); a step that
         // would come closer slides along them on one axis, or waits
         const hard = q.squeeze > 0 || q.ph === 'cross' ? 0.32 : 0.45, n0 = Math.min(hard, nearest1(i, q.x, q.y));
-        if (nearest1(i, nx, ny) >= n0 - 1e-4) { q.x = nx; q.y = ny; }
-        else if (nearest1(i, nx, q.y) >= n0 - 1e-4) { q.x = nx; q.vy *= 0.3; }
-        else if (nearest1(i, q.x, ny) >= n0 - 1e-4) { q.y = ny; q.vx *= 0.3; }
+        // (nor a step into a shut stair well: along its rim on one axis, or round it to the left)
+        const inWell = shut && !shut(q.x, q.y) ? shut : null, ok = (x, y) => nearest1(i, x, y) >= n0 - 1e-4 && !(inWell && inWell(x, y));
+        if (ok(nx, ny)) { q.x = nx; q.y = ny; }
+        else if (ok(nx, q.y)) { q.x = nx; q.vy *= 0.3; }
+        else if (ok(q.x, ny)) { q.y = ny; q.vx *= 0.3; }
+        else if (inWell && inWell(nx, ny) && ok(q.x - q.vy * dt, q.y + q.vx * dt)) { q.x -= q.vy * dt; q.y += q.vx * dt; }
         else { q.vx *= 0.3; q.vy *= 0.3; }
       }
       q.v = Math.hypot(q.vx, q.vy);
@@ -1438,7 +1490,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       }
       return k;
     };
-    return Object.assign(api, { update, nearest, respawn });
+    return Object.assign(api, { update, nearest, respawn, seen, shutLine, shut });
   }
 
   // ------------------------------------------------------------ traffic (drives on the left, or on the right)
@@ -1522,7 +1574,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       for (const k of names) {
         const cap = C.filter(c => c.model === k).length;
         if (!cap) continue;
-        fleet[k] = geos[k].map(g => { const m = instanced(g, mat, cap); m.count = 0; m.userData.noRefl = true; world.add(m); return m; });
+        fleet[k] = geos[k].map(g => { const m = noCover(instanced(g, mat, cap)); m.count = 0; m.userData.noRefl = true; world.add(m); return m; });
       }
     } else {
       mesh = instanced(CAR(), toneMaterial(U), n);
@@ -3316,7 +3368,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       for (const k in fleet) for (const l of [0, 1]) {
         const g = full[k] && full[k][l], old = fleet[k][l];
         if (!g || !old) continue;
-        const m = instanced(g, mat, old.instanceMatrix.count);
+        const m = noCover(instanced(g, mat, old.instanceMatrix.count));
         // (the cars where they stand now, so the swap shows in the next frame drawn, whether or not the traffic moves)
         m.count = old.count;
         m.instanceMatrix.array.set(old.instanceMatrix.array); m.instanceMatrix.needsUpdate = true;

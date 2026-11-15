@@ -1249,7 +1249,10 @@ void main() {
       dispose() { TR.tex.dispose(); if (occRT) occRT.dispose(); for (const m of [near, far, splash, fNear, fFar, boltMesh, bow, deck]) { world.remove(m); if (m !== fNear && m !== fFar) m.geometry.dispose(); m.material.dispose(); } },
     };
     // what the camera should not see from above: the sky, the stars and the moon, sprites and
-    // labels, the rain itself, and whatever draws its own pass (a mirror)
+    // labels, the rain itself, and whatever draws its own pass (a mirror); and, each time, the people with what
+    // they carry (people.js uncovered): nobody is a roof, and the paving under an umbrella is as wet as the rest
+    // (drawn into the map, each walker left a dry patch of paving wherever it stood when the map was last made)
+    const people = () => (window.OEPeople && OEPeople.uncovered) || [];
     function hidden(tSec) {
       if (tSec - hideAt < 60 && tSec >= hideAt) return hideList; // (a walk of the whole scene: once a minute, not every few seconds)
       hideAt = tSec;
@@ -1272,7 +1275,7 @@ void main() {
       occCam.near = 1; occCam.far = 1500 + Math.max(600, c.y + 200);
       occCam.updateProjectionMatrix(); occCam.updateMatrixWorld();
       occBox.value.set(cx, cz, 2 * OCC_R, -2 * OCC_R);
-      const hide = hidden(tSec), was = hide.map(o => o.visible);
+      const hide = hidden(tSec).concat(people()), was = hide.map(o => o.visible);
       hide.forEach(o => { o.visible = false; });
       const prev = { rt: renderer.getRenderTarget(), auto: renderer.autoClear, alpha: renderer.getClearAlpha(), col: renderer.getClearColor(new THREE.Color()),
         bg: world.background, fog: world.fog, over: world.overrideMaterial, sh: renderer.shadowMap.autoUpdate };
@@ -1304,7 +1307,7 @@ void main() {
     // and the programs are waited for off the frame and their first-use queries made then: the first map
     // drawn after costs no compile (it was 2.5 s on the loader's frame).
     function occPrograms() {
-      const hide = new Set(hidden(-9)), kinds = new Map();
+      const hide = new Set(hidden(-9).concat(people())), kinds = new Map();
       world.traverse(o => {
         if (!o.isMesh || !o.material || hide.has(o)) return;
         const g = o.geometry, at = (g && g.attributes) || {};

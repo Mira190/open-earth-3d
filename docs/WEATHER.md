@@ -127,6 +127,10 @@ speed and direction, visibility) becomes the same amounts a pinned weather sets:
 unknown code is read by its cloud cover. `OEWeather.S.source` says `live` while it holds.
 Automated runs never ask unless the address does. docs/OBSERVABILITY.md lists the request.
 
+The occlusion map leaves out the people, what they carry and the traffic (`people.js` `uncovered`):
+nobody is a roof. Drawn into it, an umbrella left a dry patch on the wet paving wherever its
+walker stood when the map was last made, and a car a dry strip behind it.
+
 ## When the device cannot carry it
 
 Rain is the dearest thing the game draws: on the high tier a wet street draws the scene a second
