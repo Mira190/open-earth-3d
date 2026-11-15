@@ -807,6 +807,7 @@ is free, something on the calendar has started, something is on tomorrow.
 |---|---|
 | `web/game/life.js` | the save (`oe3d-life` in `localStorage`), the event bus (`life.emit`), the skills' rules, the wallet and fares |
 | `web/game/fares.js` | what a ride costs: the rules (`price`), the tap's card, the phone's page |
+| `web/game/story.js` | a map's story in episodes (game.json `story`), and the Stop: a stretch after sunset in which the world is given no time while the player, the camera and an afterimage of another year move on. Asked for with `?story=1` while it is being made; it names no city. `tools/story_shot.js` plays the first episode beat by beat (`tools/check.sh story`) |
 | `web/game/goals.js` | a map's lines and quests: what is done of them, the rules a step is met by (`met`), the save's quest state. No city and no drawing in it: a new map brings its goals as data. `tools/goals_check.js` plays every live map's lines to the last stamp under Node and lists the steps a phone cannot reach |
 | `web/game/day.js` | the parts of the day, the calendar, the cards, the diary and its pages |
 | `web/game/bonds.js` | ranks, hours, requests, abilities, the People page |

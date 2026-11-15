@@ -1043,7 +1043,7 @@
       "title": "Blue Hour",
       "frames": 7,
       "episodes": [
-        {"id": "late", "no": 1, "title": "You came late", "date": [10, 10], "light": "blue", "weather": "rain", "walk_in_s": 2.5, "lead_s": 9, "stop_s": 540,
+        {"id": "late", "no": 1, "title": "You came late", "date": [10, 10], "light": "blue", "weather": "rain", "walk_in_s": 2.5, "stop_walk_s": 5, "lead_s": 25, "stop_s": 540, "end": "To be continued",
          "afterimage": {"character": "R_Female_Adult_04", "name": "Sumiko 澄子", "year": 1964, "at": [364.5, -994.5], "reach_m": 3.2,
            "lines": ["遅かったね。 You came late.",
                      "Sixty years I have stood on this corner, every tenth of October, at this hour. I was not waiting for you.",
