@@ -269,7 +269,12 @@ def landmark_meshes(scene):
 def landmark_glows(scene):
     """The Shuto's deck lamps over the Nihonbashi River (cities/tokyo/shuto.py), and Yurakucho's platform
     lights (cities/tokyo/rail.py)."""
-    return SHUTO.glows() + RAIL.glows()
+    return SHUTO.glows() + RAIL.glows() + [list(q) for q in STATION_HERO.GLOWS]
+
+
+def landmark_treeless(scene):
+    """Inside Tokyo Station's dome halls and their passages (cities/tokyo/station.py): no street lamp of the map's."""
+    return [[round(v * 10) for xy in list(p.exterior.coords) for v in xy] for p in STATION_HERO.BARE]
 
 
 def landmark_assets(out_dir, scene):
@@ -279,7 +284,7 @@ def landmark_assets(out_dir, scene):
 
 def landmark_demolished(scene):
     """The old station's rooms under Yurakucho's platforms, where the viaduct now stands (cities/tokyo/rail.py)."""
-    return RAIL.demolished()
+    return RAIL.demolished() + [si for si in STATION_HERO.DEMOLISHED if si not in RAIL.demolished()]
 
 
 def game_surfaces(scene):

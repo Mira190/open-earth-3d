@@ -55,12 +55,17 @@ STATIONS = [
     {"key": "shimbashi", "name": "Shimbashi", "native": "新橋", "kana": "しんばし", "romaji": "Shimbashi", "s": (2480.0, 2840.0),
      "codes": {"yamanote": "JY 29", "keihin": "JK 24", "tokaido": "JT 02"}, "prev": ("浜松町", "Hamamatsuchō"), "next": ("有楽町", "Yūrakuchō"),
      "prev_line": {"tokaido": ("品川", "Shinagawa")}, "next_line": {"tokaido": ("東京", "Tōkyō")}},
+    # its passages under the tracks are on the Marunouchi building's two domes (cities/tokyo/station.py opens each dome's
+    # hall onto its passage): "passages" [(where along the reference, which way its flights climb: 1 southward)], and
+    # no fascia on the west, where the passage runs on into the building
     {"key": "tokyo", "name": "Tokyo", "native": "東京", "kana": "とうきょう", "romaji": "Tōkyō", "s": (590.0, 945.0), "refs": ("3;4", "5;6", "7;8", "9;10"),
+     "passages": [(695.0, (1,)), (889.0, (-1,))], "fascia": (1,),
      "codes": {"yamanote": "JY 01", "keihin": "JK 26", "tokaido": "JT 01"}, "prev": ("有楽町", "Yūrakuchō"), "next": ("神田", "Kanda"),
      "prev_line": {"tokaido": ("新橋", "Shimbashi")}, "next_line": {"tokaido": ("上野", "Ueno")}},
 ]
 PSD_LINES = ("yamanote", "keihin")   # the lines whose platforms have platform doors (the Tokaido Line's at Shimbashi have none)
 SHED = 46.0             # a train shed's mouth at each end, inside the gates
+BEHIND = (655.0, 896.0)  # where the viaduct's west face stands against the block behind the Marunouchi building (cities/tokyo/station.py chuo)
 # (the Tohoku Main Line's pair north of Tokyo's tracks 7 and 10 is the Tokaido Line's, run through: the Ueno-Tokyo Line)
 LINES = {"京浜東北線": "keihin", "山手線": "yamanote", "東海道本線": "tokaido", "東北本線": "tokaido", "東海道新幹線": "shinkansen"}
 NATIVE = {"keihin": "京浜東北線", "yamanote": "山手線", "tokaido": "東海道本線", "shinkansen": "東海道新幹線"}
@@ -70,32 +75,35 @@ DOORS = (-7.23, -2.41, 2.41, 7.23)   # its four doors a side, from its middle (a
 
 MATERIALS = {
     "rail_ballast": {"color": "#6a625a", "roughness": 0.95, "metalness": 0.0},
-    "rail_bed": {"color": "#6a625a", "roughness": 0.95, "metalness": 0.0, "pattern": "deck_zones", "zones": [[2.7, "rail"]]},
-    "rail_steel": {"color": "#8d8478", "roughness": 0.32, "metalness": 0.85},
+    "rail_bed": {"color": "#6a625a", "roughness": 0.95, "metalness": 0.0, "pattern": "deck_zones", "zones": [[2.7, "rail"]], "solid": False},
+    "rail_steel": {"color": "#8d8478", "roughness": 0.32, "metalness": 0.85, "solid": False},
     "rail_brick": {"color": "#8c4a38", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.085, "block_m": 0.23},
     "rail_stone": {"lamp_lit": True, "color": "#968f82", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.3, "block_m": 0.62},
     "rail_concrete": {"lamp_lit": True, "color": "#a8a59c", "roughness": 0.85, "metalness": 0.0},
+    "rail_parapet": {"lamp_lit": True, "color": "#a8a59c", "roughness": 0.85, "metalness": 0.0, "solid": False},   # (the deck's edge beside the tracks, where nobody walks)
     "rail_soffit": {"color": "#8f8c85", "roughness": 0.9, "metalness": 0.0},
-    "rail_girder": {"color": "#7b9086", "roughness": 0.55, "metalness": 0.35},
+    "rail_girder": {"color": "#7b9086", "roughness": 0.55, "metalness": 0.35, "solid": False},
     "rail_shop": {"color": "#2b2f33", "roughness": 0.25, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 1.3, "storey_m": 3.4,
                   "spandrel": 0.16, "frame": "#3a332c", "mullion_m": 0.1, "lit_share": 0.9, "lit_k": 1.5, "warm_share": 0.92},
     "rail_shutter": {"lamp_lit": True, "color": "#8d8f8c", "roughness": 0.6, "metalness": 0.4},
-    "rail_mast": {"color": "#6f7c7a", "roughness": 0.6, "metalness": 0.5},
-    "rail_wire": {"color": "#3c3a36", "roughness": 0.5, "metalness": 0.7, "shadow": False},
+    "rail_mast": {"color": "#6f7c7a", "roughness": 0.6, "metalness": 0.5, "solid": False},
+    "rail_wire": {"color": "#3c3a36", "roughness": 0.5, "metalness": 0.7, "shadow": False, "solid": False},
     "rail_platform": {"color": "#b4aea4", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [0.3, 0.3], "street_lit": True},
     "rail_stairs": {"lamp_lit": True, "color": "#a9a49b", "roughness": 0.8, "metalness": 0.0},
-    "rail_yellow": {"lamp_lit": True, "color": "#e8c21c", "roughness": 0.7, "metalness": 0.0, "decal": True},
-    "rail_white": {"lamp_lit": True, "color": "#ecebe6", "roughness": 0.6, "metalness": 0.0, "decal": True},
+    "rail_yellow": {"lamp_lit": True, "color": "#e8c21c", "roughness": 0.7, "metalness": 0.0, "decal": True, "solid": False},
+    "rail_white": {"lamp_lit": True, "color": "#ecebe6", "roughness": 0.6, "metalness": 0.0, "decal": True, "solid": False},
     "rail_roof": {"color": "#c4c8c6", "roughness": 0.5, "metalness": 0.5},
-    "rail_ceiling": {"lamp_lit": True, "color": "#e4e2da", "roughness": 0.7, "metalness": 0.0},
+    "rail_ceiling": {"lamp_lit": True, "color": "#e4e2da", "roughness": 0.7, "metalness": 0.0, "solid": False},
     "rail_frame": {"lamp_lit": True, "color": "#a9b7b8", "roughness": 0.55, "metalness": 0.4},
-    "rail_lamp": {"color": "#f4f6ee", "roughness": 0.4, "metalness": 0.0, "emissive": "#f2fbe9", "glow": 2.6, "glow_day": 0.9},
+    "rail_lamp": {"color": "#f4f6ee", "roughness": 0.4, "metalness": 0.0, "emissive": "#f2fbe9", "glow": 2.6, "glow_day": 0.9, "solid": False},
     "rail_psd": {"lamp_lit": True, "color": "#eceeed", "roughness": 0.45, "metalness": 0.2},
-    "rail_psd_glass": {"color": "#bcd3d6", "roughness": 0.08, "metalness": 0.3, "opacity": 0.32},
-    "rail_psd_line": {"lamp_lit": True, "color": "#7cc142", "roughness": 0.5, "metalness": 0.0},
-    "rail_sign": {"color": "#ffffff", "roughness": 0.5, "metalness": 0.0, "map": "rail_signs.png", "emissive_map": True, "glow": 1.25, "glow_day": 0.35},
+    "rail_psd_glass": {"color": "#bcd3d6", "roughness": 0.08, "metalness": 0.3, "opacity": 0.32, "solid": False},
+    "rail_psd_line": {"lamp_lit": True, "color": "#7cc142", "roughness": 0.5, "metalness": 0.0, "solid": False},
+    "rail_sign": {"color": "#ffffff", "roughness": 0.5, "metalness": 0.0, "map": "rail_signs.png", "emissive_map": True, "glow": 1.25, "glow_day": 0.35, "solid": False},
     "rail_bench": {"lamp_lit": True, "color": "#3d6f9a", "roughness": 0.6, "metalness": 0.1},
-    "rail_dark": {"color": "#16181a", "roughness": 0.9, "metalness": 0.0},
+    "rail_dark": {"color": "#16181a", "roughness": 0.9, "metalness": 0.0, "solid": False},
+    # ("solid": False above: what no walker or car can reach or needs to meet, the rails and their bed, the overhead line,
+    # the lamps, the signs, the paint on the platform, the ceilings under the roofs: no box of the collision world's)
     # an escalator's skirts, glass and handrails: not solid to a walker (the well's walls hold one in; 1.1 m apart, the
     # balustrades in the collision world's quarter-metre cells left no room between them for a walker's 0.7 m)
     "rail_esc_frame": {"lamp_lit": True, "color": "#a9b7b8", "roughness": 0.55, "metalness": 0.4, "solid": False},
@@ -278,7 +286,9 @@ def layout():
         if not mine:
             continue
         mid = float(np.mean([f[0] for p in mine for f in p["frames"]]))
-        sta.append(dict(S, plats=mine, mid=mid, conc=Polygon([*gate(mid - 9).coords, *gate(mid + 9).coords[::-1]])))
+        # each concourse: where it crosses, which way its flights climb (-1 northward, 1 southward), its strip
+        concs = [(m, d, Polygon([*gate(m - 9).coords, *gate(m + 9).coords[::-1]])) for m, d in S.get("passages", [(mid, (-1, 1))])]
+        sta.append(dict(S, plats=mine, mid=mid, concs=concs, conc=shapely.union_all([c[2] for c in concs])))
     mid, conc = sta[0]["mid"], sta[0]["conc"]
     G = json.load(open(os.path.join(C.out, "game.json")))
     near = deck.buffer(7.0)
@@ -310,12 +320,11 @@ def stairs(L):
     {key, plat, a (foot), b (head), t (along, uphill), n, w, z0, z1, run}."""
     out = []
     T = L["T"]
-    mids = {S["key"]: S["mid"] for S in L["stations"]}
+    concs = {S["key"]: S["concs"] for S in L["stations"]}
     for p in L["plats"]:
-        mid = mids[p["station"]]
         fr = {round(f[0]): f for f in p["frames"]}
         ss = sorted(fr)
-        for d, tag in ((-1, "n"), (1, "s")):   # uphill towards the north, or the south
+        for mid, d, tag in [(m, d, "n" if d < 0 else "s") for m, dirs, _ in concs[p["station"]] for d in dirs]:   # uphill towards the north, or the south
             s0 = mid + d * 8.2    # the foot, just inside the concourse
             f0 = fr[min(ss, key=lambda s: abs(s - s0))]
             c0 = f0[1] + f0[2] * (s0 - f0[0])
@@ -584,7 +593,10 @@ def meshes(Mesh):
                 out = np.array([t[1], -t[0]]) * sign      # away from the solid
                 m = (a + b) / 2
                 ga, gb = T(*a), T(*b)
-                if edge.distance(Point(*m)) < 0.4 and ln > 0.6:   # the viaduct's own face
+                if edge.distance(Point(*m)) < 0.4 and ln > 0.6 and BEHIND[0] < sv(*m)[0] < BEHIND[1] and sv(*m)[1] < -12:
+                    # (the face behind the Marunouchi building, inside the block the Chuo Line's viaduct stands on: unseen)
+                    K["rail_parapet"].quad([*a, ga - 0.4], [*b, gb - 0.4], [*b, zt + 0.1], [*a, zt + 0.1])
+                elif edge.distance(Point(*m)) < 0.4 and ln > 0.6:   # the viaduct's own face
                     kind = "arch" if sv(*m)[1] < 10 else "frame"
                     n = max(1, round(ln / (7.6 if kind == "arch" else 9.5)))
                     for k in range(n):
@@ -623,7 +635,7 @@ def meshes(Mesh):
                 east = sv(*m)[1] > 10
                 h = 2.0 if east else 1.05
                 pa, pb = a - out * 0.15, b - out * 0.15
-                K["rail_concrete"].box([*pa, zt + h / 2], [*pb, zt + h / 2], 0.22, h)
+                K["rail_parapet"].box([*pa, zt + h / 2], [*pb, zt + h / 2], 0.22, h)
     # ---- the overhead line: portal gantries, and a contact wire under a messenger over each track
     s = N_GATE + SHED + 12
     # (none through the Shinkansen's own shed, which stands inside the stretch)
@@ -674,8 +686,29 @@ def meshes(Mesh):
             else:
                 K["rail_concrete"].quad([*a, zt], [*b, zt], [*b, zr + 0.3], [*a, zr + 0.3])
     station(L, K, Mesh)
+    # what a phone goes without (landmarks.json "detail": never unpacked on the low tier): the overhead line and its
+    # gantries, the canopies' brackets, the platform doors' green line and the glass on their cabinets, the escalators' step
+    # lines and glass. Nothing a walker meets
+    for k in ("rail_mast", "rail_wire", "rail_psd_line", "rail_psd_glass", "rail_esc_dark", "rail_esc_glass"):
+        if k in K:
+            K[k].detail = True
+    # the flat things, laid a triangle at a time: one vertex where their triangles meet
+    for k in ("rail_soffit", "rail_ballast", "rail_roof", "rail_dark"):
+        if k in K:
+            K[k].weld()
+    for m in L["own"]:
+        if m.name.startswith("rail_platform_"):
+            m.weld()
     out = [m for m in K.values() if m.v] + L["own"]
     return MATERIALS, out
+
+
+def lamp(K, a, b, w):
+    """A tube light's lit face, from a to b (3D) and w wide, looking down: what is seen of it from the platform."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    d = np.array([-(b - a)[1], (b - a)[0], 0.0])
+    d = d / (np.linalg.norm(d) or 1.0) * w / 2
+    K["rail_lamp"].quad(a + d, b + d, b - d, a - d)
 
 
 def psd_line(p, sgn):
@@ -694,6 +727,10 @@ def station(L, K, Mesh):
     zt, zp = RAIL_Z - 0.2, RAIL_Z + PLAT
     own = L["own"] = []
     _layout_signs()
+    # the canopies' arms and brackets: a mesh of their own, which a phone goes without (the roofs stand on their posts)
+    arms = Mesh("rail_frame_arms", "rail_frame", False)
+    arms.sky, arms.bounce, arms.detail = 0.6, "#8a857c", True
+    own.append(arms)
     for pi, p in enumerate(L["plats"]):
         st_here = [st for st in L["stairs"] if st["plat"] == p["key"]]
         holes = shapely.union_all([stair_slot(st) for st in st_here])
@@ -703,7 +740,7 @@ def station(L, K, Mesh):
         c = list(p["poly"].exterior.coords)
         u = 0.0
         for a, b in zip(c, c[1:]):   # its faces down to the ballast, and the nosing over the track
-            u = wall(K["rail_concrete"], a, b, zt, zt, zp, u)
+            u = wall(K["rail_parapet"], a, b, zt, zt, zp, u)   # (not solid: the doors, or the strip's hold, keep a walker on the platform)
         fr = p["frames"]
         # the yellow tactile strip and the white line, 0.9 m in from each edge
         for sgn in (-1, 1):
@@ -715,7 +752,9 @@ def station(L, K, Mesh):
         he, hc = 4.7, 3.95     # the eaves and the gutter over the platform
         for sgn in (-1, 1):
             rows_t, rows_b = [], []
-            for f in cov:
+            # (a panel every 8 m: the platforms are all but straight, and every edge of the roof's triangles is a row of
+            # boxes in the game's collision world)
+            for f in cov[::4] + ([cov[-1]] if (len(cov) - 1) % 4 else []):
                 hw = f[4] / 2 + 0.35
                 e, m = f[1] + f[3] * sgn * hw, f[1]
                 rows_t.append([[*m, zp + hc + 0.12], [*e, zp + he + 0.12]])
@@ -728,7 +767,7 @@ def station(L, K, Mesh):
                 pts = [[*(f[1] + f[3] * sgn * (f[4] / 2 + 0.35) * off), zp + hc + (he - hc) * off - 0.07] for f in cov]
                 for k in range(0, len(pts) - 1, 3):
                     a, b = np.array(pts[k]), np.array(pts[min(k + 2, len(pts) - 1)])
-                    K["rail_lamp"].box(a + (b - a) * 0.04, b - (b - a) * 0.04, 0.11, 0.04)
+                    lamp(K, a + (b - a) * 0.04, b - (b - a) * 0.04, 0.11)
         cols = cov[2::4]
         for f in cols:   # a column every 8 m, its arms up to the eaves, a purlin across
             m, n = f[1], f[3]
@@ -742,8 +781,8 @@ def station(L, K, Mesh):
                 K["rail_frame"].box([*m, zp], [*m, zp + hc], 0.2, 0.2)
             for sgn in (-1, 1):
                 e = m + n * sgn * (f[4] / 2 + 0.2)
-                K["rail_frame"].box([*m, zp + hc - 0.2], [*e, zp + he - 0.1], 0.09, 0.14)
-                K["rail_frame"].box([*(m + n * sgn * 0.08), zp + hc - 1.0], [*(m + n * sgn * 1.25), zp + hc - 0.05], 0.07, 0.07)
+                arms.box([*m, zp + hc - 0.2], [*e, zp + he - 0.1], 0.09, 0.14)
+                arms.box([*(m + n * sgn * 0.08), zp + hc - 1.0], [*(m + n * sgn * 1.25), zp + hc - 0.05], 0.07, 0.07)
         # ---- platform doors along the faces of the Yamanote and Keihin-Tohoku lines: cabinets between the doors (here),
         # and each door's two glazed leaves, which slide open with a train standing (web/game/trains.js)
         for sgn in (-1, 1):
@@ -755,7 +794,7 @@ def station(L, K, Mesh):
             for u in door_u + [edge.length - 0.6 + 1.0]:
                 a, b = prev, min(u - 1.0, edge.length - 0.6)
                 if b - a > 0.3:   # a cabinet: a white box with the line's green along its top
-                    n_seg = max(1, int((b - a) / 3.0))
+                    n_seg = max(1, int((b - a) / 6.0))
                     for k in range(n_seg):
                         q0, q1 = a + (b - a) * k / n_seg, a + (b - a) * (k + 1) / n_seg
                         K["rail_psd"].box(at(q0, zp + 0.6), at(q1, zp + 0.6), 0.22, 1.2)
@@ -883,16 +922,18 @@ def station(L, K, Mesh):
                     K["rail_lamp"].box([*(q - t * 0.5), zat(u) + 2.2], [*(q + t * 0.5), zat(u) + 2.2], 0.04, 0.1)
     # ---- each concourse under the tracks: lights on its soffit, the entrances' fascias
     zs = RAIL_Z - SLAB
-    for S in L["stations"]:
-        conc = S["conc"].intersection(L["deck"])
+    for S, (cmid, _dirs, conc) in [(S, c) for S in L["stations"] for c in S["concs"]]:
+        conc = conc.intersection(L["deck"])
         conc = max(getattr(conc, "geoms", [conc]), key=lambda g: g.area)
-        p, t, n = frame(S["mid"])
+        p, t, n = frame(cmid)
         s0, s1 = [sv(*c)[1] for c in (conc.exterior.interpolate(conc.exterior.project(Point(*(p - n * 80)))).coords[0], conc.exterior.interpolate(conc.exterior.project(Point(*(p + n * 80)))).coords[0])]
         for v in np.arange(s0 + 2.5, s1 - 2.0, 4.2):
             for du in (-5.0, 0.0, 5.0):
                 c0 = p + n * v + t * du
-                K["rail_lamp"].box([*(c0 - n * 0.9), zs - 0.06], [*(c0 + n * 0.9), zs - 0.06], 0.22, 0.05)
+                lamp(K, [*(c0 - n * 0.9), zs - 0.06], [*(c0 + n * 0.9), zs - 0.06], 0.22)
         for v, face in ((s0 - 0.25, -1), (s1 + 0.25, 1)):   # an entrance on the west and the east (Yurakucho: the International Forum's side and Ginza's)
+            if face not in S.get("fascia", (-1, 1)):
+                continue
             c0 = p + n * v
             g = T(*c0)
             a, b = c0 - t * 8.4, c0 + t * 8.4
@@ -1088,8 +1129,8 @@ def glows():
         fr = p["frames"]
         for f in [f for f in fr if fr[0][0] + 24 < f[0] < fr[-1][0] - 24][2::5]:
             out.append([round(float(f[1][0]), 1), round(float(f[1][1]), 1), 9.0, "#f1f6e8", 0.36])
-    for S in L["stations"]:
-        p0, t, n = L["frame"](S["mid"])
+    for S, cmid in [(S, c[0]) for S in L["stations"] for c in S["concs"]]:
+        p0, t, n = L["frame"](cmid)
         for v in (-12, 0, 12, 24):
             c = p0 + n * v
             out.append([round(float(c[0]), 1), round(float(c[1]), 1), 11.0, "#f1f6e8", 0.34])

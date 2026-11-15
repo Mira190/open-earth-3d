@@ -1,0 +1,10 @@
+[
+  {"name": "spawn-day", "at": [553, 1195], "look": [606, 1172], "time": "10:30", "date": [11, 13], "dist": 6, "pitch": 0.12, "street": true},
+  {"name": "doors-day", "at": [583, 1176], "look": [610, 1168], "time": "10:30", "dist": 5, "pitch": 0.08, "street": true},
+  {"name": "hall-in", "at": [603, 1170], "look": [640, 1158], "time": "10:30", "dist": 4.5, "pitch": 0.05, "street": true},
+  {"name": "hall-up", "eye": [606, 1169], "look": [611.5, 1167.2], "lookUp": 24, "at": [606, 1169], "time": "10:30", "street": true},
+  {"name": "hall-floor", "eye": [601, 1171], "eyeUp": 9, "look": [612, 1167], "lookUp": 0, "at": [601, 1171], "time": "10:30", "street": true},
+  {"name": "hall-night", "at": [603, 1170], "look": [640, 1158], "time": "20:30", "dist": 4.5, "pitch": -0.25, "street": true},
+  {"name": "passage", "at": [628, 1162], "look": [660, 1152], "time": "10:30", "dist": 4, "pitch": 0.05, "street": true},
+  {"name": "air-halls", "cam": [540, 1120, 120], "tgt": [640, 1200, 10], "time": "14:00"}
+]
