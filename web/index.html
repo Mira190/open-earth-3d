@@ -1346,6 +1346,15 @@ window.dispatchEvent(new Event('three-ready'));
       pane('game-app').hidden = false;
       $('g-load-title').textContent = dist ? dist.name : city.name;
       native($('g-load-native'), dist ? { id: city.id, native: dist.native } : city);
+      // opened as a story (?story=, title.js and game/story.js): the loader names the story and its first episode,
+      // and the place under them, where a game names the place alone
+      if (city.story && new URLSearchParams(location.search).has('story')) {
+        const ep = city.story_episode || {}, place = dist ? dist.name : city.district || city.name, nat = dist ? dist.native : city.native;
+        $('g-loader').querySelector('.ld-mode').textContent = `${city.story}${ep.no != null ? ` · Episode ${ep.no}` : ''}`;
+        $('g-load-title').textContent = ep.title || city.story;
+        const n = $('g-load-native');
+        n.textContent = `${place}${nat ? ` ${nat}` : ''}`; n.hidden = false; n.removeAttribute('lang');
+      }
       OEPlate.play($('g-loader'), city, dist); // the loading plate: the city's aerial survey assembling (plate.js)
       $('gm-model').href = `#${city.id}`;
       current = window.OpenEarthGame(city.id);

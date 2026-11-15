@@ -872,6 +872,10 @@
    "game": 4604161
   },
   "story": "Blue Hour",
+  "story_episode": {
+   "no": 1,
+   "title": "You came late"
+  },
   "lean_pack": {
    "dir": "d/",
    "x": [
