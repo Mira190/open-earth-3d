@@ -2874,7 +2874,10 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
             // (and the room it makes counted as what it still goes if it brakes now, v²/10 up to 6 m, not as a second
             // and more of its going on: one that stopped short in a queue beyond left the car behind it on the rails while
             // the crossing shut, Sydney's car 39, #409)
-            if (!hold && X.rail && toStop > -0.3 && gap < 39.5 && gap + (front && !front.q && front.v > 3 && !front.wantPark && !front.parking && !(front.dwell > 0) && !front.deliver && !(front.lineArm && front.toLine < 60 && JN.light(front.lineArm, front.lineEx) !== 'g') ? Math.min(front.v * front.v / 10, 6) : 0) < toStop + a.back + X.rail.w / 2 + 2 * c.half + 1.5) { hold = true; c.clearRails = (c.clearRails || 0) + dt; } // (gap under its 40 m: something is there)
+            // (and none for a car creeping up in a queue itself, under 3 m/s: the one ahead pulling away makes its room in
+            // a second, and then it goes; counted on, it crept onto the rails and stood there when the queue stopped again,
+            // Tokyo's cars 5, 19 and 34, #432)
+            if (!hold && X.rail && toStop > -0.3 && gap < 39.5 && gap + (front && c.v > 3 && !front.q && front.v > 3 && !front.wantPark && !front.parking && !(front.dwell > 0) && !front.deliver && !(front.lineArm && front.toLine < 60 && JN.light(front.lineArm, front.lineEx) !== 'g') ? Math.min(front.v * front.v / 10, 6) : 0) < toStop + a.back + X.rail.w / 2 + 2 * c.half + 1.5) { hold = true; c.clearRails = (c.clearRails || 0) + dt; } // (gap under its 40 m: something is there)
             if (hold) {
               const g = toStop + 2.4;
               if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = X.rail ? 'rails' : X.sig ? 'light' : 'zebra'; }
