@@ -423,6 +423,27 @@ test and upload only the slots taken (`actors.js`). Both also ask the precompute
 behind the buildings, whose shadow cannot reach anything seen, takes no slot. Shibuya's scramble on foot then
 draws 2.91 million triangles in 315 draws (7.60 million in 415 on main at the start of this issue).
 
+### The far crowd as the scanned cast (issue 475)
+
+The far crowd's dolls gave way to a far copy of each cast member (`pipeline/crowd_cast.py`, docs/LOOK.md):
+about 1,000 to 1,800 triangles a copy against the dolls' 1,350 to 2,250, one 128 x 192 picture each (half that
+on a phone, about 33 kB of the GPU a character), and no per-walker colours to upload (the dolls' skin, hair,
+clothes and pattern, 52 bytes a walker). A copy is one instanced draw in the view and in each shadow pass, as a
+doll was, so the cast is held to twelve on the desktop tiers and eight on a phone (`game.js` `realCast`), below
+the dolls' thirteen; a cast member with nobody drawn this frame is not drawn at all (`people.js` `end`).
+Measured with `tools/frame_cost.js` on foot at the spawn at 12:30 (FREEZE=1; desktop 1440 x 900 high, phone
+390 x 844 low), against `?farcast=off` (the dolls), and `tools/mem_check.js` (a phone's peak GPU memory):
+
+| Map | Desktop draws | Desktop triangles | Phone draws | Phone triangles | Phone GPU peak (textures) |
+|---|---|---|---|---|---|
+| Shibuya | 513 -> 513 | 2.69 M -> 2.59 M | 354 -> 334 | 1.17 M -> 1.11 M | 242 -> 242 MB (164 -> 164) |
+| Tokyo | 949 -> 929 | 3.11 M -> 3.05 M | 744 -> 730 | 2.40 M -> 2.36 M | 272 -> 271 MB (171 -> 172) |
+| Sydney | 466 -> 462 | 1.88 M -> 1.86 M | 405 -> 405 | 1.61 M -> 1.60 M | 226-231 -> 227-231 MB (160 -> 160) |
+
+(The phone's peak moves by up to 5 MB between two runs of the same page, in the buffers of the map streamed round
+the player; its textures, where the copies' pictures are, did not move.) The download grows by the file, 650 kB
+for the live maps' 24 cast members, fetched with the dolls before the game opens.
+
 ### The main thread
 
 - No vector is made per walker per frame (`people.js`), and the shadow cache compares the still casters'
