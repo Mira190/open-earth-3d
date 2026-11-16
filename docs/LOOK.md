@@ -364,6 +364,32 @@ Considered and not taken: octahedral impostors (a picture per view angle: 8 to 1
 and a flat card where the crowd's shadows and night lights need a body), and the near walkers' skinned clips on
 every walker (a skeleton a person: the cost the instancing exists to avoid).
 
+**Where they are** (`game.crowd.places`, issue 494). One number for a whole map (the pool over `radius_m`, about
+0.0008 walkers a square metre) left the busiest square of a city as empty as its back streets: at 12:30 nobody
+stood within 32 m of the player at Tokyo's or Sydney's start. Three causes, three changes:
+
+- *The opening.* The crowd's first placing was meant to put people anywhere, the player's side too, but it asked
+  for the game's first second, and the title card holds the crowd while the game's clock runs under it. Everyone
+  was put as a latecomer is: out of sight and 270 m off, or 45 m off where the crowd gathers. Now the crowd's
+  first step, and the step after the hour is *set* (a still, the menu's clock, a story's cut), put people anywhere
+  (`actors.js` `opened`, `crowd.fresh`); a clock that runs on still brings people in on foot from out of sight.
+- *A density by place.* A map lists where its people are: `places: [{id, at, r, share, pull, hours, paths}]`.
+  `share` is the part of the walkers put on the street who are put within `r` of the place (by its share among
+  the places near the player), `pull` how often a walker near it takes the way towards it at a footway's end,
+  `hours` `[hour, weight]` on the share (a station's forecourt at the commute, a quay from mid-morning). They are
+  the same walkers, so the pool, and the frame, cost what they did. Tokyo: the Marunouchi side of the station.
+  Sydney: Circular Quay's west promenade and the concourse between the station and the wharves. Shibuya's
+  scrambles were places already (`crowd.hot`, set from the junctions).
+- *Ways across open paving* (`places[].paths`). Footways are mapped as lines, and a quay thirty metres wide has
+  two: the crowd walked those in file and left the paving bare. A place adds the ways people take across it (the
+  water's edge, the plaza between its lawns), for the crowd only; `game.js` lays them on the ground and
+  joins each end to a mapped footway's end within 6 m, and drops what is not ground to walk on.
+
+Tokyo and Sydney have `hours` now (an office district's day; a commuter quay and foreshore's), with
+`pedestrians_peak` for the desktop's pool, so the lunch hour is fuller than 3 a.m. Measured with
+`tools/crowd_around.js` (`TIER`, `SIM`), `tools/frame_cost.js` and `tools/mem_check.js`; the numbers are in
+issue 494. `pipeline/game_sync.py` copies these settings into `game.json` without a rebuild.
+
 **Who is on the street** (`game.crowd.cast`, `web/game/game.js` `realCast`). The walkers drawn as people were the
 story's NPCs in the order of their names, which put the office suits first, and three faults made copies of
 them: the pick of a character was the walker's number modulo the cast's size, so a group that set out together
@@ -375,13 +401,37 @@ of Asian background (the shares are estimates). The pick is a mixed hash, the wh
 and a stand-in gives way as soon as the walker's own character has come. Hair is part of a character's head:
 another style is another head built in Blender (`blender/build_people.py` tags), not a change at run time.
 
+**Heads and hair** (issue 505). Two walkers on one body should differ above the collar, so a cast also names the
+same body under another head or hair colour: `R_Female_Adult_08_f016`, `R_Female_Adult_15_f011_brown`,
+`R_Male_Adult_11_m017`, `R_Male_Adult_13_m008_grey` (a Rocketbox head is its face, its hair's cut and its cards;
+`brown` and `grey` recolour it). A cast's names are built whether or not a story's NPC wears them
+(`pipeline/fetch_rocketbox.py` `npc_cast` reads `game.crowd.cast`). A cap or a hat is not built: the far copies
+could not show it, and it would be one more picture a head.
+
+**The shares, checked** (issue 505). Central Sydney: the 2021 Census counts 211,632 people in the City of Sydney
+(ABS QuickStats, LGA17200), by ancestry English 25.1%, Australian 16.8%, Chinese 16.8%, Irish 10.7%, Scottish
+7.5% (up to two each), 44.6% born in Australia, 7.8% in China, 3.0% in Thailand, 2.7% in Indonesia; Mandarin is
+spoken at home by 8.6%, Cantonese 2.8%, Thai 2.8%, Indonesian 2.1%. So about a fifth to a quarter of residents
+are of east or south-east Asian background; the cast's three in eight (and the visitors a quay has) stays an
+estimate on the high side of that, not a count. Shibuya: the Tokyo Metropolitan Government's survey of foreign
+visitors' behaviour (2023) has 67.1% of them visiting Shibuya, the most of any district (Shinjuku and Okubo
+57.4%); that is the share of visitors who come, not of the people on the crossing, for which no count was found:
+every fourth walker a visitor stays an estimate.
+
 **The same person in other clothes** (`web/game/people.js` `DRESS`). A cast of a dozen fills a crossing, so two of
 one character meet, and side by side in the one red shirt, or three in the one taupe suit, they read as copies.
 Each walker wears one of eight: a coloured cloth turned round the wheel and quietened (a dark one nearly to
 charcoal: the first pass put a crossing in green and purple suits), a neutral one lighter or darker with a little
-dye (navy, sand, brown, grey), as Tokyo dresses. The same far and near; the skin is left as scanned, found by its
-colour and lightness, and the head has its own material. No new pictures and no new programs
+dye (navy, sand, brown, grey), as Tokyo dresses. The same far and near; the skin is left as scanned, and the head has its own material. No new pictures and no new programs
 beyond one.
+
+**A mask for the skin** (issue 505). The change found skin by its colour, so a tan waistcoat or a beige coat was
+taken for skin and stayed as scanned, and a dark hand could be read as cloth. `blender/build_people.py`
+`skin_mask` now marks each cast member's bare skin in its body picture's alpha (204; cloth 255): the hue of that
+character's own hands, on faces where a body can be bare, reached over the mesh from a hand, the neck or a leg.
+The material stays opaque; only the crowd's shader reads the alpha (`OE_SKIN_MASK`), and a far copy's cell carries
+it with its head and hair marked too (`pipeline/crowd_cast.py`), so hair keeps its built colour. A character built
+before has no `mask` in `people.json` and is read by colour as it was.
 
 ### The crossing's sound (`web/game/audio.js`, `game.look.sound`)
 

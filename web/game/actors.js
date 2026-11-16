@@ -492,14 +492,14 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
     // can the camera see someone standing at (x, y, z)? Near it, or ahead of it and within sight with no
     // building between (the walls, sampled along the line from the eye to the walker's head)
     const look = new THREE.Vector3();
-    function seen(x, y, z) {
+    function seen(x, y, z, cone = 0.2) {
       if (!eye) return false;
       const ex = eye.position.x, ey = -eye.position.z, ez = eye.position.y, dx = x - ex, dy = y - ey, d = Math.hypot(dx, dy); // (sim y is -z)
       if (d > SEEN) return false;
       if (d < SEEN_NEAR) return true;
       eye.getWorldDirection(look);
       const h = Math.hypot(look.x, look.z); // (looking down from high up, all round it)
-      if (h > 0.3 && (dx * look.x - dy * look.z) / (d * h) < 0.2) return false;
+      if (h > 0.3 && (dx * look.x - dy * look.z) / (d * h) < cone) return false;
       if (!wall) return true;
       const k = Math.ceil(d / 2.5), dz = z + 1.5 - ez;
       for (let i = 1; i < k; i++) if (wall(ex + dx * i / k, ey + dy * i / k, ez + dz * i / k)) return false;
@@ -525,7 +525,9 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       p.state = 'walk'; p.mode = 'ground'; p.lat = null; p.side = 0.6 + rnd() * 1.2; p.kerbNext = null; p.kerbBack = false;
       // (a share of them where the crowd gathers, api.hot: a scramble; out of the player's way there)
       const H = api.hot && api.hot.filter(h => Math.hypot(h.x - cx, h.y - cy) < radius);
-      const hot = H && H.length && rnd() < H.reduce((a, h) => a + h.share, 0) ? H[Math.floor(rnd() * H.length)] : null;
+      // (one of them by its share: a quay's promenade with twice the share of a side square gets twice the walkers)
+      let hot = null;
+      if (H && H.length) { let r = rnd(); for (const h of H) if ((r -= h.share) < 0) { hot = h; break; } }
       // (with the game under way, rMin > 0, only where the camera cannot see: a walker comes into view on foot, from
       // round a corner or from far off, and where the crowd gathers in the player's sight it is those who fill it)
       const unseen = rMin > 0 && !!eye;
@@ -540,18 +542,27 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         const x = tmp.x - tmp.hy * dir * p.side, y = tmp.y + tmp.hx * dir * p.side;
         if (hot && (Math.hypot(x - hot.x, y - hot.y) > hot.r || Math.hypot(x - cx, y - cy) < rMe)) continue;
         if (shut && (shut(x, y) || shutLine(line))) continue; // (not in a subway entrance's stair well)
-        if (unseen && seen(x, y, tmp.z)) continue;
+        // (with a margin: a little outside the view's edge, and hidden at the footway's line too, where its first steps
+        // may take it; on an open square a walker put at the very edge of sight was in it a step later)
+        if (unseen && (seen(x, y, tmp.z, 0.05) || seen(tmp.x, tmp.y, tmp.z, 0.05))) continue;
         const X = api.crossings && api.crossings.byLine.get(line);
         if (X && X.some(q => Math.abs(q.s - s) < q.kerb + 0.5)) continue; // (not out in a road at a crossing)
         if (api.crossings && api.crossings.major && api.crossings.road && api.crossings.road(tmp.x, tmp.y) && api.crossings.major(tmp.x, tmp.y)) continue; // (nor out in a major road)
         gather(x, y, p, true, tmp.z);
         if (blocked(x, y) > 0 || (wall && wall(x, y, tmp.z)) || crowded(x, y, p, CLOSE + 0.1)) continue;
         p.line = line; p.s = s; p.dir = dir;
+        // (known to those placed after it in this step: when the whole crowd is put out at once, the opening or a cut to
+        // another hour, each was tested against a street still empty, and two could be put inside each other)
+        if (p.hashed !== stepNo) {
+          const i = P.indexOf(p);
+          if (i >= 0) { p.x = x; p.y = y; p.z = tmp.z; const k = bucket(Math.floor(x / CELL), Math.floor(y / CELL)); chain[i] = head[k]; head[k] = i; p.hashed = stepNo; }
+        }
         return true;
       }
       return false;
     }
-    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, kerbWaits: [], hot: null, plazas: null, muster };
+    let opened = false, stepNo = 0; // (stepNo: the update under way, for the neighbours' hash) // (has the crowd taken its first step: update)
+    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, kerbWaits: [], fresh: 0, hot: null, plazas: null, muster };
     // where footway li steps off the kerb onto a road with no crossing marked there, each way along it
     // ({ s, dir, x, y }): found the first time a walker is on it, a metre at a time (crossings.road, from
     // game.js, says what is carriageway; crossings.zebra, a zebra's stripes, where the cars give way instead)
@@ -1152,19 +1163,26 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       frame++;
       if (api.plazas && (frame % 15 === 1 || t < 1)) plazas(t, cx, cy);
       if (api.plazas) for (const pz of api.plazas) if (pz.j) { pz.j.busy = pz.busy || 0; pz.busy = 0; } // (who was out on its road last step: the signals wait for them)
-      head.fill(-1);
+      head.fill(-1); stepNo++;
       for (let i = 0; i < api.active; i++) {
         const q = P[i];
         if (q.line < 0) continue;
         const k = bucket(Math.floor(q.x / CELL), Math.floor(q.y / CELL));
-        chain[i] = head[k]; head[k] = i;
+        chain[i] = head[k]; head[k] = i; q.hashed = stepNo;
       }
+      // (api.fresh: the hour was set, not reached: those who come out with it are put anywhere, near the player too, as
+      // when the game opens. A cut to lunchtime that put the lunch crowd only out of sight left the player's square empty)
+      // The same on the crowd's first step. It was `t < 1`, the game's first second, but the title card holds the crowd
+      // while the game's clock runs on under it, so by the time Play was pressed everyone was put as a latecomer is:
+      // out of sight and 270 m off, or 45 m off where the crowd gathers. Nobody stood within 32 m of the player at
+      // any map's opening (issue 494), whatever the map's numbers.
+      const fresh = api.fresh > 0 || !opened; opened = true; if (api.fresh > 0) api.fresh -= dt;
       const pvx = player ? Math.sin(player.h) * player.speed : 0, pvy = player ? Math.cos(player.h) * player.speed : 0;
       for (let i = 0; i < n; i++) {
         p = P[i];
         if (i >= api.active) { R.hide(i); release(p); if (p.pz) { uncount(p); p.pz = p.g = null; p.state = 'walk'; } p.line = -1; continue; }
         if (p.pz) { if (p.pause > 0) p.pause -= dt; plazaStep(i, p, dt, player); p.mode = 'ground'; gait(p, dt); R.place(i, p, p.moving); continue; }
-        if (p.line < 0 || Math.hypot(p.x - cx, p.y - cy) > radius * 1.15) respawn(p, cx, cy, p.line < 0 && t < 1 ? 0 : radius * 0.6);
+        if (p.line < 0 || Math.hypot(p.x - cx, p.y - cy) > radius * 1.15) respawn(p, cx, cy, p.line < 0 && (t < 1 || fresh) ? 0 : radius * 0.6);
         if (p.line < 0) { R.hide(i); continue; }
         if (p.pause > 0) p.pause -= dt;
         if (p.state === 'walk') { // farther off, a longer step every few frames does

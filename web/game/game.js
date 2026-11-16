@@ -622,7 +622,27 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
 
   loadMsg('Footways people can walk', 0.84);
   await idle();
-  const tFoot = performance.now(), crowdNet = OEActors.network(nav.withoutFine(() => cutAtWalls(OERoute.walkable(nav, G.paths.foot, (x, y, z) => roadsNow.depth(x, y, z, 0.3) > 0))));
+  // The ways across open ground that a place of the crowd names (game.crowd.places[].paths, [[[x, y], ...], ...]: issue
+  // 494). Footways are mapped as lines, and a paved quay thirty metres wide has two of them: the crowd walked those two
+  // in file and left the rest of the paving bare, the player's own stretch of it too. These are the crowd's only (not
+  // the map's, the route's or the paint's), laid on the ground as it is here, a point every few metres, and each end
+  // joined to a mapped footway's end within 6 m, so that people walk on and off them. walkable() below drops any
+  // stretch that is not ground to walk on.
+  const placeWays = [];
+  { const ends = [], zAt = (x, y) => { const t = nav.terrain(x, y), w = nav.walk(x, y, t + 0.6, true); return Math.round((w.ok ? w.z : t) * 10); }; // (the ground there, or the deck or paving laid on it)
+    for (const f of G.paths.foot) { const p = f.p, n = p.length; if (n >= 6) ends.push([p[0], p[1], p[2]], [p[n - 3], p[n - 2], p[n - 1]]); }
+    for (const q of ((G.crowd || {}).places || [])) for (const way of (q.paths || [])) {
+      const p = [];
+      for (let k = 0; k < way.length; k++) {
+        const [x, y] = way[k];
+        if (k) { const [ax, ay] = way[k - 1], m = Math.ceil(Math.hypot(x - ax, y - ay) / 6); for (let j = 1; j < m; j++) { const u = ax + (x - ax) * j / m, v = ay + (y - ay) * j / m; p.push(Math.round(u * 10), Math.round(v * 10), zAt(u, v)); } }
+        let e = null, bd = 60; // (tenths of a metre)
+        if (k === 0 || k === way.length - 1) for (const c of ends) { const d = Math.hypot(c[0] - x * 10, c[1] - y * 10); if (d < bd) { bd = d; e = c; } }
+        if (e) p.push(e[0], e[1], e[2]); else p.push(Math.round(x * 10), Math.round(y * 10), zAt(x, y));
+      }
+      if (p.length >= 6) placeWays.push({ c: 'pedestrian', p });
+    } }
+  const tFoot = performance.now(), crowdNet = OEActors.network(nav.withoutFine(() => cutAtWalls(OERoute.walkable(nav, placeWays.length ? G.paths.foot.concat(placeWays) : G.paths.foot, (x, y, z) => roadsNow.depth(x, y, z, 0.3) > 0))));
   console.info(`footways: ${Math.round(performance.now() - tFoot)} ms, the roads cut at the walls ${Math.round(roadMs)} ms`);
   // benches face their footway, or the water behind it; each has two seats the crowd can use
   const benches = nav.withoutFine(() => OEActors.benches(G.props.bench || [], crowdNet, nav)), lamps = G.props.street_lamp || [];
@@ -702,7 +722,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // three pictures at 512 px, 256 on the lighter sets: about 4 MB of the GPU a character, quality.js budget)
   // The far crowd is the same cast (people.js lib.far, issue 475), one instanced draw a cast member in the view and
   // again in each shadow pass, so the other tiers' cast is held to HIGH_CAST, below the dolls' thirteen it replaces.
-  const LOW_CAST = 8, HIGH_CAST = 12;
+  const LOW_CAST = 8, HIGH_CAST = 16; // (sixteen since issue 505: eight bodies of each sex, two of them a body the others wear under another head; measured there)
   const realCast = () => {
     if (!lib || !lib.npcs || CR.real === false || /[?&]realcrowd=off/.test(location.search)) return null;
     const tier = QC.name !== 'low' ? HIGH_CAST : QC.budget && QC.budget.cast ? Math.min(LOW_CAST, QC.budget.cast) : LOW_CAST;
@@ -845,6 +865,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       crowd.plazas = S.map(j => { const a = j.arms.find(q => q.in) || j.arms[0]; return (j.plaza = { j, x: j.x, y: j.y, spans: j.spans, weight: j.mapped3 ? 8 : 1, road: onRoad, walk: () => junctions.walk(a), left: () => junctions.walkLeft(a) }); });
       crowd.hot = S.map(j => ({ x: j.x, y: j.y, r: 90, share: 0.16 / S.length, pull: 0.5 }));
     } }
+  // ... and where a map says its people are (game.crowd.places, [{ at, r, share, pull, hours }]: issue 494): the
+  // forecourt of a station, a quay, the hero level round the spawn. One number for the whole map (the pool over
+  // radius_m) left the busiest square of a city as empty as its back streets: two or three people within 32 m of
+  // the player. share: the part of the walkers put on the street who are put there; pull: how often one at the end of
+  // a footway near it takes the way towards it; hours: [[hour, weight], ...] on the share through the day
+  // (placeShares, with the crowd's own hours). They are the same walkers, so the pool and its cost stay as they were.
+  const PLACES = (CR.places || []).filter(q => q.at).map(q => ({ x: q.at[0], y: q.at[1], r: q.r || 80, share: q.share || 0.1, base: q.share || 0.1, pull: q.pull ?? 0.5, hours: q.hours || null }));
+  if (PLACES.length) crowd.hot = (crowd.hot || []).concat(PLACES);
   const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100, { lib: vlib, cfg: Object.assign({ parked: CITY.country === 'Japan' ? 0.05 : 0.16 }, (G.vehicles || {}).cars), eye: camera, keep: KEEP, ground: lineGround, crowd, nav, posts, junctions, stops: G.props.bus_stop || null });
   const density = { low: 0.35, normal: 1, high: 1 };
   const playerLook = () => Object.assign({ shirt: '#2f4858', pants: '#2b3440', skin: '#e0ac85', hair: '#3b2a20' }, PLAYER_LOOKS[playerChar]);
@@ -2851,9 +2879,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (live: the place's own time, which the clock then follows; any other hour set is kept as set)
   function setClock(y, m, d, min, live = false) {
     clock.own = !live;
-    const t = new Date(Date.UTC(y, m - 1, d) + Math.floor(min / 1440) * 864e5);
+    const t = new Date(Date.UTC(y, m - 1, d) + Math.floor(min / 1440) * 864e5), was = clock.min;
     Object.assign(clock, { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate(), min: ((min % 1440) + 1440) % 1440 });
     applySun();
+    // (a cut to another hour, not the clock running on: the crowd that hour brings out is laid out as at the opening)
+    // (for the next second and a half, in which applyDensity brings them out; not at midnight's turn of the day)
+    { const d = Math.abs(clock.min - was) % 1440; if (Math.min(d, 1440 - d) > 10) crowd.fresh = 1.5; }
   }
   function applySun() {
     clockUtc = S.localToUtc(clock.y, clock.m, clock.d, clock.min);
@@ -3359,15 +3390,19 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // weekend_night, more on Friday and Saturday nights (18:00 to 04:00), and weekend, more all day on
   // Saturday and Sunday, as Shibuya is (390,000 a day crossing at the weekend against 260,000 on a weekday). A city
   // without hours keeps its whole crowd out all day. crowdAuto off: a tool sets the crowd itself.
-  function busy() {
-    const H = CR.hours;
-    if (!H || !H.length) return 1;
-    const h = clock.min / 60;
+  // (a list of [hour, value] read at hour h, straight between its entries and round midnight)
+  function atHour(H, h) {
     let v = H[H.length - 1][1];
     for (let i = 0; i < H.length; i++) {
       const [h1, v1] = H[i];
       if (h < h1) { const [h0, v0] = i ? H[i - 1] : [H[H.length - 1][0] - 24, H[H.length - 1][1]]; v = v0 + (v1 - v0) * (h - h0) / Math.max(1e-6, h1 - h0); break; }
     }
+    return v;
+  }
+  function busy() {
+    const H = CR.hours;
+    if (!H || !H.length) return 1;
+    const h = clock.min / 60, v = atHour(H, h);
     const wd = new Date(Date.UTC(clock.y, clock.m - 1, clock.d)).getUTCDay();
     const party = ((wd === 5 || wd === 6) && h >= 18) || ((wd === 6 || wd === 0) && h < 4);
     return Math.max(0, Math.min(1, v * (party ? CR.weekend_night || 1 : 1) * (wd === 0 || wd === 6 ? CR.weekend || 1 : 1)));
@@ -3409,7 +3444,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
   }
   let crowdAuto = true, govCrowd = 1; // (govCrowd: the frame-time governor's share of the crowd, its ladder below)
-  function applyDensity() { if (crowdAuto) crowd.active = Math.round(crowd.P.length * density[settings.density] * busy() * govCrowd); }
+  function applyDensity() { placeShares(); if (crowdAuto) crowd.active = Math.round(crowd.P.length * density[settings.density] * busy() * govCrowd); }
+  // a place's share of the crowd at this hour (game.crowd.places[].hours): a station's forecourt at the commute, a quay at lunch
+  function placeShares() { for (const q of PLACES) if (q.hours && q.hours.length) q.share = q.base * Math.max(0, atHour(q.hours, clock.min / 60)); }
   // mode: 'chase', 'bird' (the helicopter's bird's-eye view) or 'cockpit' (the pilot's eyes, looking lookYaw left and lookPitch up)
   // distTo and yawTo, when set, ease the chase camera somewhere (out to the helicopter's view, round to its door)
   const cam = { yaw: 0, pitch: 0.36, tilt: 0, dist: 7.5, distTo: 0, yawTo: null, lastInput: -10, mode: 'chase', birdAlt: 320, lookYaw: 0, lookPitch: -0.1, lift: 0, liftHold: 0, pull: 1, floor: null, snap: false };

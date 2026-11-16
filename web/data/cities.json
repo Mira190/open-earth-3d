@@ -56,7 +56,7 @@
   ],
   "load_bytes": {
    "model": 1445963,
-   "game": 1905569
+   "game": 1905954
   },
   "lean_pack": {
    "dir": "d/",
@@ -68,7 +68,7 @@
     -1300,
     1500
    ],
-   "bytes": 1120268
+   "bytes": 1120594
   }
  },
  {
@@ -107,7 +107,7 @@
   ],
   "load_bytes": {
    "model": 3171224,
-   "game": 3649874
+   "game": 3650154
   },
   "lean_pack": {
    "dir": "d/",
@@ -119,7 +119,7 @@
     0,
     2300
    ],
-   "bytes": 2565241
+   "bytes": 2565475
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -869,7 +869,7 @@
   ],
   "load_bytes": {
    "model": 4041668,
-   "game": 4614403
+   "game": 4614417
   },
   "story": "Blue Hour",
   "story_episode": {
@@ -886,7 +886,7 @@
     -2100,
     450
    ],
-   "bytes": 1552607
+   "bytes": 1552622
   },
   "group_meta": {
    "native": "\u6771\u4eac",
