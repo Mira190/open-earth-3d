@@ -63,7 +63,7 @@ STATIONS = [
     # at the passage: as JR East's station map draws it, stairs and an escalator either side of the passage on every
     # platform
     {"key": "tokyo", "name": "Tokyo", "native": "東京", "kana": "とうきょう", "romaji": "Tōkyō", "s": (590.0, 945.0), "refs": ("3;4", "5;6", "7;8", "9;10"),
-     "passages": [(695.0, (1,)), (768.0, (-1, 1), "c"), (889.0, (-1,))], "fascia": (1,),
+     "passages": [(695.0, (1,)), (768.0, (-1, 1), "c"), (889.0, (-1,))], "fascia": (1,), "shut": ("c",),   # (shut: a passage that ends at the block behind the building, its west end walled)
      # the way in on foot, for the game's check: from the plaza before the south dome's doors, through its hall and the
      # passage (station.py: the dome's centre, 26 m and 33 m along its axis either way), to the stairs to platforms 5 and 6
      "way": {"hall": (610.2, 1167.6), "axis": (0.943, -0.333), "out_m": 26.0, "in_m": 33.0, "platform": 5},
@@ -961,6 +961,9 @@ def station(L, K, Mesh):
             for du in (-5.0, 0.0, 5.0):
                 c0 = p + n * v + t * du
                 lamp(K, [*(c0 - n * 0.9), zs - 0.06], [*(c0 + n * 0.9), zs - 0.06], 0.22)
+        if _of in S.get("shut", ()):   # its west end, where it stops at the block behind: the viaduct's own stone, lit as the passage is
+            a, b = p + n * (s0 + 0.15) - t * 9.0, p + n * (s0 + 0.15) + t * 9.0
+            wall(K["rail_stone"], b, a, T(*b) - 0.4, T(*a) - 0.4, zs, 0.0)
         for v, face in ((s0 - 0.25, -1), (s1 + 0.25, 1)):   # an entrance on the west and the east (Yurakucho: the International Forum's side and Ginza's)
             if face not in S.get("fascia", (-1, 1)):
                 continue
