@@ -3131,6 +3131,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     free: () => { const u = new URL(location.href); u.searchParams.set('walk', '1'); u.searchParams.delete('overture'); location.href = u.toString(); },
     say: (who, lines, done) => dlg.show(Object.assign({ color: who.alive ? '#ffcf8a' : '#9fc4ff' }, who), lines.map(l => fill(l)), null, done),
     hush: on => { if (A.hush) A.hush(on); },
+    // the story's own sound (audio.js): a cue by name, and the still chord of time held
+    sfx: name => { if (A.sfx) A.sfx(name); },
+    held: on => { if (A.held) A.held(on); },
     // time held and let go: what was falling or flying hangs where it was (stopfx.js)
     // a flight between two places (a frame's `flight`: an overture's spec, its shots, captions and where you stand at the end):
     // the helicopter is the film's guide, the camera flies with it, and a key sets you down at once
@@ -3146,6 +3149,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
             t += dt; const k = Math.min(1, t / 3), up = k * k * (3 - 2 * k), v = Math.max(0, t - 1.6) * 5.5;
             st.z += (up * 5 + Math.max(0, t - 3) * 3.2) * dt; st.h = h0 + Math.min(1.2, Math.max(0, t - 1.2) * 0.35); st.x += Math.sin(st.h) * v * dt; st.y += Math.cos(st.h) * v * dt;
             st.pitch = Math.min(0.2, v * 0.02); st.vx = st.vy = st.vz = 0; st.on = true; st.landed = false; st.rotor = 1; heli.update(1e-4, {}, []); heli.group.visible = true;
+            if (A.rotor) A.rotor(Math.max(0, 1 - t / 13), 0.4);
             if (t > 14) { heliAway = null; st.on = false; st.rotor = 0; st.landed = true; [st.x, st.y, st.z, st.h] = pad; st.pitch = st.roll = 0; heli.update(1e-4, {}, []); heli.group.visible = false; }
           };
           return;
@@ -3156,6 +3160,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         st.x = x; st.y = y; st.z = z; st.vx = st.vy = st.vz = 0; st.yawRate = 0; st.on = true; st.landed = false; st.rotor = 1;
         if (!heli.loaded()) { heli.want(); heli.show(); }
         heli.update(1e-4, {}, []); heli.group.visible = true;
+        if (A.rotor) A.rotor(1, 0.55); // (heard, as it is seen)
       };
       const f = makeFilm && !reduced ? makeFilm(Object.assign({}, G.overture, G.story.episodes[0].overture || {}, spec, { night: null }), fly) : null;
       const done = () => { overture = was; then(); };

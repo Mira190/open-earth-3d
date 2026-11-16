@@ -288,7 +288,7 @@ window.OEHud = (function () {
       const n = Math.floor(cur.typed);
       if (n > before) {
         textEl.textContent = cur.full.slice(0, n);
-        if (Math.floor(n / 3) > Math.floor(before / 3) && /\w/.test(cur.full[n - 1] || '')) audio.beep(cur.npc.pitch || 220);
+        if (Math.floor(n / 3) > Math.floor(before / 3) && /\w/.test(cur.full[n - 1] || '')) (cur.npc.voice && audio.voice ? audio.voice(cur.npc.voice) : audio.beep(cur.npc.pitch || 220)); // (a story's people speak in a voice of their own: audio.js voice)
         if (n >= cur.full.length) showChoices();
       }
     }

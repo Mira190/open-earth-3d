@@ -260,6 +260,17 @@ find it in the finder, and it is what the frame's lines turn on.
 | 6 | her corner, from his kerb | the pillar box, her umbrella against it, the board | the same corner as frame 1, as he saw it |
 | 7 | the crossing | the two of them | nothing else is needed |
 
+**It is heard.** Nobody is recorded: every sound is made in the page (`web/game/audio.js`). Each speaker has a
+voice of their own for the sound of their lines (a pitch, breath in it for the old, a second fainter syllable
+after each for someone speaking from another year), and what the story does has its cue: the floor of the
+sound dropping out at the Stop and a still chord for as long as time is held, the air coming back, the
+camera's catch, glass when the thing of 1964 comes into the frame, the shutter, the film wound on, the
+postmark, the rotor over the flight, a chord laid note by note at the end.
+
+**It opens on a voice.** Before the first Stop the office rings: who you are (a surveyor, late), why you are on
+this kerb at this hour, and the one odd thing about the job, a word pencilled on the old plan (`prologue` on
+the episode). A case left unfinished says so on the title, with a second button to start the evening again.
+
 **A print is a thing you are given.** After the shutter the print is in your hand for a moment, its postmark struck
 on it (the hour, the frame), and goes to the roll, where Tab opens every print taken so far.
 

@@ -372,7 +372,7 @@ window.OEAudio = (function () {
   }
   // the Stop (story.js): the street's sound falls away, and comes back
   function hush(on) { if (master && !muted) ramp(master.gain, on ? 0.09 : 0.55, on ? 0.25 : 1.2); }
-  function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); if (m && window.speechSynthesis) window.speechSynthesis.cancel(); }
+  function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); if (sbus) ramp(sbus.gain, m ? 0 : 0.5, 0.05); if (m) held(false); if (m && window.speechSynthesis) window.speechSynthesis.cancel(); }
   function stop() { if (ctx) { ctx.close(); ctx = null; mbus = null; } }
   // for the score (game/music.js): the context it plays on, and a bus into the master, so that the
   // Sound switch mutes the music with everything else
@@ -382,5 +382,76 @@ window.OEAudio = (function () {
     if (!mbus || mbus.context !== ctx) { mbus = ctx.createGain(); mbus.connect(master); }
     return mbus;
   }
-  return { start, get ctx() { return ctx; }, musicBus, murmur, screens, piyo, kakko, walkCall, train, clack, platformChime, doorChime, melody, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, thunder, hush, cicadas, car, skid, beep, step, horn, honk, chime, bell, kan, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
+  // ------------------------------------------------------------ the story's own sound (story.js)
+  // A bus of its own, past the master: the Stop hushes the street to a sixth, and what the story says and does in a
+  // stopped street has to be heard over it. The Sound switch still mutes it.
+  let sbus = null, pad = null;
+  function storyBus() {
+    if (!ctx) return null;
+    if (!sbus || sbus.context !== ctx) { sbus = ctx.createGain(); sbus.gain.value = muted ? 0 : 0.5; sbus.connect(ctx.destination); pad = null; }
+    return sbus;
+  }
+  const sTone = (at, dur, type, f0, f1, vol, attack = 0.006) => { const b = storyBus(); if (b && !muted) tone(b, ctx.currentTime + at, dur, type, f0, f1, vol, attack); };
+  function sNoise(at, dur, freq, q, vol, kind = 'bandpass') {
+    const b = storyBus(); if (!b || muted) return;
+    const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(), t = ctx.currentTime + at;
+    s.buffer = noise; f.type = kind; f.frequency.value = freq; f.Q.value = q;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.01, dur / 3)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(b); s.start(t, Math.random()); s.stop(t + dur + 0.03);
+  }
+  // A voice for a line of dialogue: not words, the sound of someone saying them. Each syllable is a buzz at the
+  // speaker's pitch through the two resonances of a vowel, falling a little as a spoken syllable does; v.pitch is the
+  // speaker's (Hz), v.rough a hoarser buzz, v.breath air in it (the old), v.past a second, fainter syllable a moment
+  // after (someone speaking from another year)
+  const VOWELS = [[730, 1090], [270, 2290], [300, 870], [530, 1840], [570, 840]];
+  function voice(v = {}) {
+    const b = storyBus(); if (!b || muted) return;
+    const f0 = (v.pitch || 180) * (0.9 + Math.random() * 0.22), [F1, F2] = VOWELS[Math.floor(Math.random() * VOWELS.length)], dur = 0.075 + Math.random() * 0.05;
+    const say = (at, vol) => {
+      const t = ctx.currentTime + at, o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = v.rough ? 'square' : 'sawtooth'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.88, t + dur);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      for (const [F, k] of [[F1, 1], [F2, 0.55]]) { const bp = ctx.createBiquadFilter(), fg = ctx.createGain(); bp.type = 'bandpass'; bp.frequency.value = F; bp.Q.value = 7; fg.gain.value = k; o.connect(bp); bp.connect(fg); fg.connect(g); }
+      g.connect(b); o.start(t); o.stop(t + dur + 0.02);
+    };
+    say(0, 0.34);
+    if (v.breath) sNoise(0, dur * 1.3, 2600, 0.8, 0.02 * v.breath);
+    if (v.past) { say(0.11, 0.1); say(0.23, 0.04); }
+  }
+  // what the story does, heard: each a few notes or a breath of noise, made here
+  function sfx(name) {
+    if (!storyBus() || muted) return;
+    switch (name) {
+      case 'stop': sTone(0, 1.6, 'sine', 62, 34, 0.5, 0.02); sNoise(0, 0.5, 180, 0.7, 0.2, 'lowpass'); break;               // the floor of the sound drops out
+      case 'run': sNoise(0, 0.9, 900, 0.6, 0.12, 'highpass'); sTone(0.05, 0.5, 'sine', 196, 392, 0.1, 0.1); break;            // the air comes back
+      case 'goal': sTone(0, 0.5, 'sine', 659, 0, 0.09); sTone(0.14, 0.9, 'sine', 988, 0, 0.08); break;                        // two notes: here is what to do
+      case 'word': sTone(0, 0.12, 'triangle', 1320, 0, 0.05); break;                                                           // a word in the middle of the frame
+      case 'cam-up': sNoise(0, 0.05, 2600, 2, 0.22); sNoise(0.09, 0.04, 3600, 3, 0.2); sTone(0.09, 0.08, 'square', 1800, 900, 0.03); break; // leather, then the catch
+      case 'cam-down': sNoise(0, 0.06, 1500, 1.5, 0.16); break;
+      case 'found': for (const [k, f] of [1318.5, 1568, 1975.5, 2637].entries()) sTone(k * 0.07, 1.6 - k * 0.2, 'sine', f, 0, 0.055, 0.004); break; // glass: it is in the frame
+      case 'wind': for (let k = 0; k < 7; k++) sNoise(0.16 + k * 0.045, 0.02, 2200 - k * 90, 4, 0.13); sNoise(0.5, 0.05, 900, 2, 0.14); break; // the film wound on: a ratchet, a stop
+      case 'shutter': sNoise(0, 0.035, 3200, 1.2, 0.5); sNoise(0.06, 0.035, 2400, 1.2, 0.45); break;                           // a focal-plane shutter: two short clicks
+      case 'stamp': sTone(0, 0.2, 'sine', 92, 60, 0.5, 0.004); sNoise(0, 0.06, 700, 0.8, 0.3, 'lowpass'); break;             // the postmark struck
+      case 'ghost': sTone(0, 2.4, 'sine', 440, 446, 0.05, 0.6); sTone(0, 2.4, 'sine', 659, 652, 0.035, 0.8); sNoise(0, 2.2, 3000, 0.5, 0.012); break; // somebody of another year is here
+      case 'right': sTone(0, 0.7, 'sine', 523, 0, 0.08); sTone(0.1, 0.9, 'sine', 784, 0, 0.07); break;
+      case 'wrong': sTone(0, 0.5, 'triangle', 220, 196, 0.08, 0.02); break;
+      case 'rain': sNoise(0, 2.5, 4200, 0.4, 0.05, 'highpass'); break;
+      case 'end': for (const [k, f] of [220, 277.2, 329.6, 440, 554.4].entries()) sTone(k * 0.32, 4.5 - k * 0.3, 'sine', f, 0, 0.08, 0.05); break; // the evening resolves: a chord, laid note by note
+      default: break;
+    }
+  }
+  // time held: a still, far chord for as long as it is (two fifths, breathing slowly); it fades when time runs
+  function held(on) {
+    const b = storyBus(); if (!b) return;
+    if (on && !pad && !muted) {
+      const g = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain(), os = [110, 164.8, 220.6, 329.2].map((f, i) => { const o = ctx.createOscillator(), og = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; og.gain.value = [0.5, 0.35, 0.25, 0.12][i]; o.connect(og); og.connect(g); o.start(); return o; });
+      lfo.frequency.value = 0.13; lg.gain.value = 0.02; lfo.connect(lg); lg.connect(g.gain); lfo.start();
+      g.gain.value = 0.0001; g.connect(b); ramp(g.gain, 0.07, 2.2);
+      pad = { g, os: os.concat([lfo]) };
+    } else if (!on && pad) {
+      const q = pad; pad = null; ramp(q.g.gain, 0.0001, 0.7);
+      setTimeout(() => { try { q.os.forEach(o => o.stop()); q.g.disconnect(); } catch (e) { /* already gone */ } }, 2500);
+    }
+  }
+  return { start, get ctx() { return ctx; }, voice, sfx, held, musicBus, murmur, screens, piyo, kakko, walkCall, train, clack, platformChime, doorChime, melody, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, thunder, hush, cicadas, car, skid, beep, step, horn, honk, chime, bell, kan, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
 })();

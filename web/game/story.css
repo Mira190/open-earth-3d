@@ -238,3 +238,9 @@
 #g-story-chip.on { animation: g-story-chip 2.6s ease both; }
 @keyframes g-story-chip { 0% { opacity: 0; letter-spacing: 0.7em; } 14%, 72% { opacity: 1; letter-spacing: 0.4em; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { #g-story-cam.on { animation: none; } }
+
+/* ---- it is in the frame: the bright lines go amber */
+#g-story-finder.ready { --l: var(--amber); }
+/* ---- a case left unfinished: the second button on the title */
+.game-stage.story #gt-anew { margin-left: 12px; padding: 15px 20px; border: 1px solid rgba(244, 239, 230, 0.4); border-radius: 2px; background: transparent; color: var(--paper); font: 400 10px/1 var(--f-mono); letter-spacing: 0.24em; text-transform: uppercase; cursor: pointer; }
+.game-stage.story #gt-anew:is(:hover, :focus-visible) { border-color: var(--paper); }

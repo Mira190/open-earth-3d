@@ -64,7 +64,17 @@ window.OEStory = (function () {
       if (q('#gt-city')) q('#gt-city').textContent = T.eyebrow || '';
       if (q('#gt-title')) q('#gt-title').innerHTML = `${esc(S.title || '')}${T.native ? `<small lang="ja">${esc(T.native)}</small>` : ''}`;
       if (q('#gt-blurb')) q('#gt-blurb').textContent = T.line || '';
-      if (q('#gt-play')) q('#gt-play').innerHTML = `<span>${ep0.no ? `Episode ${esc(ep0.no)} · ` : ''}${esc(ep0.title || 'Begin')}</span><kbd>↵</kbd>`;
+      // a case left unfinished in this browser: the button says so (which frame it takes up at), and a second one starts
+      // the evening again from its first frame; nobody opens the page into the rain of the last frame without being told
+      let left = null;
+      try { left = JSON.parse(localStorage.getItem(`oe-story-${ep0.id}`) || 'null'); } catch (e) { left = null; }
+      const going = left && left.fi > 0 && left.fi < (ep0.frames || []).length;
+      if (q('#gt-play')) q('#gt-play').innerHTML = `<span>${going ? `Continue · frame ${left.fi + 1} of ${N}` : `${ep0.no ? `Episode ${esc(ep0.no)} · ` : ''}${esc(ep0.title || 'Begin')}`}</span><kbd>↵</kbd>`;
+      if (going && q('#gt-play') && !q('#gt-anew')) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.id = 'gt-anew'; b.textContent = 'Start the evening again';
+        b.addEventListener('click', () => { try { localStorage.removeItem(`oe-story-${ep0.id}`); } catch (e) { /* storage blocked */ } q('#gt-play').click(); });
+        q('#gt-play').after(b);
+      }
     }
     const el = (id, html, tag = 'div') => { const e = document.createElement(tag); e.id = id; e.innerHTML = html; ctx.stage.appendChild(e); return e; };
     const frames = el('g-story-frames', `<span><b></b>frames left</span><span class="strip">${'<i></i>'.repeat(N)}</span><em>${ctx.touch ? 'Tap' : '<kbd>Tab</kbd>'} · the roll</em>`, 'button'), card = el('g-story-card', '<div><small></small><span></span></div>'), veil = el('g-story-veil', ''), flash = el('g-story-flash', '');
@@ -75,13 +85,14 @@ window.OEStory = (function () {
     // the frame whenever something changes that the player did not do (time stopping, time running, the camera going down)
     const camBtn = el('g-story-cam', '', 'button'), chip = el('g-story-chip', '');
     camBtn.type = 'button';
-    const say = text => { chip.textContent = text; chip.classList.remove('on'); void chip.offsetWidth; chip.classList.add('on'); };
+    const sfx = name => { if (ctx.sfx) ctx.sfx(name); };
+    const say = text => { sfx('word'); chip.textContent = text; chip.classList.remove('on'); void chip.offsetWidth; chip.classList.add('on'); };
     const camLabel = () => { camBtn.innerHTML = st.cam ? `<i></i>Lower the camera${ctx.touch ? '' : ' <kbd>R</kbd>'}` : `<i></i>Raise the camera${ctx.touch ? '' : ' <kbd>R</kbd>'}`; };
     function raise(on) {
       if (st.phase !== 'stop' || st.beat !== 'shoot' || st.cam === on) return;
       st.cam = on; camLabel(); camBtn.classList.toggle('up', on);
       shutter.classList.toggle('on', on); finder.classList.toggle('on', on);
-      say(on ? `Camera up${finder.dataset.year ? ` · it sees ${finder.dataset.year}` : ''}` : 'Camera down');
+      say(on ? `Camera up${finder.dataset.year ? ` · it sees ${finder.dataset.year}` : ''}` : 'Camera down'); sfx(on ? 'cam-up' : 'cam-down');
     }
     camBtn.addEventListener('click', () => raise(!st.cam));
     // a print's postmark: struck on it when it is taken, as a letter's stamp is cancelled; the place round the top,
@@ -99,6 +110,7 @@ window.OEStory = (function () {
       if (!p || !p.src) return;
       printEl.innerHTML = `<figure><img alt="" src="${p.src}">${postmark(p.stamp, n)}<figcaption><b>${n}</b>${esc(p.cap || p.stamp || '')}</figcaption></figure>`;
       printEl.classList.remove('on'); void printEl.offsetWidth; printEl.classList.add('on');
+      later(720, () => sfx('stamp')); // (the postmark comes down)
       later(4200, () => printEl.classList.remove('on'));
     }
     // the roll so far: every print kept, laid out as prints on a table; opened from the film strip or with Tab
@@ -162,6 +174,7 @@ window.OEStory = (function () {
       const fresh = !goalText && st.beat !== 'shoot'; // (not with the camera up: the middle of the frame is the picture's) // (a goal where there was none is announced: it arrives large in the middle of the frame, then goes up to its line)
       goalText = text || '';
       if (!goalText) { goalEl.classList.remove('on', 'new'); return; }
+      if (fresh) sfx('goal');
       goalEl.querySelector('span').textContent = goalText;
       if (fresh) { goalEl.classList.remove('new'); void goalEl.offsetWidth; goalEl.classList.add('new'); }
       goalEl.classList.add('on');
@@ -186,7 +199,8 @@ window.OEStory = (function () {
     }
     const KEYS = ctx.touch ? '<span>Left thumb · walk</span><span>Drag · look</span>' : '<span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>walk</span><span><kbd>Shift</kbd>run</span><span>Mouse · look</span>';
     function hint(on) { if (on) keys.innerHTML = KEYS; keys.classList.toggle('on', on); }
-    const who = a => ({ name: a.name || '', role: a.year ? String(a.year) : [a.age ? `${a.age}` : '', a.role || ''].filter(Boolean).join(' · '), alive: !a.year }); // (the living: their age tonight; an afterimage: its year)
+    const voiceOf = a => Object.assign(a.year ? { pitch: 170, past: 1 } : a.age >= 70 ? { pitch: 160, breath: 1 } : { pitch: 200 }, a.voice || {}); // (someone of another year is heard twice; the old have breath in it)
+    const who = a => ({ name: a.name || '', role: a.year ? String(a.year) : [a.age ? `${a.age}` : '', a.role || ''].filter(Boolean).join(' · '), alive: !a.year, voice: voiceOf(a) }); // (the living: their age tonight; an afterimage: its year)
 
     // before the opening shot: the evening the episode is set in
     function dress(id) {
@@ -201,12 +215,16 @@ window.OEStory = (function () {
       const ep = st.ep || dress();
       if (!ep) return;
       ctx.stage.classList.add('story-on');
-      for (const c of ep.cast || []) if (!st.cast[c.id]) st.cast[c.id] = Object.assign(ctx.figure(Object.assign({ alive: true }, c), c.at), { name: c.name, role: c.role, age: c.age });
+      for (const c of ep.cast || []) if (!st.cast[c.id]) st.cast[c.id] = Object.assign(ctx.figure(Object.assign({ alive: true }, c), c.at), { name: c.name, role: c.role, age: c.age, voice: c.voice });
       const k = kept();
       if (k) { st.left = k.left; st.prints = k.prints; }
       if (ep.walk_in_s != null && !k) ctx.walkIn(ep.walk_in_s);
       show(); if (k) frames.classList.add('on');
-      frame(k ? k.fi : 0);
+      // a case begun at its first frame opens on a voice: who you are, why you are on this kerb at this hour, and the one
+      // odd thing about the job (ep.prologue: {who, voice, lines}); a case taken up again goes straight to its frame
+      const P = !k && ep.prologue;
+      if (P && (P.lines || []).length) { st.phase = 'go'; st.beat = 'prologue'; ctx.say(Object.assign({ alive: true, voice: Object.assign({ pitch: 150 }, P.voice || {}) }, P.who || {}), P.lines, () => frame(0)); }
+      else frame(k ? k.fi : 0);
     }
     // a frame begins: the sky it has, a word with the living if there is one, and the way to where the world will stop
     function frame(i) {
@@ -216,7 +234,7 @@ window.OEStory = (function () {
       keep();
       // the scene's air (leaves, birds), made again only where the scene's differs; and a car, where the frame sends one
       { const a = JSON.stringify(fr.air || (fr.weather === 'rain' || st.rain ? { leaves: 40, birds: 0 } : {})); if (a !== st.air && ctx.air) { st.air = a; ctx.air(JSON.parse(a)); } }
-      if (fr.weather === 'rain' && !st.rain) { st.rain = true; later(1500, () => say('It has begun to rain')); }
+      if (fr.weather === 'rain' && !st.rain) { st.rain = true; later(1500, () => { say('It has begun to rain'); sfx('rain'); }); }
       const go = () => {
         if (st.fr !== fr) return;
         // a frame reached by car: one is sent, the goal is the car until you are in it, and the frame goes on where it sets you down
@@ -242,6 +260,7 @@ window.OEStory = (function () {
       const q = (m.ask || [])[st.asked];
       if (!q) return done();
       ctx.ask(w, [q.q], q.options.map(text => ({ text })), c => {
+        sfx(c && q.options.indexOf(c.text) === q.answer ? 'right' : 'wrong');
         if (c && q.options.indexOf(c.text) === q.answer) { st.asked++; return q.right ? ctx.say(w, [q.right], () => ask(m, w, done)) : ask(m, w, done); }
         ctx.say(w, [q.wrong || 'No. Look at the prints again.'], () => ask(m, w, done));
       });
@@ -250,10 +269,12 @@ window.OEStory = (function () {
       const ep = st.ep, fr = st.fr, a = fr.afterimage, first = st.fi === 0 && !st.late;
       st.phase = 'stop'; st.t = 0; st.beat = 'still';
       veil.classList.add('on'); ctx.stage.classList.add('story-stop');
-      ctx.hush(true); ctx.hold(true);
+      ctx.hush(true); ctx.hold(true); sfx('stop'); if (ctx.held) ctx.held(true);
       pulse();
       if (!first) say('Time has stopped');
-      if (first) { st.orbit = 0.5; later(4200, () => { st.orbit = 0; }); } // (the first time, the view turns round you through the held street)
+      // the view turns through the held street: once round the first time, a quarter turn every time after, so that
+      // what hangs in the air is seen to hang (it is the camera moving that shows a moment is held)
+      st.orbit = first ? 0.5 : 0.32; later(first ? 4200 : 1500, () => { st.orbit = 0; }); // (the first time, the view turns round you through the held street)
       if (a && !st.ghost) { st.ghost = ctx.figure(a, a.at); st.ghost.face(ctx.player.x, ctx.player.y); }
       if (fr.afterimage2 && !st.ghost2) { st.ghost2 = ctx.figure(fr.afterimage2, fr.afterimage2.at); st.ghost2.face(ctx.player.x, ctx.player.y); }
       // the world holds a breath (the first time, the title falls on it), and then the one thing to do
@@ -301,7 +322,7 @@ window.OEStory = (function () {
       st.prints.push({ src: print, stamp: fr.stamp || '', cap: fr.caption || (T.relic && T.relic.cap) || '' });
 showPrint(st.prints[st.prints.length - 1], st.prints.length);
       frames.classList.remove('kept'); void frames.offsetWidth; frames.classList.add('kept'); // (the strip says the print is kept, and where the roll is)
-      pulse();
+      pulse(); sfx('shutter'); sfx('wind');
       st.left = Math.max(0, st.left - 1); show();
       shutter.classList.remove('on'); finder.classList.remove('on'); camBtn.classList.remove('on', 'up'); st.cam = false; aimAt(null); goal('');
       st.beat = 'shown';
@@ -321,7 +342,7 @@ showPrint(st.prints[st.prints.length - 1], st.prints.length);
       veil.classList.remove('on'); ctx.stage.classList.remove('story-stop');
       shutter.classList.remove('on'); finder.classList.remove('on'); camBtn.classList.remove('on', 'up'); st.cam = false; hint(false); aimAt(null); goal('');
       ctx.hush(false); ctx.hold(false); st.orbit = 0;
-      say('Time runs again');
+      say('Time runs again'); sfx('run'); if (ctx.held) ctx.held(false);
       pulse();
       for (const k of ['ghost', 'ghost2', 'relic']) if (st[k]) { st[k].remove(); st[k] = null; }
       if (ctx.finder) ctx.finder(null);
@@ -334,7 +355,7 @@ showPrint(st.prints[st.prints.length - 1], st.prints.length);
     function end() {
       const ep = st.ep, E = typeof ep.end === 'string' ? { title: ep.end } : ep.end || {};
       st.phase = 'done';
-      forget();
+      forget(); sfx('end'); if (ctx.held) ctx.held(false);
       frames.classList.remove('on'); goal('');
       const last = st.prints[st.prints.length - 1];
       endEl.innerHTML = `<div class="card">${last && last.src ? `<figure><img alt="The last photograph you took" src="${last.src}"><figcaption><span>Frame ${st.prints.length} of ${N}</span><span>${esc(last.stamp)}</span></figcaption></figure>` : ''}
@@ -359,7 +380,7 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
 
     function tick(dt) {
       const ep = st.ep, fr = st.fr;
-      if (!ep || st.phase === 'idle' || st.phase === 'dressed' || st.phase === 'done') return;
+      if (!ep || !fr || st.phase === 'idle' || st.phase === 'dressed' || st.phase === 'done') return;
       { // under the goal, how: one plain line for whoever has not played a game like this (and the first frame says the keys)
         const K = ctx.touch ? 'Left thumb walks, drag to look.' : 'W A S D walk · mouse looks · Shift runs.', f = st.beat === 'shoot' && fr.task ? framed() : null;
         const how = !goalText ? '' : st.beat === 'meet' ? 'Walk up to them: they speak when you are close.' : st.beat === 'approach' ? `Follow the ring. ${st.fi === 0 ? K : ''}` : st.beat === 'seek' ? `Walk to the ring: the pale figure. ${st.fi === 0 ? K : ''}`
@@ -384,7 +405,7 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
           else if (near([m.x, m.y, m.z], fr.meet.reach_m || 3)) {
             st.beat = 'talk'; aimAt(null); goal('');
             if (m.face) m.face(ctx.player.x, ctx.player.y);
-            const w = { name: m.name || '', role: [m.age ? `${m.age}` : '', m.role || ''].filter(Boolean).join(' · '), alive: true }; // (the living: their age tonight)
+            const w = { name: m.name || '', role: [m.age ? `${m.age}` : '', m.role || ''].filter(Boolean).join(' · '), alive: true, voice: voiceOf(Object.assign({}, m, { voice: m.voice || fr.meet.voice })) }; // (the living: their age tonight)
             ctx.say(w, fr.meet.lines || [], () => ask(fr.meet, w, () => approach()));
           }
         } else if (st.beat === 'approach') {
@@ -401,7 +422,7 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
           if (st.from && Math.hypot(ctx.player.x - st.from[0], ctx.player.y - st.from[1]) > 3) { st.from = null; hint(false); }
           if (g && near([g.x, g.y, g.z], a.reach_m || 3.2)) {
             st.beat = 'talk'; hint(false); aimAt(null); goal('');
-            ctx.say(who(a), a.lines || [], () => task());
+            sfx('ghost'); ctx.say(who(a), a.lines || [], () => task());
           }
         }
         if (ctx.finder) ctx.finder(st.beat === 'shoot' && st.cam ? finderRect() : null);
@@ -413,6 +434,8 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
           const want = !f.placed ? spot(T.stand) : T.subject ? [T.subject[0], T.subject[1], T.subject[2], T.subject[2]] : null;
           if (String(want) !== String(st.target)) aimAt(want);
           if (f.placed && T.subject) ctx.beacon(null); // (the subject is marked in the frame, with no light standing on it)
+          if (on && !st.ready) { sfx('found'); if (T.relic && T.relic.name) say(`In the frame · ${T.relic.name}`); } // (it is in the frame: glass, and its name)
+          st.ready = on; finder.classList.toggle('ready', on);
           shutter.classList.toggle('ready', on);
         }
         if (st.beat === 'meeting') { // they meet where you stand, and go out like a breath let go
