@@ -424,6 +424,18 @@ landmarks' meshes, which went on being solid and being stood on where they had b
   cars (the shared models' parts and your own parked car are not read), the cell beside a solid post, and places
   no walker reaches (the inside of the block behind the station: a flood from the level's middle decides). What
   it lists now it names by mesh, and each barred point by what stands there and which line it is on.
+- Sydney's quay had no unseen wall and no barred footway, and 40 things walked through: all that its builder
+  stands on the paving, which nothing made solid (the lawn's palms are the level's own, the map's being cleared
+  from that ground). The builder now records each as it places it (`cities/sydney/hero.py` `_post`: palms, ball
+  lights, flagpoles, bins, bollards, the pylons, the ovoid's foot, a cafe table with its chairs, a bench as three
+  discs along its seat; written to `cities/sydney/hero_posts.json` by a build), `city.py` hands the list to
+  `bend_round`, and `game.hero[].posts` (now [x, y, radius]) makes it solid. After a rebuild that moves any of
+  them, copy the list into `city.json` again. Twenty clusters remain, each explained: the museum's sandstone
+  front, whose drawn face stands 0.3 to 0.6 m in front of the city's solid shell by design (issue 426, above), with
+  the plinths and door furniture on it; and the feet of the quay's balustrade where a walker's cell touches the
+  rail at the water's edge. The floor is within 4.5 cm of the paving drawn everywhere (2 % of cells 2.8 cm
+  under, 98 % under 4.5 cm over), the quay's edge included, since the streets were graded and the floor exported
+  again (issues 510 and 522).
 
 ## Circular Quay West (Sydney)
 

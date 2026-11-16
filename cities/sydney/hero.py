@@ -1101,8 +1101,8 @@ class Level:
             self.globe(x, y, G.z(x, y) + 0.03)
         hd0 = lambda y: math.atan2(self.edge_frame(y)[2][1], self.edge_frame(y)[2][0])
 
-        def seat(x, y, hd):       # (a bench is two discs along its seat, which runs across the way it faces)
-            for o in (-0.45, 0.45):
+        def seat(x, y, hd):       # (a bench is three discs along its seat, which runs across the way it faces)
+            for o in (-0.62, 0.0, 0.62):
                 _post(x - math.sin(hd) * o, y + math.cos(hd) * o, 0.4)
         for nd in self.nodes(amenity="bench"):
             x, y = nd["xy"]
