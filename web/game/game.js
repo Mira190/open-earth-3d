@@ -3134,8 +3134,19 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     film: (spec, then) => {
       const was = overture, st = heli.st, pad = [st.x, st.y, st.z, st.h];
       let last = null;
-      const fly = g => {
-        if (!g) { st.on = false; st.rotor = 0; st.landed = true; [st.x, st.y, st.z, st.h] = pad; st.pitch = st.roll = 0; heli.update(1e-4, {}, []); heli.group.visible = false; return; }
+      const fly = (g, shot) => {
+        // (you are in it: nobody stands on the ground it is coming down to; you are seen once it is down, in the shot the spec names, out of its door)
+        player.rig.root.visible = !g || !!(shot && shot.id === (spec.out_shot || 'foot'));
+        if (!g) { // set down: it lifts off again, turns for its roof and goes, and is put back on its pad once it is out of sight
+          let t = 0; const h0 = st.h;
+          heliAway = dt => {
+            t += dt; const k = Math.min(1, t / 3), up = k * k * (3 - 2 * k), v = Math.max(0, t - 1.6) * 5.5;
+            st.z += (up * 5 + Math.max(0, t - 3) * 3.2) * dt; st.h = h0 + Math.min(1.2, Math.max(0, t - 1.2) * 0.35); st.x += Math.sin(st.h) * v * dt; st.y += Math.cos(st.h) * v * dt;
+            st.pitch = Math.min(0.2, v * 0.02); st.vx = st.vy = st.vz = 0; st.on = true; st.landed = false; st.rotor = 1; heli.update(1e-4, {}, []); heli.group.visible = true;
+            if (t > 14) { heliAway = null; st.on = false; st.rotor = 0; st.landed = true; [st.x, st.y, st.z, st.h] = pad; st.pitch = st.roll = 0; heli.update(1e-4, {}, []); heli.group.visible = false; }
+          };
+          return;
+        }
         const x = g.x, y = -g.z, z = g.y;
         if (last) { const dx = x - last[0], dy = y - last[1], d = Math.hypot(dx, dy); if (d > 0.02) { const h = Math.atan2(dx, dy) + (spec.heading_offset || 0); st.h += angDiff(h, st.h) * 0.12; st.pitch = Math.min(0.22, d * 0.5); } }
         last = [x, y, z];
@@ -3149,6 +3160,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (spec.end && spec.end.at) spawn(spec.end.at.slice(0, 2), undefined, spec.end.facing);
       then();
     },
+    // the air of the scene (stopfx.js): leaves coming down and birds going over, there before time stops and held when it does
+    air: opts => { if (stopFx) stopFx.air(W(player.x, player.y, player.z), opts || {}); },
+    // a car sent for you (a frame's `ride`: {to: [x, y], name}): it comes to the kerb, E gets in, and it drives you there
+    ride: spec => player.mode === 'foot' && orderRide({ id: 'story', name: spec.name || 'there', at: spec.to.slice(0, 2) }),
+    // where that car is and what it is doing: {at: [x, y, z], state: 'coming' | 'waiting' | 'in'}, or null once it has gone
+    rideNow: () => (!ride || ride.phase === 'leaving' ? null : { at: [ride.drv.st.x, ride.drv.st.y, ride.drv.st.z], state: player.mode === 'ride' ? 'in' : ride.phase === 'coming' ? 'coming' : 'waiting' }),
     hold: on => { if (!stopFx) return; if (on) stopFx.start(W(player.x, player.y, player.z), { rain: !!(weather && weather.state && weather.state.rain > 0.15) }); else stopFx.release(); },
     ask: (who, lines, choices, done) => dlg.show(Object.assign({ color: who.alive ? '#ffcf8a' : '#9fc4ff' }, who), lines.map(l => fill(l)), choices, done), // (a question: the lines, then answers to pick from)
     dress: (date, light, wx) => {
@@ -3458,6 +3475,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const cine = OECine.director({ reduced }); // camera shots, on the game clock (clockT)
   let overture = null; // the map's opening film (overture.js), made once the player is placed
   let makeFilm = null; // (overture.js's films, made on this map)
+  let heliAway = null; // (the helicopter of a story's flight, leaving once it has set you down)
   let joy = { x: 0, y: 0 }, touchLift = 0, uiOpen = () => (window.OEMetro && OEMetro.isOpen()) || !$('#g-menu').hidden || !$('#g-bigmap').hidden || !$('#g-pass').hidden || !$('#g-title').hidden || !!(life && life.open) || !!(fish && fish.api && fish.api.logOpen());
   const k = c => keys.has(c);
   on(window, 'keydown', e => {
@@ -3689,7 +3707,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       return null;
     }
     if (player.mode === 'car') return myCar.D.st.speed < 1.5 ? { key: 'E', text: 'Get out', act: exitCar } : null;
-    if (player.mode === 'ride') return ride && ride.phase !== 'asking' && ride.drv.st.v < 0.5 ? { key: 'E', text: ride.phase === 'arrived' ? `Get out at ${ride.dest.name}` : 'Get out here', act: leaveRide } : null;
+    if (player.mode === 'ride') return ride && ride.phase !== 'asking' && ride.drv.st.v < 0.5 ? { key: 'E', story: true, text: ride.phase === 'arrived' ? `Get out at ${ride.dest.name}` : 'Get out here', act: leaveRide } : null;
     if (player.auto) return player.auto.label ? { key: '', text: player.auto.label } : null;
     let bn = null, bd = 3.2;
     for (const n of npcs) { const d = Math.hypot(n.x - player.x, n.y - player.y); if (d < bd && Math.abs(n.z - player.z) < 2) { bd = d; bn = n; } }
@@ -3700,7 +3718,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     if (ride && (ride.phase === 'waiting' || backIn(ride)) && offCar(ride, player.x, player.y) < 4 && Math.abs(ride.drv.st.z - player.z) < 2) {
       const again = ride.phase === 'leaving' || ride.prev ? 'back ' : '';
-      return { key: 'E', text: ride.kind === 'taxi' ? `Get ${again}in the taxi` : `Get ${again}in ${ride.name}'s ${rideCar(ride)}`, act: () => { if (ride.phase === 'leaving') backAgain(); boardRide(); } };
+      return { key: 'E', story: true, text: ride.kind === 'taxi' ? `Get ${again}in the taxi` : `Get ${again}in ${ride.name}'s ${rideCar(ride)}`, act: () => { if (ride.phase === 'leaving') backAgain(); boardRide(); } };
     }
     if (myCar && offCar(myCar, player.x, player.y) < 2.5 && Math.abs(myCar.D.st.z - player.z) < 2) return { key: 'E', text: 'Drive your car', act: enterCar };
     if (Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 10 && Math.abs(heli.st.z - player.z) < 3) return { key: 'E', text: 'Board the helicopter', act: enterHeli };
@@ -5618,7 +5636,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (window.OEKit) OEKit.setNight(U.uNight.value); // cabin windows and navigation lights
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
     if (life && !simHold) life.tick(dt, paused, titleOn); // (held by a harness: the day moves on only with advance())
-    if (story && !paused) { story.tick(dt); if (stopFx) stopFx.tick(dt, story.scale, W(player.x, player.y, player.z)); if (story.orbit && player.mode === 'foot') cam.yaw += story.orbit * dt; } // (and what hangs in the stopped air; the first Stop turns the view round you once)
+    if (story && !paused) { story.tick(dt); if (stopFx) stopFx.tick(dt, story.scale, W(player.x, player.y, player.z), player.z > 60); if (heliAway) heliAway(dt); if (story.orbit && player.mode === 'foot') cam.yaw += story.orbit * dt; } // (and what hangs in the stopped air; the first Stop turns the view round you once)
     if (story && heli.group && !heli.st.on) heli.group.visible = false; // (the story's helicopter is seen only in the flight it plays: story ctx film)
     if (storyBeacon && storyBeacon.visible) storyBeacon.userData.col.material.uniforms.uT.value = performance.now() / 1000;
     if (!simHold) dlg.tick(dt); // (held by a harness: a conversation goes on only as it asks, dlg.tick, so that one closing on the real clock starts nothing at another step of its run)

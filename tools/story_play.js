@@ -55,7 +55,9 @@ const [,, out = '/tmp/story-play', size = '1440x900'] = process.argv;
       else if (T.subject) await face(T.subject);
       await p.waitForTimeout(1500); await mark(s, 'aimed');
       await p.evaluate(() => window.__game.story.shoot());
+      await p.waitForTimeout(1500); await snap(`${s.fi + 1}-print`); // (the print in the hand, its postmark struck)
     } else if (s.phase === 'stop' && s.beat === 'meeting') await mark(s, 'meeting');
+    else if (s.phase === 'go' && s.beat === 'ride') { await mark(s, 'ride'); const to = await p.evaluate(() => window.__game.story.state.fr.ride.to); await goTo(to, 6); } // (a frame reached by car: this player walks; tools/story_ride.js takes the car)
     else if (s.phase === 'go' && s.beat === 'flight') await mark(s, 'flight'); // (a frame reached by air: its film plays itself out)
     else if (s.phase === 'after') await mark(s, 'after');
     await p.waitForTimeout(500);
@@ -63,6 +65,8 @@ const [,, out = '/tmp/story-play', size = '1440x900'] = process.argv;
   if (done) { await p.waitForTimeout(3000); await snap('end'); console.log('end', JSON.stringify(await state())); }
   else console.log('FAIL the last card was not reached', JSON.stringify(await state()));
   console.log(`played in ${Math.round((Date.now() - t0) / 1000)} s; page errors: ${errors.length}`);
+  // PRINTS=dir: the photographs taken, as files (the loading screen's frames are made from them)
+  if (process.env.PRINTS) { fs.mkdirSync(process.env.PRINTS, { recursive: true }); const pr = await p.evaluate(() => window.__game.story.state.prints.map(q => q.src)); pr.forEach((src, i) => { if (src) fs.writeFileSync(`${process.env.PRINTS}/frame-${i + 1}.jpg`, Buffer.from(src.split(',')[1], 'base64')); }); }
   await b.close();
   process.exit(done && !errors.length ? 0 : 1);
 })();

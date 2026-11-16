@@ -50,7 +50,7 @@ window.OEStory = (function () {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   // ctx: { story (the data), stage, player, touch, toast(html), say(who, lines, done), ask(who, lines, choices, done), hush(on),
-  //        hold(on): time held or let go (what hangs in the air), dress(date, light, weather), weather(kind), walkIn(seconds), floor(x, y) -> the ground's height there,
+  //        hold(on): time held or let go (what hangs in the air), air(opts): the scene's leaves and birds, ride({to, name}): a car sent for you, film(spec, then): a flight, dress(date, light, weather), weather(kind), walkIn(seconds), floor(x, y) -> the ground's height there,
   //        figure(look, at) -> { x, y, z, face(x, y), walkTo(x, y, speed), animate(dt), remove() } (look.alive: a living person),
   //        person(id) -> one of the map's people { x, y, z, name, role }, beacon(at | null): a light standing at [x, y, , floor]
   //        (none: taken away), screen(at) -> { x, y, front, dist } where [x, y, z] is in the frame (0..1), aim(at) -> degrees
@@ -71,11 +71,28 @@ window.OEStory = (function () {
     const goalEl = el('g-story-goal', '<small></small><span></span>'), mark = el('g-story-mark', '<i></i><b></b>'), keys = el('g-story-keys', ''), finder = el('g-story-finder', '');
     const shutter = el('g-story-shutter', `<i></i>Take the picture${ctx.touch ? '' : ' <kbd>F</kbd> · wheel: the lens'}`, 'button'), endEl = el('g-story-end', '');
     shutter.type = 'button';
+    // a print's postmark: struck on it when it is taken, as a letter's stamp is cancelled; the place round the top,
+    // the hour in the middle, the frame under it, and the wavy lines of the cancel running off to the side
+    let pmN = 0;
+    const postmark = (stamp, n) => { const id = `pm${++pmN}`, parts = String(stamp || '').split(/\s*·\s*/), hour = parts[parts.length - 1], place = parts.length > 1 ? parts.slice(0, -1).join(' · ') : (S.place || 'SHIBUYA · 渋谷');
+      return `<svg class="pm" viewBox="0 0 212 120" aria-hidden="true"><defs><path id="${id}a" d="M16 60 a44 44 0 0 1 88 0"/><path id="${id}b" d="M10 60 a50 50 0 0 0 100 0"/></defs>
+<g fill="none" stroke="currentColor" stroke-width="2"><circle cx="60" cy="60" r="55"/><circle cx="60" cy="60" r="33" stroke-width="1.4"/>${[30, 46, 62, 78, 94].map(y => `<path d="M122 ${y} q11 -9 22 0 t22 0 t22 0 t22 0"/>`).join('')}</g>
+<g fill="currentColor" font-family="ui-monospace, monospace" text-anchor="middle"><text font-size="10.5" letter-spacing="1.5"><textPath href="#${id}a" startOffset="50%">${esc(place.toUpperCase().slice(0, 22))}</textPath></text>
+<text font-size="9.5" letter-spacing="2"><textPath href="#${id}b" startOffset="50%">${esc((S.title || '').toUpperCase())}</textPath></text>
+<text x="60" y="59" font-size="16" font-weight="600">${esc(hour)}</text><text x="60" y="74" font-size="8.5" letter-spacing="1.5">FRAME ${n} OF ${N}</text></g></svg>`; };
+    // the print in your hand for a moment after the shutter: the picture, its postmark struck on it, then away to the roll
+    const printEl = el('g-story-print', '');
+    function showPrint(p, n) {
+      if (!p || !p.src) return;
+      printEl.innerHTML = `<figure><img alt="" src="${p.src}">${postmark(p.stamp, n)}<figcaption><b>${n}</b>${esc(p.cap || p.stamp || '')}</figcaption></figure>`;
+      printEl.classList.remove('on'); void printEl.offsetWidth; printEl.classList.add('on');
+      later(4200, () => printEl.classList.remove('on'));
+    }
     // the roll so far: every print kept, laid out as prints on a table; opened from the film strip or with Tab
     const album = el('g-story-album', '');
     const fileName = n => `blue-hour-${(st.ep && st.ep.id) || 'roll'}-${n}`;
     function albumDraw(big) {
-      const P = st.prints, cell = i => { const p = P[i]; return p ? `<li class="${i === big ? 'big' : ''}" style="--r:${((i * 37) % 7 - 3) * 0.6}deg"><button type="button" data-i="${i}" aria-label="Frame ${i + 1}">${p.src ? `<img alt="" src="${p.src}">` : '<i></i>'}<span><b>${i + 1}</b>${esc(p.stamp)}</span></button>${p.cap ? `<p>${esc(p.cap)}</p>` : ''}${p.src ? `<a download="${fileName(`frame-${i + 1}`)}.jpg" href="${p.src}">Save this print</a>` : ''}</li>` : `<li class="blank"><span><b>${i + 1}</b>not yet taken</span></li>`; };
+      const P = st.prints, cell = i => { const p = P[i]; return p ? `<li class="${i === big ? 'big' : ''}" style="--r:${((i * 37) % 7 - 3) * 0.6}deg"><button type="button" data-i="${i}" aria-label="Frame ${i + 1}">${p.src ? `<img alt="" src="${p.src}">` : '<i></i>'}${postmark(p.stamp, i + 1)}<span><b>${i + 1}</b>${esc(p.stamp)}</span></button>${p.cap ? `<p>${esc(p.cap)}</p>` : ''}${p.src ? `<a download="${fileName(`frame-${i + 1}`)}.jpg" href="${p.src}">Save this print</a>` : ''}</li>` : `<li class="blank"><span><b>${i + 1}</b>not yet taken</span></li>`; };
       album.innerHTML = `<div class="table"><header><small>${esc(S.title || '')}${st.ep && st.ep.no ? ` · Episode ${st.ep.no}` : ''}</small><h2>The roll</h2><span>${P.length} of ${N} frames taken</span></header>
 <ol>${Array.from({ length: N }, (_, i) => cell(i)).join('')}</ol>
 <div class="row">${P.some(p => p.src) ? '<button type="button" data-do="sheet">Save the contact sheet</button>' : ''}<button type="button" class="go" data-do="close">Back to the street${ctx.touch ? '' : ' <kbd>Tab</kbd>'}</button></div></div>`;
@@ -183,8 +200,15 @@ window.OEStory = (function () {
       st.fi = i; st.fr = fr; st.phase = 'go'; st.t = 0; st.late = false; st.asked = 0;
       if (fr.weather) ctx.weather(fr.weather);
       keep();
+      // the scene's air (leaves, birds), made again only where the scene's differs; and a car, where the frame sends one
+      { const a = JSON.stringify(fr.air || (fr.weather === 'rain' || st.rain ? { leaves: 40, birds: 0 } : {})); if (a !== st.air && ctx.air) { st.air = a; ctx.air(JSON.parse(a)); } }
+      if (fr.weather === 'rain') st.rain = true;
       const go = () => {
         if (st.fr !== fr) return;
+        // a frame reached by car: one is sent, the goal is the car until you are in it, and the frame goes on where it sets you down
+        // (or where you walk to: nobody has to take it)
+        if (fr.ride && ctx.ride && !st.rode && ctx.ride(fr.ride)) { st.rode = true; st.beat = 'ride'; st.rideGo = go; goal(fr.ride.line || 'A car is coming for you.'); return; }
+        st.rode = false;
         if (fr.meet) { st.beat = 'meet'; goal(fr.meet.goal || ''); const m = living(fr.meet); if (m) aimAt(spot([m.x, m.y, m.z])); }
         else approach();
       };
@@ -252,6 +276,7 @@ window.OEStory = (function () {
       let print = null;
       try { print = ctx.snap(); } catch (e) { print = null; }
       st.prints.push({ src: print, stamp: fr.stamp || '', cap: fr.caption || '' });
+showPrint(st.prints[st.prints.length - 1], st.prints.length);
       frames.classList.remove('kept'); void frames.offsetWidth; frames.classList.add('kept'); // (the strip says the print is kept, and where the roll is)
       pulse();
       st.left = Math.max(0, st.left - 1); show();
@@ -309,6 +334,12 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
     function tick(dt) {
       const ep = st.ep, fr = st.fr;
       if (!ep || st.phase === 'idle' || st.phase === 'dressed' || st.phase === 'done') return;
+      if (st.phase === 'go' && st.beat === 'ride') { // the car: its mark on it as it comes and waits; gone from the frame while you ride; on when you are out, or have walked there
+        const r = ctx.rideNow(), R = fr.ride, there = near(R.to, 45);
+        if (r && r.state !== 'in') { if (!st.target || Math.hypot(st.target[0] - r.at[0], st.target[1] - r.at[1]) > 1.5) aimAt(spot(r.at)); const text = r.state === 'coming' ? R.line || 'A car is coming for you.' : R.board || 'Your car is here. Get in.'; if (text !== goalText) goal(text); st.inCar = false; }
+        else if (r) { if (!st.inCar) { st.inCar = true; aimAt(null); goal(R.riding || ''); } }
+        if (!r || (there && (!r || r.state !== 'in'))) { st.inCar = false; aimAt(null); goal(''); const f = st.rideGo; st.rideGo = null; f(); }
+      }
       st.t += dt;
       // time is not cut, it is braked: the world slows to nothing over most of a second, and runs up again faster
       st.k = st.phase === 'stop' ? Math.max(0, st.k - dt / 0.95) : Math.min(1, st.k + dt / 0.6);
@@ -374,7 +405,7 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
       dispose() {
         timers.forEach(clearTimeout); removeEventListener('keydown', onKey, true); ctx.beacon(null);
         ctx.stage.classList.remove('story', 'story-on', 'story-stop');
-        for (const e of [frames, card, veil, flash, goalEl, mark, keys, finder, shutter, endEl, album]) e.remove();
+        for (const e of [frames, card, veil, flash, goalEl, mark, keys, finder, shutter, endEl, album, printEl]) e.remove();
         for (const k of ['ghost', 'ghost2']) if (st[k]) st[k].remove();
         for (const id in st.cast) st.cast[id].remove();
       },

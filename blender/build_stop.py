@@ -4,7 +4,7 @@ Things a player walks up to at eye height, so they are modelled, not cards:
 
   ginkgo    a ginkgo leaf: the fan with its notch, cupped, on its stalk; the veins run out from the stalk
   zelkova   a zelkova (keyaki) leaf, the tree of Shibuya's avenues: toothed, folded along its midrib, curled
-  bill      a handbill caught by the wind: an A5 sheet, bowed, one corner turned up
+  bill      a page of an old newspaper caught by the wind: yellowed, bowed, one corner turned up
   pigeon    a rock dove taking off: the body with its fanned tail, and each wing in two parts (arm and hand,
             pigeon_arm_l/r and pigeon_hand_l/r), each with its origin at its joint, so the page can hold a
             bird at any point of its beat. It faces Blender's -Y (three.js +Z); +X is its left.
@@ -169,10 +169,11 @@ def zelkova():
 
 
 def bill():
-    """An A5 sheet in the wind: bowed across, one corner turned up; a block of colour and lines of grey for its print."""
-    nx, ny, w, h = 9, 15, 0.705, 1.0
+    """A page of an old newspaper in the wind: yellowed newsprint, bowed across, one corner turned up; a dark
+    masthead, a grey block for its photograph and rows of grey for its columns (no words: none could be read)."""
+    nx, ny, w, h = 13, 19, 0.72, 1.0
     V, C = [], []
-    paper, ink, block = hexc(0xf2efe6), hexc(0x9c9a94), hexc(0xc8412f)
+    paper, edge, ink, head, photo = hexc(0xd9cfb2), hexc(0xbfb190), hexc(0x8f8876), hexc(0x35322c), hexc(0x77715f)
     for i in range(ny):
         v = i / (ny - 1)
         for j in range(nx):
@@ -182,8 +183,14 @@ def bill():
             k = max(0.0, u + v - 1.45) / 0.55  # the turned-up corner
             z += 0.22 * k * k
             V.append((x, y, z))
-            inset = 0.12 < u < 0.88
-            c = block if (v > 0.74 and v < 0.93 and inset) else ink if (inset and v < 0.66 and i % 2 == 1 and v > 0.08) else paper
+            inset = 0.08 < u < 0.92
+            c = mix(paper, edge, max(smooth(0.9, 1.0, abs(u - 0.5) * 2), smooth(0.9, 1.0, abs(v - 0.5) * 2)) * 0.8)  # foxed at its edges
+            if inset and 0.86 < v < 0.94:
+                c = head                                    # the masthead
+            elif 0.1 < u < 0.52 and 0.5 < v < 0.8:
+                c = photo                                   # the photograph
+            elif inset and 0.06 < v < 0.82 and i % 2 == 1 and abs(u - 0.5) > 0.03:
+                c = mix(paper, ink, 0.75)                   # the columns, a gutter down the middle
             C.append(c)
     return make("bill", np.array(V), grid_faces(ny, nx), np.array(C))
 

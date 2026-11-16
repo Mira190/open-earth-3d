@@ -234,7 +234,18 @@ of motion interrupted, at every depth, that the viewer then moves through. So (`
 spec played by `web/game/overture.js`, with the helicopter as its guide). After the roof, the helicopter
 lifts off the pad on SHIBUYA SKY, goes once round over the Scramble with every screen lit, and sets the
 player down on the open ground north-east of the station, by the street the river runs under. Any key
-ends it at once, on the ground. Not yet: a ride by car between two frames.
+ends it at once, on the ground; you are in it until it is down, and get out by its door; it lifts off again and
+goes. Its way is checked against the map's own buildings (`tools/flight_clear.py`). And a frame can be reached
+by car (`ride` on the frame): one is sent for you, the goal is the car until you are in it, it drives the real
+streets with the traffic and the lights, and the frame goes on where it sets you down, or where you walk to
+(`tools/story_ride.js` takes it).
+
+**What is in the air is there before it stops.** Leaves come off the street's trees all evening, a page of an old
+newspaper goes by, a flock of pigeons passes over every quarter minute; the Stop holds them where they are and
+adds only the ring, the tone and, in rain, the rain. Nothing appears at the moment of the Stop.
+
+**A print is a thing you are given.** After the shutter the print is in your hand for a moment, its postmark struck
+on it (the hour, the frame), and goes to the roll, where Tab opens every print taken so far.
 
 **In the world, not in menus.** The map's old instruments are gone from the story. People are
 solid: in the Stop nobody can make way, so the crowd on the crossing is something to thread, and
