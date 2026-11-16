@@ -2942,6 +2942,12 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
             // a second, and then it goes; counted on, it crept onto the rails and stood there when the queue stopped again,
             // Tokyo's cars 5, 19 and 34, #432)
             if (!hold && X.rail && toStop > -0.3 && gap < 39.5 && gap + (front && c.v > 3 && !front.q && front.v > 6 && !front.wantPark && !front.parking && !(front.dwell > 0) && !front.deliver && !(front.lineArm && front.toLine < 60 && JN.light(front.lineArm, front.lineEx) !== 'g') ? Math.min(front.v * front.v / 10, 6) : 0) < toStop + a.back + X.rail.w / 2 + 2 * c.half + RAIL_ROOM) { hold = true; c.clearRails = (c.clearRails || 0) + dt; } // (gap under its 40 m: something is there)
+            // (and behind a car that is within that reach past the rails, it comes up to them ready to stop: at 3 m/s
+            // at its line, on the curve it would brake on. Let through at speed on the room the car ahead was making,
+            // Shibuya's car 21 came up at 15 m/s behind car 186, which then slowed for a queue: told to wait 11 m
+            // from its line at 14.5 m/s, it could not, went over its line at 6 m/s and stood on the rails as the
+            // crossing shut. At 3 m/s the room is counted without the car ahead's going on, above, and it stops)
+            else if (X.rail && front && toStop > 0 && gap < toStop + a.back + X.rail.w / 2 + 2 * c.half + RAIL_ROOM && toStop + 3.5 < gap) { gap = toStop + 3.5; why = 'rails'; }
             if (hold) {
               const g = toStop + 2.4;
               if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = X.rail ? 'rails' : X.sig ? 'light' : 'zebra'; }
