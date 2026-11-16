@@ -4315,7 +4315,7 @@ def scramble_walls(lm):
     if not sb:
         return {}
     import archkit as ak
-    wells = [Polygon(c["ring"]).buffer(0.6, join_style=2) for c in sb.meshes()[2] if c.get("well") and len(c["ring"]) > 2]
+    wells = [Polygon(c["ring"]).buffer(1.3, join_style=2) for c in sb.meshes()[2] if c.get("well") and len(c["ring"]) > 2]
     station = [Polygon(q["ring"]).buffer(0) for q in ak.load_solids(CITY) if q["osm"] == scramble.STATION["osm"] and len(q["ring"]) > 2]
     closed = [[[round(x, 2), round(y, 2)] for x, y in g.exterior.coords] for g in wells + station if not g.is_empty]
     return {"closed": closed, "posts": SCRAMBLE_POSTS}
