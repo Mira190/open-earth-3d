@@ -157,7 +157,8 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
 .plate-map.on { opacity: 1; animation: plate-drift 60s cubic-bezier(0.25, 0, 0.2, 1) forwards; }
 @keyframes plate-drift { from { transform: translate(-50%, -50%) scale(1.02) rotate(-0.5deg); } to { transform: translate(-50%, -50%) scale(1.16) rotate(0.35deg); } }
 .plate-map img { position: absolute; display: block; opacity: 0; transition: opacity 1.4s ease; }
-.plate-map img.in { opacity: 0.78; } /* over the plate's blue-black: the survey at dusk, in the title's grade */
+.plate-map img.in { opacity: 0.5; filter: grayscale(0.6) brightness(0.7) contrast(1.2); } /* over the plate's blue-black: the survey by night, as the story's evening is; a daylight photograph is never the first thing seen */
+.loader.has-plate { background: #050a1c; }
 .plate-grid { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .plate-grid line { stroke: rgba(236, 232, 225, 0.16); stroke-width: 0.7; vector-effect: non-scaling-stroke; }
 .plate-grid line.km { stroke: rgba(255, 196, 140, 0.42); stroke-width: 0.9; }

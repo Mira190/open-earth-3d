@@ -5262,6 +5262,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     document.title = `${nm[1]} · ${series} · Open Earth 3D`;
   }
   presetTime('live');
+  if (story) story.dress(); // (the story's evening from the first frame drawn: the map is never seen at the hour on the player's wall)
   // the map's overture (overture.js, game.json "overture"): its score is rendered while the title card is up
   // (a story's first episode opens on its own overture, laid over the map's: its shots, score and grade, and no night
   // variant to be swapped for as the sun goes down)
