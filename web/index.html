@@ -198,52 +198,60 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
 .loader.has-plate .ld-mode { margin-top: 0; }
 .loader.has-plate > div > b { margin-top: 10px; font-size: clamp(20px, 2.6vw, 30px); }
 .loader.has-plate .track { margin-top: 20px; }
-/* The loading screen (here, not in story.css, so that it can never be drawn by a stale stylesheet): the episode's
-   key art. The evening itself fills the frame, three pictures of it one after another, each pushed slowly in and
-   dissolved into the next, between the black bars of a scope picture; a streak of light crosses it; the episode's
-   name stands large at the foot with the job as it was given, and the roll's seven frames come up along the bottom
-   bar as the load goes. Only opacity and transforms move, so it runs while the map builds. */
-.loader.has-roll { place-items: end start; background: #020308; overflow: hidden; }
+/* The loading screen (here, not in story.css, so that it can never be drawn by a stale stylesheet): a film's title
+   card. The evening fills the frame between the black bars of a scope picture: three pictures filmed in the game, each
+   pushed slowly in and dissolved into the next, graded dark so that the type stands on them, with grain and a lens's
+   streak of light over them. The story's name stands in the middle, wide and light, its Japanese over it in a Mincho,
+   the episode under a hairline; the job as it was given and the load's progress sit low and small, and the roll's seven
+   frames come up along the lower bar. Only opacity and transforms move, so it runs while the map builds. */
+.loader.has-roll { place-items: end center; background: #020308; overflow: hidden; }
 .roll { position: absolute; inset: 0; margin: 0; pointer-events: none; overflow: hidden; }
-.roll-art { position: absolute; inset: -2%; background: center / cover no-repeat; opacity: 0; will-change: transform, opacity; animation: roll-art 27s linear infinite; }
-.roll-art:nth-child(2) { animation-delay: 9s; } .roll-art:nth-child(3) { animation-delay: 18s; }
+.roll-art { position: absolute; inset: -3%; background: center / cover no-repeat; opacity: 0; filter: saturate(1.2) contrast(1.12) brightness(0.72); will-change: transform, opacity; animation: roll-art 30s linear infinite; }
+.roll-art:nth-child(2) { animation-delay: 10s; } .roll-art:nth-child(3) { animation-delay: 20s; }
 .roll-art:first-child { animation-name: roll-art-first; }
-@keyframes roll-art { 0% { opacity: 0; transform: scale(1.03); } 6%, 33% { opacity: 1; } 41%, 100% { opacity: 0; transform: scale(1.16); } }
-@keyframes roll-art-first { 0% { opacity: 1; transform: scale(1.03); } 33% { opacity: 1; } 41% { opacity: 0; transform: scale(1.16); } 94% { opacity: 0; transform: scale(1.03); } 100% { opacity: 1; transform: scale(1.03); } }
-/* the grade: the night's blue pulled down at the foot and the corners, so the words stand on it */
-.roll-grade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(2, 3, 8, 0.55) 0%, rgba(2, 3, 8, 0) 24%, rgba(2, 3, 8, 0) 46%, rgba(2, 3, 8, 0.88) 88%, #020308 100%),
-  radial-gradient(120% 90% at 30% 60%, rgba(2, 3, 8, 0) 40%, rgba(2, 3, 8, 0.6) 100%), linear-gradient(90deg, rgba(8, 14, 44, 0.5), rgba(8, 14, 44, 0) 60%); }
-/* a lens's streak of light, drifting across */
-.roll-flare { position: absolute; left: -30%; top: 41%; width: 60%; height: 2px; background: linear-gradient(90deg, transparent, rgba(150, 190, 255, 0.0) 10%, rgba(170, 205, 255, 0.85) 50%, rgba(255, 196, 140, 0.0) 90%, transparent); filter: blur(1.2px);
-  box-shadow: 0 0 26px 3px rgba(120, 170, 255, 0.35); opacity: 0.7; animation: roll-flare 11s ease-in-out infinite; will-change: transform; }
-@keyframes roll-flare { 0% { transform: translateX(0) scaleX(0.6); opacity: 0; } 20% { opacity: 0.75; } 80% { opacity: 0.6; } 100% { transform: translateX(215%) scaleX(1.3); opacity: 0; } }
-/* the bars of a scope picture; the roll rides the lower one */
-.roll-bar { position: absolute; left: 0; right: 0; height: max(7.5vh, 44px); background: #000; }
-.roll-bar.top { top: 0; } .roll-bar.foot { bottom: 0; display: flex; align-items: center; justify-content: flex-end; gap: 18px; padding: 0 max(4vw, 20px); }
-.roll-bar.top span { position: absolute; left: max(4vw, 20px); bottom: 14px; font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.36em; text-transform: uppercase; color: rgba(236, 232, 225, 0.6); }
-.roll-bar.top span b { font-weight: 500; color: var(--accent); }
-.roll-count { font: 400 9px/1 var(--f-mono); letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
-.roll-count b { font-weight: 500; color: var(--accent); }
+@keyframes roll-art { 0% { opacity: 0; transform: scale(1.02); } 6%, 33% { opacity: 1; } 41%, 100% { opacity: 0; transform: scale(1.14); } }
+@keyframes roll-art-first { 0% { opacity: 1; transform: scale(1.02); } 33% { opacity: 1; } 41% { opacity: 0; transform: scale(1.14); } 94% { opacity: 0; transform: scale(1.02); } 100% { opacity: 1; transform: scale(1.02); } }
+/* the grade: the middle held down for the title, the corners and the foot taken to black, a cold shadow and a warm light */
+.roll-grade { position: absolute; inset: 0; background: radial-gradient(60% 46% at 50% 50%, rgba(2, 4, 12, 0.62), rgba(2, 4, 12, 0) 100%), radial-gradient(130% 100% at 50% 50%, rgba(2, 3, 8, 0) 45%, rgba(2, 3, 8, 0.86) 100%),
+  linear-gradient(180deg, rgba(2, 3, 8, 0.6), rgba(2, 3, 8, 0) 26%, rgba(2, 3, 8, 0) 62%, rgba(2, 3, 8, 0.92) 100%), linear-gradient(120deg, rgba(20, 44, 110, 0.32), rgba(255, 150, 80, 0.1)); }
+/* film grain: a still sheet of it, nudged about */
+.roll-grain { position: absolute; inset: -50%; opacity: 0.09; mix-blend-mode: overlay; animation: roll-grain 0.9s steps(6) infinite; will-change: transform;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E"); }
+@keyframes roll-grain { 0% { transform: translate(0, 0); } 20% { transform: translate(-3%, 2%); } 40% { transform: translate(2%, -4%); } 60% { transform: translate(-4%, -1%); } 80% { transform: translate(3%, 3%); } 100% { transform: translate(0, 0); } }
+/* a lens's streak of light, drifting across behind the title */
+.roll-flare { position: absolute; left: -40%; top: 50%; width: 80%; height: 1.5px; background: linear-gradient(90deg, transparent, rgba(170, 205, 255, 0.9) 50%, transparent); filter: blur(1px);
+  box-shadow: 0 0 34px 4px rgba(120, 170, 255, 0.4); opacity: 0; animation: roll-flare 12s ease-in-out infinite; will-change: transform; }
+@keyframes roll-flare { 0% { transform: translateX(0) scaleX(0.5); opacity: 0; } 25% { opacity: 0.8; } 75% { opacity: 0.55; } 100% { transform: translateX(175%) scaleX(1.2); opacity: 0; } }
+/* the title */
+.roll-title { position: absolute; left: 0; right: 0; top: 47%; transform: translateY(-50%); display: grid; justify-items: center; gap: 0; text-align: center; padding: 0 20px; animation: roll-title 2.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes roll-title { from { opacity: 0; letter-spacing: 0.1em; filter: blur(10px); } to { opacity: 1; filter: none; } }
+.roll-title i { font: 500 clamp(13px, 1.5vw, 20px)/1 var(--f-jp); font-style: normal; letter-spacing: 1.1em; margin-right: -1.1em; color: var(--accent-2); text-shadow: 0 1px 16px rgba(0, 0, 0, 0.9); }
+.roll-title b { margin-top: clamp(14px, 2.2vh, 26px); font: 300 clamp(38px, 8.6vw, 148px)/1 var(--f-display); letter-spacing: 0.3em; margin-right: -0.3em; text-transform: uppercase; white-space: nowrap;
+  background: linear-gradient(180deg, #ffffff 30%, #b9cdf5 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 6px 40px rgba(0, 0, 0, 0.75)) drop-shadow(0 0 60px rgba(110, 150, 255, 0.28)); }
+.roll-title u { display: block; width: min(46vw, 520px); height: 1px; margin: clamp(18px, 3vh, 34px) 0 clamp(14px, 2.2vh, 22px); background: linear-gradient(90deg, transparent, rgba(255, 196, 140, 0.9), transparent); text-decoration: none; }
+.roll-title span { font: 400 clamp(10px, 1.05vw, 13px)/1 var(--f-mono); letter-spacing: 0.56em; margin-right: -0.56em; text-transform: uppercase; color: rgba(236, 232, 225, 0.92); text-shadow: 0 1px 12px #000; }
+.roll-title span em { font-style: normal; color: var(--accent); }
+/* the bars of a scope picture: the job's heading on the upper one, the roll on the lower */
+.roll-bar { position: absolute; left: 0; right: 0; height: max(8vh, 46px); background: #000; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 max(4vw, 20px);
+  font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.34em; text-transform: uppercase; color: rgba(236, 232, 225, 0.62); white-space: nowrap; }
+.roll-bar.top { top: 0; } .roll-bar.foot { bottom: 0; }
+.roll-bar b { font-weight: 500; color: var(--accent); }
 .roll-frames { display: flex; gap: 4px; padding: 5px 6px; border-top: 2px dotted rgba(236, 232, 225, 0.3); border-bottom: 2px dotted rgba(236, 232, 225, 0.3); }
-.roll-frames s { position: relative; width: clamp(26px, 3.4vw, 50px); aspect-ratio: 3 / 2; text-decoration: none; background: #0a0c12; outline: 1px solid rgba(236, 232, 225, 0.1); overflow: hidden; }
+.roll-frames s { position: relative; width: clamp(24px, 3.2vw, 48px); aspect-ratio: 3 / 2; text-decoration: none; background: #0a0c12; outline: 1px solid rgba(236, 232, 225, 0.1); overflow: hidden; }
 .roll-frames s::after { content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity 1.4s ease; background: var(--img) center / cover no-repeat, linear-gradient(180deg, #0a1440, #24408f 60%, #b9794f); }
 .roll-frames s.on::after { opacity: 1; }
 .roll-frames s.now { outline-color: var(--accent); animation: roll-now 1.3s ease-in-out infinite; }
 @keyframes roll-now { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
-/* the words: the episode's name, large, where a film's would stand; over it the story's, under it the job */
-.loader.has-roll > div { position: relative; margin: 0 0 calc(max(7.5vh, 44px) + 4.5vh) max(4vw, 20px); padding: 0; text-align: left; max-width: min(92vw, 1100px); animation: roll-words 1.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-@keyframes roll-words { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
-.loader.has-roll .wm { display: block; margin: 0 0 18px; font: 400 11px/1 var(--f-display); letter-spacing: 0.62em; color: var(--ink); text-shadow: 0 1px 14px #000; }
-.loader.has-roll .ld-mode { margin: 0; text-shadow: 0 1px 10px #000; }
-.loader.has-roll > div > b { display: block; margin-top: 12px; font: 200 clamp(40px, 8.2vw, 124px)/0.98 var(--f-display); letter-spacing: 0.08em; text-transform: uppercase; color: #fff; text-shadow: 0 4px 60px rgba(0, 0, 0, 0.8), 0 0 90px rgba(120, 160, 255, 0.25); }
-.loader.has-roll .ld-native { display: block; margin-top: 20px; max-width: 46ch; font: 300 clamp(14px, 1.45vw, 19px)/1.55 var(--f-body); letter-spacing: 0.01em; color: rgba(236, 232, 225, 0.9); text-shadow: 0 1px 12px #000; }
-.loader.has-roll .track { width: min(420px, 60vw); margin-top: 26px; }
-.loader.has-roll > div, .loader.has-roll > div > * { text-align: left; justify-content: flex-start; margin-left: 0; margin-right: auto; }
+/* low and small, in the middle: the job as it was given, the hairline of the load, and what the page is doing */
+.loader.has-roll > div { position: relative; width: min(92vw, 560px); margin: 0 auto calc(max(8vh, 46px) + 3.4vh); padding: 0; display: grid; justify-items: center; text-align: center; }
+.loader.has-roll .wm, .loader.has-roll .ld-mode, .loader.has-roll > div > b { display: none; }
+.loader.has-roll .ld-native { margin: 0; max-width: 46ch; font: 400 clamp(13px, 1.25vw, 16px)/1.6 var(--f-jp); letter-spacing: 0.06em; text-transform: none; color: rgba(236, 232, 225, 0.86); text-shadow: 0 1px 12px #000; }
+.loader.has-roll .track { width: min(340px, 64vw); margin: 18px auto 0; }
 .loader.has-roll small { text-shadow: 0 1px 8px #000; }
-.loader.has-roll .ld-native { text-transform: none; }
-.loader.has-roll .ld-stage { margin-right: 0; }
-@media (max-width: 640px) { .roll-count { display: none; } .roll-art { background-position: 38% center; } }
-@media (prefers-reduced-motion: reduce) { .roll-art { animation: none; } .roll-art:first-child { opacity: 1; } .roll-flare { display: none; } .loader.has-roll > div { animation: none; } .roll-frames s.now { animation: none; } }
+.loader.has-roll #g-load-msg { margin-top: 12px; font-size: 8.5px; letter-spacing: 0.22em; color: rgba(190, 197, 208, 0.7); }
+.loader.has-roll .ld-stage { margin: 8px 0 0; }
+@media (max-width: 640px) { .roll-bar .wide { display: none; } .roll-art { background-position: 42% center; } .roll-title b { letter-spacing: 0.18em; margin-right: -0.18em; } }
+@media (prefers-reduced-motion: reduce) { .roll-art, .roll-grain, .roll-title { animation: none; } .roll-art:first-child { opacity: 1; } .roll-flare { display: none; } .roll-frames s.now { animation: none; } }
 @media (max-width: 640px) {
   .plate-hud { inset: 14px; font-size: 8.5px; }
   .ph-t.tr, .plate-tick { display: none; }
@@ -923,10 +931,11 @@ window.dispatchEvent(new Event('three-ready'));
   // seventh of the load
   $('g-loader').classList.add('has-roll');
   $('g-loader').insertAdjacentHTML('afterbegin', `<figure class="roll" aria-hidden="true">${[1, 2, 3].map(n => `<div class="roll-art" style="background-image:url(assets/story/late/key-${n}.webp)"></div>`).join('')}
-    <div class="roll-grade"></div><div class="roll-flare"></div>
-    <div class="roll-bar top"><span>Survey order · <b>Shibuya 渋谷</b> · 10 October</span></div>
-    <div class="roll-bar foot"><span class="roll-count">Loading the roll · frame <b>1</b> of 7</span><div class="roll-frames">${[1, 2, 3, 4, 5, 6, 7].map(n => `<s style="--img:url(assets/story/late/frame-${n}.webp)"></s>`).join('')}</div></div></figure>`);
-  $('g-load-native').textContent = 'Hachiko corner, from the north-west kerb, 17:14. Seven frames on the roll.';
+    <div class="roll-grade"></div><div class="roll-flare"></div><div class="roll-grain"></div>
+    <div class="roll-title"><i lang="ja">ブルーアワー</i><b>Blue Hour</b><u></u><span>Episode ${ep.no != null ? ep.no : 1} <em>·</em> ${(ep.title || 'You came late').replace(/[<&]/g, '')}</span></div>
+    <div class="roll-bar top"><span>Survey order · <b>Shibuya 渋谷</b></span><span class="wide">10 October · sunset 17:14</span></div>
+    <div class="roll-bar foot"><span class="roll-count wide">Loading the roll · frame <b>1</b> of 7</span><div class="roll-frames">${[1, 2, 3, 4, 5, 6, 7].map(n => `<s style="--img:url(assets/story/late/frame-${n}.webp)"></s>`).join('')}</div></div></figure>`);
+  $('g-load-native').textContent = '“Hachiko corner, from the north-west kerb, 17:14.”';
   const frames = [...$('g-loader').querySelectorAll('.roll-frames s')], count = $('g-loader').querySelector('.roll-count b');
   const expose = () => { const k = Math.min(6, Math.floor((parseFloat($('g-load-bar').style.width) || 0) / 100 * 7)); frames.forEach((f, i) => { f.classList.toggle('on', i < k); f.classList.toggle('now', i === k); }); count.textContent = k + 1; };
   new MutationObserver(expose).observe($('g-load-bar'), { attributes: true, attributeFilter: ['style'] }); expose();
