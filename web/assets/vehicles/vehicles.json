@@ -555,9 +555,9 @@
     ],
     "wheel_r_m": 0.5,
     "track_m": 2.08,
-    "triangles": 23708,
-    "lod1_triangles": 5214,
-    "lod2_triangles": 1039
+    "triangles": 20976,
+    "lod1_triangles": 4613,
+    "lod2_triangles": 918
    },
    "Car_Super": {
     "player": true,
