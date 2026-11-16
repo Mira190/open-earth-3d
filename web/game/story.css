@@ -211,11 +211,9 @@
 @keyframes g-story-pm { 0%, 17% { opacity: 0; transform: rotate(-11deg) scale(2.4); } 22% { opacity: 0.95; transform: rotate(-11deg) scale(0.94); } 26%, 100% { opacity: 0.82; transform: rotate(-11deg) scale(1); } }
 @media (prefers-reduced-motion: reduce) { #g-story-print.on, #g-story-print.on .pm { animation-duration: 4.2s; animation-timing-function: step-end; } }
 
-/* ---- the camera sees another year: inside the bright lines the street is the photograph it will be, the colour of
-   1964's film, and round it the evening goes on in its own colours; the prints keep that look */
-#g-story-finder { -webkit-backdrop-filter: grayscale(1) sepia(0.5) contrast(1.2) brightness(1.08); backdrop-filter: grayscale(1) sepia(0.5) contrast(1.2) brightness(1.08); box-shadow: inset 0 0 110px rgba(24, 14, 4, 0.5); }
+/* ---- the camera sees another year: the year over the finder's frame; what it shows of that year is drawn in the
+   world, inside these lines only (past.js) */
 #g-story-finder::before { content: attr(data-year); position: absolute; left: 2px; top: -24px; font: 500 12px/1 var(--f-mono); letter-spacing: 0.34em; color: var(--amber); text-shadow: 0 1px 8px #000; }
-#g-story-print img, #g-story-album li img, #g-story-end figure img, #g-story-end .sheet img { filter: grayscale(1) sepia(0.5) contrast(1.2) brightness(1.08); }
 /* ---- how, under the goal: one plain line */
 #g-story-goal em { display: block; margin-top: 9px; font: 400 10px/1.5 var(--f-mono); letter-spacing: 0.16em; font-style: normal; text-transform: uppercase; color: rgba(244, 239, 230, 0.72); text-shadow: 0 1px 10px #000; }
 #g-story-goal em:empty { display: none; }

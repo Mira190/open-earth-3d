@@ -3087,6 +3087,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the world is given no time while the player walks on. Asked for with ?story=1 while it is being made.
   let storyBeacon = null;
   const stopFx = window.OEStopFX ? OEStopFX.create({ THREE, world, audio: () => A.ctx, sound: () => { const c = $('#gm-sound'); return !c || c.checked; } }) : null; // what hangs in the air of a stopped world (stopfx.js)
+  const past = window.OEPast ? OEPast.create({ THREE, world }) : null; // what only the story's camera sees (past.js)
   const story = window.OEStory && G.story && !new URLSearchParams(location.search).has('walk') ? OEStory.create({
     story: G.story, stage, player, touch, toast: t => H.toast(t),
     // the goal's light: a pale column standing where the next thing to do is, and a ring at its foot
@@ -3116,7 +3117,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const me = player.rig.root.visible, bc = storyBeacon && storyBeacon.visible;
       player.rig.root.visible = false; if (storyBeacon) storyBeacon.visible = false;
       mirrorTick();
+      if (past) past.whole(true); // (the photograph is the finder's picture, edge to edge)
       if (atmos) atmos.render(world, camera); else renderer.render(world, camera);
+      if (past) past.whole(false);
       player.rig.root.visible = me; if (storyBeacon) storyBeacon.visible = bc;
       const out = document.createElement('canvas'), h = Math.min(480, canvas.height);
       out.height = h; out.width = Math.round(h * 1.5);
@@ -3160,6 +3163,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (spec.end && spec.end.at) spawn(spec.end.at.slice(0, 2), undefined, spec.end.facing);
       then();
     },
+    // what only the camera sees (past.js): a thing of the frame's year stood where it stood (a frame's task.relic:
+    // {model, at: [x, y, z?], h: degrees, over, scale}), and the finder's rectangle it is seen in ([x0, y0, x1, y1] as
+    // fractions of the picture from its top left, or null with the camera down)
+    relic: r => { if (!past) return null; const one = q => past.relic(q.model, W(q.at[0], q.at[1], (q.at[2] ?? Math.max(0, nav.terrain(q.at[0], q.at[1]))) + 0.04), (q.h || 0) * Math.PI / 180, q), all = [r].concat(r.with || []).map(one); return { remove: () => all.forEach(q => q.remove()) }; }, // (r.with: other things that stand with it)
+    finder: q => { if (past) past.rect(q ? [q[0] * 2 - 1, 1 - q[3] * 2, q[2] * 2 - 1, 1 - q[1] * 2] : null); },
     // the view turned towards a place (gently, and never against the player's own hand on it)
     look: at => { if (player.mode === 'foot') cam.yawTo = Math.atan2(at[0] - player.x, at[1] - player.y); },
     // the air of the scene (stopfx.js): leaves coming down and birds going over, there before time stops and held when it does

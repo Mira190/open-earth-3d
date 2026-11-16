@@ -231,9 +231,10 @@ of motion interrupted, at every depth, that the viewer then moves through. So (`
 - when time is let go, everything that hung falls.
 
 **Between places, the city is shown.** A frame can be reached by air (`flight` on the frame: an overture's
-spec played by `web/game/overture.js`, with the helicopter as its guide). After the roof, the helicopter
-lifts off the pad on SHIBUYA SKY, goes once round over the Scramble with every screen lit, and sets the
-player down on the open ground north-east of the station, by the street the river runs under. Any key
+spec played by `web/game/overture.js`, with the helicopter as its guide). After the roof: three shots and no
+orbit. Locked off low on the pad as it lifts out of the top of the frame; one unbroken take from behind and a
+little above it, off the roof, over the Scramble with every screen lit, a wide turn to the north and down to
+the east; locked off on the ground as it comes down into the frame, and a step nearer as you get out. Any key
 ends it at once, on the ground; you are in it until it is down, and get out by its door; it lifts off again and
 goes. Its way is checked against the map's own buildings (`tools/flight_clear.py`). And a frame can be reached
 by car (`ride` on the frame): one is sent for you, the goal is the car until you are in it, it drives the real
@@ -243,6 +244,21 @@ streets with the traffic and the lights, and the frame goes on where it sets you
 **What is in the air is there before it stops.** Leaves come off the street's trees all evening, a page of an old
 newspaper goes by, a flock of pigeons passes over every quarter minute; the Stop holds them where they are and
 adds only the ring, the tone and, in rain, the rain. Nothing appears at the moment of the Stop.
+
+**The camera sees 1964.** With the camera raised, inside the finder's bright lines a thing of that year stands where
+it stood, drawn over tonight like a second exposure on the frame (`web/game/past.js`; models by
+`blender/build_past.py`); outside the lines there is only tonight. The photograph is of that thing: the goal is to
+find it in the finder, and it is what the frame's lines turn on.
+
+| Frame | Where | What the camera sees | Why it is there |
+|---|---|---|---|
+| 1 | her corner | the board for the planetarium's evening lecture | she waited under it, for a man who "counted stars for a living" |
+| 2 | the station kerb, from the arch | a tram at its stop, a shoeshine boy's box and stool beside it | the boy's pitch, where the man sat and gave him the message and the camera |
+| 3 | Hachiko | the red lamp of the police box | where the man gave himself up |
+| 4 | east, from the roof | the planetarium's dome, inside Hikarie | where he lectured; the tickets were for its last show |
+| 5 | the tower's foot | the river open between its walls, and its bridge | Kanbara's works put it under the street |
+| 6 | her corner, from his kerb | the pillar box, her umbrella against it, the board | the same corner as frame 1, as he saw it |
+| 7 | the crossing | the two of them | nothing else is needed |
 
 **A print is a thing you are given.** After the shutter the print is in your hand for a moment, its postmark struck
 on it (the hour, the frame), and goes to the roll, where Tab opens every print taken so far.

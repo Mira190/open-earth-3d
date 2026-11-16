@@ -103,7 +103,6 @@ window.OEStory = (function () {
       if (on) { albumDraw(-1); if (document.exitPointerLock) document.exitPointerLock(); }
     }
     // the whole roll as one picture, to keep: the frames in a strip of film, numbered and stamped
-    const PAST = 'grayscale(1) sepia(0.5) contrast(1.2) brightness(1.08)'; // (story.css: the finder's and the prints' look)
     function saveSheet() {
       const P = st.prints, w = 560, h = 374, pad = 28, cols = 4, rows = Math.ceil(N / cols), c = document.createElement('canvas'), x = c.getContext('2d');
       c.width = pad + cols * (w + pad); c.height = 150 + rows * (h + 74) + 40;
@@ -114,9 +113,7 @@ window.OEStory = (function () {
         for (let i = 0; i < N; i++) {
           const X = pad + (i % cols) * (w + pad), Y = 150 + Math.floor(i / cols) * (h + 74), im = ims[i];
           x.fillStyle = '#05060a'; x.fillRect(X, Y, w, h);
-          x.filter = PAST; // (as the prints are shown: the year the camera sees; a browser without canvas filters keeps the colour)
           if (im) { const k = Math.max(w / im.width, h / im.height), sw = w / k, sh = h / k; x.drawImage(im, (im.width - sw) / 2, (im.height - sh) / 2, sw, sh, X, Y, w, h); }
-          x.filter = 'none';
           x.strokeStyle = 'rgba(244,239,230,0.25)'; x.strokeRect(X + 0.5, Y + 0.5, w - 1, h - 1);
           x.fillStyle = '#ffcf8a'; x.font = '20px monospace'; x.fillText(`${i + 1}${P[i] ? ` · ${P[i].stamp}` : ''}`.toUpperCase().slice(0, 44), X, Y + h + 14);
         }
@@ -149,7 +146,7 @@ window.OEStory = (function () {
     // the goal: one line, under the Stop's minutes or the frame the case is at
     let goalText = '';
     function goal(text) {
-      const fresh = !goalText; // (a goal where there was none is announced: it arrives large in the middle of the frame, then goes up to its line)
+      const fresh = !goalText && st.beat !== 'shoot'; // (not with the camera up: the middle of the frame is the picture's) // (a goal where there was none is announced: it arrives large in the middle of the frame, then goes up to its line)
       goalText = text || '';
       if (!goalText) { goalEl.classList.remove('on', 'new'); return; }
       goalEl.querySelector('span').textContent = goalText;
@@ -261,14 +258,18 @@ window.OEStory = (function () {
     function task() {
       if (!st.fr.task) { resume(); return; }
       st.beat = 'shoot'; goalText = '';
+      if (st.fr.task.relic && ctx.relic && !st.relic) st.relic = ctx.relic(st.fr.task.relic); // (what the camera sees here that tonight does not have)
       finder.dataset.year = (st.fr.afterimage && st.fr.afterimage.year) || ''; // (the year the finder shows: the camera sees the evening it was loaded for)
       shutter.classList.add('on'); finder.classList.add('on');
     }
+    // the finder's rectangle in the picture, as fractions from its top left
+    const finderRect = () => { const f = finder.getBoundingClientRect(), s = ctx.stage.getBoundingClientRect(); return [(f.left - s.left) / s.width, (f.top - s.top) / s.height, (f.right - s.left) / s.width, (f.bottom - s.top) / s.height]; };
     // where the frame stands: in place, and on its subject
     function framed() {
       const T = st.fr.task, placed = !T.stand || near(T.stand, T.within_m || 4);
       let aimed;
-      if (T.both) aimed = [st.ghost, st.ghost2].every(g => { if (!g) return true; const q = ctx.screen([g.x, g.y, g.z + 1.2]); return q.front && q.x > 0.06 && q.x < 0.94 && q.y > 0.06 && q.y < 0.94; });
+      if (T.relic) { const R = T.relic, z = R.at[2] != null ? R.at[2] : ctx.floor(R.at[0], R.at[1]), q = ctx.screen([R.at[0], R.at[1], z + (R.eye ?? 0.6)]), r = finderRect(); aimed = q.front && q.x > r[0] && q.x < r[2] && q.y > r[1] && q.y < r[3]; } // (the thing itself, inside the bright lines)
+      else if (T.both) aimed = [st.ghost, st.ghost2].every(g => { if (!g) return true; const q = ctx.screen([g.x, g.y, g.z + 1.2]); return q.front && q.x > 0.06 && q.x < 0.94 && q.y > 0.06 && q.y < 0.94; });
       else aimed = !T.subject || ctx.aim(T.subject) <= (T.within_deg || 40);
       return { placed, aimed };
     }
@@ -280,7 +281,7 @@ window.OEStory = (function () {
       ctx.beacon(null);
       let print = null;
       try { print = ctx.snap(); } catch (e) { print = null; }
-      st.prints.push({ src: print, stamp: fr.stamp || '', cap: fr.caption || '' });
+      st.prints.push({ src: print, stamp: fr.stamp || '', cap: fr.caption || (T.relic && T.relic.cap) || '' });
 showPrint(st.prints[st.prints.length - 1], st.prints.length);
       frames.classList.remove('kept'); void frames.offsetWidth; frames.classList.add('kept'); // (the strip says the print is kept, and where the roll is)
       pulse();
@@ -304,7 +305,8 @@ showPrint(st.prints[st.prints.length - 1], st.prints.length);
       shutter.classList.remove('on'); finder.classList.remove('on'); hint(false); aimAt(null); goal('');
       ctx.hush(false); ctx.hold(false); st.orbit = 0;
       pulse();
-      for (const k of ['ghost', 'ghost2']) if (st[k]) { st[k].remove(); st[k] = null; }
+      for (const k of ['ghost', 'ghost2', 'relic']) if (st[k]) { st[k].remove(); st[k] = null; }
+      if (ctx.finder) ctx.finder(null);
       const said = late ? [fr.late || 'The lights changed. Come back to where it stopped, and it will stop again.'] : fr.after || [];
       said.forEach((line, i) => later(1400 + i * 4200, () => ctx.toast(esc(line))));
       st.wait = late ? 7 : 2.5 + said.length * 4.2;
@@ -342,7 +344,7 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
       { // under the goal, how: one plain line for whoever has not played a game like this (and the first frame says the keys)
         const K = ctx.touch ? 'Left thumb walks, drag to look.' : 'W A S D walk · mouse looks · Shift runs.', f = st.beat === 'shoot' && fr.task ? framed() : null;
         const how = !goalText ? '' : st.beat === 'meet' ? 'Walk up to them: they speak when you are close.' : st.beat === 'approach' ? `Follow the ring. ${st.fi === 0 ? K : ''}` : st.beat === 'seek' ? `Walk to the ring: the pale figure. ${st.fi === 0 ? K : ''}`
-          : st.beat === 'ride' ? 'Walk to the car and press E to get in. Or walk the whole way.' : f ? (!f.placed ? 'Stand in the light on the ground.' : !f.aimed ? 'Turn until it is inside the frame lines.' : ctx.touch ? 'Tap the shutter.' : 'Press F, or click the shutter.') : '';
+          : st.beat === 'ride' ? 'Walk to the car and press E to get in. Or walk the whole way.' : f ? (!f.placed ? 'Stand in the light on the ground.' : !f.aimed ? (fr.task.relic ? 'Look through the frame lines: something stands there that tonight does not have. Walk closer if it is small.' : 'Turn until it is inside the frame lines.') : ctx.touch ? 'Tap the shutter.' : 'Press F, or click the shutter.') : '';
         if (how !== st.how) { st.how = how; goalEl.querySelector('em').textContent = how; }
       }
       if (st.phase === 'go' && st.beat === 'ride') { // the car: its mark on it as it comes and waits; gone from the frame while you ride; on when you are out, or have walked there
@@ -383,6 +385,7 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
             ctx.say(who(a), a.lines || [], () => task());
           }
         }
+        if (ctx.finder) ctx.finder(st.beat === 'shoot' ? finderRect() : null);
         if (st.beat === 'shoot') { // the goal says where to stand, then when the lens is on it, and the button shows it
           const T = fr.task, G = T.goals || {}, f = framed(), on = f.placed && f.aimed;
           const text = !f.placed ? G.stand || 'Find where this was taken from.' : on ? G.ready || 'That is it. Take the picture.' : G.shoot || 'Raise the camera and take the picture.';

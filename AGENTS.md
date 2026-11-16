@@ -248,7 +248,9 @@ The owner should not be the one who finds the bug.
   run again.
 - What hangs in the air of a stopped world (`web/assets/stop/stop.glb`: a ginkgo leaf, a zelkova leaf, a
   handbill, and a pigeon in five parts) is built by `blender -b -P blender/build_stop.py`;
-  `web/game/stopfx.js` places it.
+  `web/game/stopfx.js` places it. What only the story's camera sees (`web/assets/past/past.glb`: the things
+  of 1964 a frame's `task.relic` names) is built by `blender -b -P blender/build_past.py`; `web/game/past.js`
+  draws it. A flight's way is checked by `python tools/flight_clear.py`.
 - The main characters (the people you play) are Microsoft Rocketbox avatars and clips (MIT;
   keep `web/assets/people/LICENSE-Rocketbox.txt` with them), built by `blender/build_people.py`
   (`python pipeline/fetch_rocketbox.py` first).
