@@ -2,14 +2,14 @@
   "times": {"day": "10:30", "dusk": "sunset+15", "night": "21:00"},
   "date": [11, 13],
   "views": [
-    {"name": "lift-quay", "eye": [86, 92, 1.7], "look": [91, 66, 9], "fov": 62},
+    {"name": "lift-quay", "eye": [101, 86, 1.7], "look": [91, 66, 8], "fov": 62},
     {"name": "lift-foot", "eye": [96, 77, 1.7], "look": [91, 66.5, 4], "fov": 65},
     {"name": "lift-walk", "eye": [70, 64.8, 1.7], "look": [91, 63.5, 1.6], "floor": 17.8, "fov": 62},
     {"name": "walk-west", "eye": [88, 62.6, 1.7], "look": [20, 71, 1.2], "floor": 17.8, "fov": 62},
     {"name": "lift-air", "eye": [112, 104, 32], "look": [80, 64, 10], "fov": 50},
     {"name": "stairs-street", "eye": [-409, 314, 1.7], "look": [-428, 323, 4.5], "fov": 62},
     {"name": "stairs-up", "eye": [-421.5, 320.8, 1.7], "look": [-436, 325.2, 6], "fov": 65},
-    {"name": "stairs-landing", "eye": [-434.5, 324.7, 7.6], "look": [-438, 329, 7.2], "fov": 75},
+    {"name": "stairs-landing", "eye": [-439.2, 326.3, 7.6], "look": [-420, 320.2, 2.0], "fov": 75},
     {"name": "stairs-air", "eye": [-400, 300, 26], "look": [-432, 326, 4], "fov": 50}
   ]
 }
