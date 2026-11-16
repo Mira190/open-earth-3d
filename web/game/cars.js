@@ -1487,11 +1487,21 @@ if (uWeave > 0.0 && gl_FrontFacing) {
     }
     // is a car coming up the lane it pulls out into, behind it, within 3.5 s?
     const mq = {};
+    // (the piece of road it starts on and the way it goes along it, where the route says: a car of the traffic on that
+    // piece going that way is coming up its lane however the road bends behind it. Seen only along the tangent where it
+    // stood, a car coming round the bend by Sydney's Opera House forecourt was not in the mirror: your car on its
+    // autopilot pulled out a second ahead of it, the car stopped across its nose, and each stood for the other until
+    // the autopilot gave the wheel back as blocked, 42 s on)
+    const n0 = route.nodes && route.nodes[0], line0 = n0 ? n0.line : -1, dir0 = n0 ? (n0.end ? 1 : -1) : 0;
     function mirror(others) {
       P.at(st.s, mq);
       for (const o of others) {
         if (o.h == null || !o.half || o.walker) continue;
         const dx = o.x - mq.x, dy = o.y - mq.y, a = dx * mq.hx + dy * mq.hy, w = -dx * mq.hy + dy * mq.hx;
+        if (line0 >= 0 && o.line === line0 && o.dir === dir0 && !o.rev && (o.v || 0) >= 2 && a < 1) {
+          const d = Math.hypot(dx, dy);
+          if (d < 45 && (d - C.half - o.half) / o.v < 3.5) return true;
+        }
         if (a > 0 || a < -45 || Math.abs(w - LANE * keep) > 1.6 || (o.v || 0) < 2) continue; // (behind it in the lane, and moving)
         if (Math.sin(o.h) * mq.hx + Math.cos(o.h) * mq.hy < 0.6) continue; // (going its way)
         if ((-a - C.half - o.half) / o.v < 3.5) return true;

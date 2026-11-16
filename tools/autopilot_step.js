@@ -178,11 +178,20 @@ async function assistStep({ log = false, fresh = true } = {}) {
     // up to speed, in its lane (as lane keeping reads it), clear of a junction: towards each place offered in turn, a minute each (after 30 s
     // a shorter clear stretch will do: lanes with a junction every 50 m)
     let up = false, tried = 0, t = 0;
+    const tries = [];
     for (const d of g.destinations(st.x, st.y).filter(d => d.id !== 'car')) {
       if (tried >= 3) break;
       if (!(g.pilotTo(d, { quiet: true }) && g.pilot().len > 200)) { g.pilotOff(); continue; }
       tried++;
-      for (t = 0; t < 60 && g.pilot(); t += 0.25) { g.advance(0.25); const o = g.pilot(), q = o && o.drv.st; if (q && !o.join && st.speed > (t < 30 ? 4 : 3) && !q.mv && !(q.toLine < (t < 30 ? 30 : 12)) && Math.abs(q.shift) < 0.1 && o.drv.remaining() > (t < 30 ? 120 : 60) && (() => { const L = g.laneHere(st); if (!L || Math.abs(L.d) >= 0.8 || Math.abs(L.dh) >= 0.3) return false;
+      let vmax = 0; const whyNot = {};
+      for (t = 0; t < 60 && g.pilot(); t += 0.25) { g.advance(0.25); const o = g.pilot(), q = o && o.drv.st;
+        vmax = Math.max(vmax, st.speed);
+        // (CHAIN=1: the first twelve seconds of each try and every fifth after, with the cars of the traffic by it)
+        if (log && q && (t < 12 ? t % 1 === 0 : t % 5 === 0)) out.log.push(`${d.name} ${t}s at ${st.x.toFixed(1)},${st.y.toFixed(1)} v ${st.speed.toFixed(1)} (its driver ${q.v.toFixed(1)}, ${q.why || '-'}${o.join ? `, joining: ${o.joinWhy || '?'}` : ''}, wedged ${(q.wedged || 0).toFixed(1)}, ${Math.hypot(st.x - q.x, st.y - q.y).toFixed(1)} m off its line) ${A.footprint(st.x, st.y, st.z, st.h, c.C.half * 0.95, c.C.hw * 0.95, 0).toFixed(2)} m into a car; near: ${A.C.filter(k => k.line >= 0 && Math.hypot(k.x - st.x, k.y - st.y) < 9).map(k => `car ${A.C.indexOf(k)} ${Math.hypot(k.x - st.x, k.y - st.y).toFixed(1)} m v ${k.v.toFixed(1)} ${k.why || ''}${k.park ? ' parked' : ''}`).join(', ') || 'none'}`);
+        // (what kept this quarter second from being the stretch, counted, for the line when none is found)
+        const no = !q ? 'handed back' : o.join ? 'joining its lane' : st.speed <= (t < 30 ? 4 : 3) ? `slow (${q.why || 'pulling away'})` : q.mv ? 'in a junction' : q.toLine < (t < 30 ? 30 : 12) ? 'a stop line near' : Math.abs(q.shift) >= 0.1 ? 'out of its lane round something' : o.drv.remaining() <= (t < 30 ? 120 : 60) ? 'near the end of its way' : '';
+        if (no) { whyNot[no] = (whyNot[no] || 0) + 1; continue; }
+        if ((() => { const L = g.laneHere(st); if (!L || Math.abs(L.d) >= 0.8 || Math.abs(L.dh) >= 0.3) return false;
         // (and no wall across the way 60 m on: a street shut off at its end, where lane keeping goes straight on)
         // (along the way it is driving, not straight ahead: a winding street meets a facade at every bend)
         const P = o.drv.path, at = {};
@@ -196,12 +205,14 @@ async function assistStep({ log = false, fresh = true } = {}) {
         // (and straight ahead for 25 m, where lane keeping goes on as the way turns: a street shut off at its end, Kyoto)
         const fx = Math.sin(st.h), fy = Math.cos(st.h);
         for (let a = 3; a < 25; a += 2) { const x = st.x + fx * a, y = st.y + fy * a, w = g.nav.push(x, y, st.z, 0.3, 1.6); if (Math.hypot(w.x - x, w.y - y) > 0.01) return false; }
-        return true; })()) { up = true; break; } }
+        return true; })()) { up = true; break; }
+        whyNot['no clear 40 m of one road ahead'] = (whyNot['no clear 40 m of one road ahead'] || 0) + 1; }
+      tries.push(`${d.name}: ${t.toFixed(0)} s, ${(vmax * 3.6).toFixed(0)} km/h at most, ${Object.entries(whyNot).sort((x, y) => y[1] - x[1]).slice(0, 4).map(([k, n]) => `${k} ${(n / 4).toFixed(0)} s`).join(', ') || 'nothing in the way'}${g.pilot() ? '' : `, ${g.pilotEnd() || 'ended'}`}`);
       if (up) break;
       g.pilotOff();
     }
     if (!tried) return 'no place to drive towards';
-    if (!up) { g.pilotOff(); return 'the car never got up to speed on a clear stretch'; }
+    if (!up) { g.pilotOff(); return `the car never got up to speed on a clear stretch (${tries.join('; ')})`; }
     // handed over where your car rolls on by itself for a second: a wall on a narrow street can stand into the lane
     // its driver follows (the autopilot's car goes by it on the lane's line; the car that you drive meets it). If it
     // stops, the autopilot takes it on 60 m and hands it over again, four times at most
@@ -219,7 +230,7 @@ async function assistStep({ log = false, fresh = true } = {}) {
     }
     return null;
   };
-  { const no = getGoing(); if (no) return { none: no }; }
+  { const no = getGoing(); if (no) return { none: no, log: out.log }; }
   if (!g.assist.lane) g.assistToggle('lane');
   if (!g.assist.cruise) g.assistToggle('cruise');
   Object.assign(out, { set: g.assist.set, off: 0, laneT: 0, cruiseT: 0, over: 0, deep: 0, red: 0, stops: 0, vmin: st.speed, dist: 0 });
