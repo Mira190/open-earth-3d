@@ -3,8 +3,8 @@
 // reverseStep runs in the page (page.evaluate(reverseStep, { ride, stills })), once the game has started (stills: a
 // still at three points as the ride backs out, through window.__still(name), which the caller exposes):
 //   traffic  up to three cars of the traffic on one-way streets near you are asked to back out
-//            (cars.reverse); each must end up on another piece of road, going on, or give up, within 90 s (240 s
-//            while it still moves, or its wait of 20 s behind another has not run out), never into
+//            (cars.reverse); each must end up on another piece of road, going on, or give up, within 90 s (150 s
+//            while it still moves; one held by a car behind it, its wait of 20 s not run out, is waiting), never into
 //            another car on the way (its body 0.1 m into one at most);
 //   ride     (with ride: true; a ride is ordered and boarded if none is under way) the ride is put on a one-way
 //            street near you and asked to turn round (__game.turnRide): it must back out, never into a car
@@ -43,11 +43,12 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
     // (90 s: it backs up to 80 m at a walking pace, and may wait up to 20 s at a time on the way for the junction behind)
     // (and on to 150 s for one still backing out that has moved in the last 20 s: behind another backing out of the same street,
     // waiting at the junction behind for room, it waits its turn)
-    // (and to 240 s for one whose own wait has not run out: the traffic gives it up after 20 s of waiting, and counts
-    // its wait a quarter while the one behind it is backing out too (actors.js), so the watch had ended on a car the
-    // traffic was still to decide. Tokyo's car 28, 41 m back and 6 m short of the junction, asked car 53 behind it to
-    // back out first; 53 gave up 20 s on, as the watch ended, with 28's wait at 5 s: read as "still reversing")
-    for (let t = 0; (t < 90 || (t < 240 && watch.some(w => !w.done && !w.gone && !w.gaveUp && (t - (w.moved || 0) < 20 || (w.c.rev && w.c.rev.wait <= 20))))) && watch.some(w => !w.done && !w.gone && !w.gaveUp); t += 0.1) {
+    // (one whose own wait has not run out when the watch ends is waiting its turn, not stuck: the traffic gives it up after
+    // 20 s of waiting and counts its wait a quarter while the one behind it is backing out too (actors.js). Tokyo's car 28,
+    // 41 m back and 6 m short of the junction, asked car 53 behind it to back out first; 53 gave up 20 s on, as the watch
+    // ended, with 28's wait at 5 s, and 28 gave up, held by 53, 15 s after. Watched on until then, the steps after this
+    // one played another game, 100 s later; so the watch is as long as it was and says which it found)
+    for (let t = 0; (t < 90 || (t < 150 && watch.some(w => !w.done && !w.gone && !w.gaveUp && t - (w.moved || 0) < 20))) && watch.some(w => !w.done && !w.gone && !w.gaveUp); t += 0.1) {
       const was = new Map(C.map(o => [o, [o.x, o.y, o.why, o.v]])); // (where each stood before the step: which of two moved into the other)
       g.advance(0.1);
       for (const w of watch) {
@@ -63,7 +64,7 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
       }
     }
   }
-  out.traffic = watch.map(w => ({ id: w.id, from: w.line, onto: w.onto ?? null, secs: +w.t.toFixed(1), deep: +w.deep.toFixed(2), deepAt: w.deepAt, done: w.done, gone: w.gone, gaveUp: !!w.gaveUp, went: +w.went.toFixed(1), still: w.still || (w.c.rev ? `still reversing (waited ${w.c.rev.wait.toFixed(1)} s, ${w.c.rev.d.toFixed(1)} m back${(() => { // (and what it stands at: where on its piece, how long at the box behind, who is behind it, when it last moved)
+  out.traffic = watch.map(w => ({ id: w.id, from: w.line, onto: w.onto ?? null, secs: +w.t.toFixed(1), deep: +w.deep.toFixed(2), deepAt: w.deepAt, done: w.done, gone: w.gone, gaveUp: !!w.gaveUp, waiting: !w.done && !w.gone && !w.gaveUp && !!(w.c.rev && w.c.rev.by && w.c.rev.wait <= 20 && w.c.rev.d <= 80), went: +w.went.toFixed(1), still: w.still || (w.c.rev ? `${w.c.rev.by && w.c.rev.wait <= 20 ? 'waiting its turn to back out' : 'still reversing'} (waited ${w.c.rev.wait.toFixed(1)} s, ${w.c.rev.d.toFixed(1)} m back${(() => { // (and what it stands at: where on its piece, how long at the box behind, who is behind it, when it last moved)
       const c = w.c, R = c.rev, l = L[c.line], b = R.by;
       return `; at ${c.s.toFixed(1)} of ${l.len.toFixed(1)} m of piece ${c.line} going ${c.dir > 0 ? 'up' : 'down'} it, ${(R.boxT || 0).toFixed(1)} s at the box behind, last moved at ${(w.moved || 0).toFixed(0)} s of ${w.t.toFixed(0)}, ${Math.hypot(c.x - g.player.x, c.y - g.player.y).toFixed(0)} m from you, behind it ${b ? `car ${C.indexOf(b)} (${b.why}${b.rev ? `, backing out too: waited ${b.rev.wait.toFixed(1)} s, ${b.rev.d.toFixed(1)} m back` : ''}, v ${(+b.v || 0).toFixed(1)}, on piece ${b.line})` : 'nothing'}`;
     })()})` : '') }));

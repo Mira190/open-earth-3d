@@ -2249,7 +2249,8 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
   else {
     // (one that gives up, held 20 s by the junction behind, waits on as before, by design: each must stop, back out or
     // give up within a minute and a half, never into another car, and one at least get out by another way)
-    const T = rev.traffic, bad = T.filter(w => !(w.done || w.gone || w.gaveUp) || w.deep > 0.1 || !T.some(x => x.done || x.gone));
+    // (or be waiting its turn behind a car when the watch ends, its own 20 s of waiting not run out: reverse_step.js)
+    const T = rev.traffic, bad = T.filter(w => !(w.done || w.gone || w.gaveUp || w.waiting) || w.deep > 0.1 || !T.some(x => x.done || x.gone));
     if (!T.length) console.log('note backing out of a one-way street: no car of the traffic on one near you');
     else check(bad.length === 0, `cars of the traffic back out of a one-way street to the junction behind and go on (${T.map(w => `car ${w.id} from piece ${w.from} ${w.done ? `onto ${w.onto} in ${w.secs} s` : w.gone ? 'out of the traffic' : w.still}, ${w.deep.toFixed(2)} m into another at most${w.deep > 0.1 && w.deepAt ? ` (${w.deepAt})` : ""}`).join('; ')})`);
     const R = rev.ride;
