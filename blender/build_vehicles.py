@@ -1834,6 +1834,16 @@ def patch(mesh, F, poly, mat, offset=0.006, rings=4, step=0.04, uv=None):
     return dense
 
 
+def pane(mesh, F, us, vs, mat, offset=0.006):
+    """A pane lying on the surface F over a grid of its parameters, facing outward."""
+    ids = [[mesh.vert(F(u, v) + F.normal(u, v) * offset) for v in vs] for u in us]
+    for i in range(len(us) - 1):
+        for j in range(len(vs) - 1):
+            q = [ids[i][j], ids[i + 1][j], ids[i + 1][j + 1], ids[i][j + 1]]
+            a, b, c = (Vector(mesh.v[k]) for k in q[:3])
+            mesh.face(q if (b - a).cross(c - a).dot(F.normal(us[i], vs[j])) >= 0 else q[::-1], mat, True)
+
+
 def text_mesh(mesh, text, mat, size, M, depth=0.004):
     """Letters from Blender's own font as geometry, laid in the x-y plane of M."""
     cu = bpy.data.curves.new("txt", "FONT")
@@ -2055,12 +2065,16 @@ def build_bus():
     xs[0], xs[-1] = -half + 1e-3, half - 1e-3
     ths = list(np.linspace(0, TAU, 64, endpoint=False))
     F.grid(body, xs, ths, mat_of, period=TAU)
-    for x in (xs[0], xs[-1]):    # flat end caps, fanned from the middle
-        ring = [body.vert(F(x, th)) for th in ths]
-        mid = body.vert(sum((Vector(body.v[i]) for i in ring), Vector()) / len(ring))
-        for j in range(len(ring)):
-            a, b = ring[j], ring[(j + 1) % len(ring)]
-            body.face([mid, b, a] if x > 0 else [mid, a, b], "Paint", smooth=False)
+    # flat end caps, in rings about the middle. (A fan from the middle to the rim carried the dark baked under a lamp
+    # at the rim all the way in: black wedges across the nose, issue 525. In rings it stays by the lamp.)
+    for x in (xs[0], xs[-1]):
+        rim = [F(x, th) for th in ths]
+        m = sum(rim, Vector()) / len(rim)
+        mid, rings = body.vert(m), [[body.vert(m + (p - m) * k) for p in rim] for k in (0.3, 0.6, 0.85, 1.0)]
+        for j in range(len(rim)):
+            a, b = j, (j + 1) % len(rim)
+            for ids in [[mid, rings[0][b], rings[0][a]]] + [[r0[a], r0[b], r1[b], r1[a]] for r0, r1 in zip(rings[:-1], rings[1:])]:
+                body.face(ids if x > 0 else ids[::-1], "Paint", smooth=False)
     for ax, ra in arches:
         for side in (1, -1):
             cyl(body, "Trim", ra + 0.01, 0.36, T((ax, side * (c["W"] / 2 - 0.2), c["r"]), (HALF, 0, 0)), segs=20, caps=False)
@@ -2068,12 +2082,20 @@ def build_bus():
             revolve(body, "Tyre", [(r * 0.6, -0.14), (r * 0.6, 0.14), (r * 0.94, 0.15), (r, 0.11), (r, -0.11), (r * 0.94, -0.15)], (ax, yw, r), (0, 1, 0), segs=24)
             cyl(body, "Rim", r * 0.6, 0.26, T((ax, yw + side * 0.01, r), (HALF, 0, 0)), segs=20)
     # windows: a band each side, the windscreen and the rear window, a destination sign
+    # Each side's glass is a grid, close-set along its frame and either side of each post. The traffic's shader takes a
+    # car's occlusion per vertex, and the pane was a fan of slivers from its frame to its middle, five metres long: the
+    # dark baked under the frame and the posts ran across the glass in rays that met at the middle, which read as
+    # looking into an empty shell (issue 525). On a grid it stays the width of a gasket.
     th_lo, th_hi = theta_at(F, 0, 1.25), theta_at(F, 0, 2.75)
+    x0, x1, posts = -half + 0.5, half - 1.0, [float(x) for x in np.arange(-half + 1.3, half - 1.0, 1.25)]
+    gx = sorted(set([x0, x0 + 0.07, x1 - 0.07, x1] + [x + d for x in posts for d in (-0.08, 0.0, 0.08)]))
+    gx = [a + (b - a) * k / n for a, b in zip(gx[:-1], gx[1:]) for n in [max(1, math.ceil((b - a) / 0.4))] for k in range(n)] + [gx[-1]]
+    gth = [theta_at(F, 0, z) for z in (1.25, 1.32, 1.6, 2.0, 2.4, 2.68, 2.75)]
     for side in (1, -1):
-        band_ = [(half - 1.0, th_lo), (half - 1.0, th_hi), (-half + 0.5, th_hi), (-half + 0.5, th_lo)]
-        outline = patch(trim, F, band_ if side > 0 else mirror(band_)[::-1], "Glass", offset=0.006, rings=2)
-        F.band(trim, outline, 0.03, "Trim", offset=0.008, across=2, closed=True, step=0.06)
-        for x in np.arange(-half + 1.3, half - 1.0, 1.25):
+        band_ = [(x1, th_lo), (x1, th_hi), (x0, th_hi), (x0, th_lo)]
+        pane(trim, F, gx, gth if side > 0 else [math.pi - th for th in gth], "Glass", offset=0.006)
+        F.band(trim, band_ if side > 0 else mirror(band_)[::-1], 0.03, "Trim", offset=0.008, across=2, closed=True, step=0.06)
+        for x in posts:
             F.band(trim, [(x, th_lo), (x, th_hi)] if side > 0 else mirror([(x, th_lo), (x, th_hi)]), 0.035, "Trim", offset=0.009, across=2)
     for xx, z0, z1, m in ((half - 0.001, 0.95, 2.55, "Glass"), (-half + 0.001, 1.6, 2.6, "Glass")):
         sgn = 1 if xx > 0 else -1
@@ -2685,7 +2707,41 @@ def lod_copy(ob, name, ratio):
     select([lo])
     bpy.ops.object.modifier_apply(modifier=mod.name)
     lo.data.validate()
+    face_outward(lo.data)
     return lo
+
+
+SIGHT = [Vector((x, y, z)).normalized() for x in (-1, 0, 1) for y in (-1, 0, 1) for z in (-1, 0, 1) if x or y or z]
+
+
+def face_outward(me, off=0.03):
+    """Turn each face of a decimated copy to the side it is seen from (issue 525).
+
+    A collapse leaves a thin part (a pane 2 cm thick, a lamp, a plate) as a sheet, as often as not with its back to
+    the outside: the game draws a car's faces on both sides, the inside near black, so the bus's far model showed a
+    black windscreen and sign, and the cars' black grilles and lamps. From each face, the 26 lines of sight
+    that leave the model without meeting it (from `off` out, past a pane lying on the skin) say where it is seen
+    from; a face with its back to most of them is turned round. One seen from nowhere is left as it is."""
+    from mathutils.bvhtree import BVHTree
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.faces.ensure_lookup_table()
+    tree = BVHTree.FromBMesh(bm)
+    turned = 0
+    for f in bm.faces:
+        c, n = f.calc_center_median(), f.normal
+        if n.length < 0.5:
+            continue
+        at = [c] + [c.lerp(v.co, 0.6) for v in f.verts]  # (and towards its corners: a plate can stand before its middle)
+        vote = sum(n.dot(d) for p in at for d in SIGHT if tree.ray_cast(p + d * off, d)[0] is None)
+        if vote < -1e-6:
+            f.normal_flip()
+            turned += 1
+    if turned:
+        bm.to_mesh(me)
+        me.update()
+    bm.free()
+    return turned
 
 
 def export(objs, path):
