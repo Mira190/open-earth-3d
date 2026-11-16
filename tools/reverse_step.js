@@ -4,7 +4,7 @@
 // still at three points as the ride backs out, through window.__still(name), which the caller exposes):
 //   traffic  up to three cars of the traffic on one-way streets near you are asked to back out
 //            (cars.reverse); each must end up on another piece of road, going on, or give up, within 90 s (240 s
-//            while it still moves, or stands behind another that is backing out too), never into
+//            while it still moves, or its wait of 20 s behind another has not run out), never into
 //            another car on the way (its body 0.1 m into one at most);
 //   ride     (with ride: true; a ride is ordered and boarded if none is under way) the ride is put on a one-way
 //            street near you and asked to turn round (__game.turnRide): it must back out, never into a car
@@ -43,10 +43,11 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
     // (90 s: it backs up to 80 m at a walking pace, and may wait up to 20 s at a time on the way for the junction behind)
     // (and on to 150 s for one still backing out that has moved in the last 20 s: behind another backing out of the same street,
     // waiting at the junction behind for room, it waits its turn)
-    // (and to 240 s for one standing behind another that is backing out too: the traffic gives it four times the
-    // patience there, 80 s before it gives up (actors.js: its wait counts a quarter), and the watch had ended after 20 s
-    // without a move: Tokyo's car 28, 41 m back, its wait at 5 s, read as "still reversing")
-    for (let t = 0; (t < 90 || (t < 240 && watch.some(w => !w.done && !w.gone && !w.gaveUp && (t - (w.moved || 0) < 20 || (w.c.rev && w.c.rev.by && w.c.rev.by.rev))))) && watch.some(w => !w.done && !w.gone && !w.gaveUp); t += 0.1) {
+    // (and to 240 s for one whose own wait has not run out: the traffic gives it up after 20 s of waiting, and counts
+    // its wait a quarter while the one behind it is backing out too (actors.js), so the watch had ended on a car the
+    // traffic was still to decide. Tokyo's car 28, 41 m back and 6 m short of the junction, asked car 53 behind it to
+    // back out first; 53 gave up 20 s on, as the watch ended, with 28's wait at 5 s: read as "still reversing")
+    for (let t = 0; (t < 90 || (t < 240 && watch.some(w => !w.done && !w.gone && !w.gaveUp && (t - (w.moved || 0) < 20 || (w.c.rev && w.c.rev.wait <= 20))))) && watch.some(w => !w.done && !w.gone && !w.gaveUp); t += 0.1) {
       const was = new Map(C.map(o => [o, [o.x, o.y, o.why, o.v]])); // (where each stood before the step: which of two moved into the other)
       g.advance(0.1);
       for (const w of watch) {
@@ -55,9 +56,6 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
         if (c.line < 0 || Math.hypot(c.x - w.x, c.y - w.y) > 30) { w.gone = true; continue; } // (out of the traffic, come back elsewhere)
         const step = Math.hypot(c.x - w.x, c.y - w.y);
         if (step > 0.01) w.moved = t;
-        // (or by less than that a step: its wait starts again each time it backs at all. Tokyo's car 28, 6 m short of the
-        // junction behind with car 53 standing behind it, crept back a few millimetres at a time, its wait 5 s after 20 s)
-        if (c.rev) { if (c.rev.wait < (w.wait || 0) - 1e-6 || c.rev.d > (w.d || 0) + 1e-6) w.moved = t; w.wait = c.rev.wait; w.d = c.rev.d; }
         w.went += step; w.x = c.x; w.y = c.y;
         if (c.rev) { const d = depth(c); if (d > w.deep) { w.deep = d; const b = A.footBy; w.deepAt = `${(c.rev.boxT || 0) > 0 ? `waited ${c.rev.boxT.toFixed(1)} s at the box behind, ` : ''}${c.rev.d.toFixed(1)} m back, ${b ? `car ${C.indexOf(b)} ${b.why} v ${(+b.v || 0).toFixed(1)}${b.mv ? ' in junction ' + b.mv.j.id : ''}${b.rev ? ` reversing (d ${b.rev.d.toFixed(1)} wait ${b.rev.wait.toFixed(1)})` : ''}; it on ${c.line}/${c.dir} s ${c.s.toFixed(1)}, that on ${b.line}/${b.dir} s ${b.s.toFixed(1)}` : ''}${b && was.get(b) ? `; in that step it moved ${Math.hypot(c.x - was.get(c)[0], c.y - was.get(c)[1]).toFixed(2)} m, that ${Math.hypot(b.x - was.get(b)[0], b.y - was.get(b)[1]).toFixed(2)} m (was ${was.get(b)[2]} v ${(+was.get(b)[3] || 0).toFixed(1)}) [backing off ${(+b.backoff || 0).toFixed(2)} s more]` : ''}`; } }
         w.t = t;
