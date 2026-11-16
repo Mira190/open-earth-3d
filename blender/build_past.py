@@ -60,7 +60,7 @@ def postbox():
     slot = box(-0.1, -0.215, 0.86, 0.1, -0.2, 0.9, dark)
     lip = box(-0.12, -0.24, 0.905, 0.12, -0.2, 0.925, red)
     plate = box(-0.07, -0.213, 0.52, 0.07, -0.2, 0.74, pale)
-    return join("postbox", [body, slot, lip, plate])
+    return join("postbox", [body, slot, lip, plate, blob(0.55, 0.5)])
 
 
 def board():
@@ -82,6 +82,7 @@ def board():
         for x in (-0.31, 0.29):
             parts.append(box(x, side * 0.23 - 0.015, 0, x + 0.02, side * 0.23 + 0.015, 0.1, wood))
     parts.append(box(-0.31, -0.02, 1.17, 0.31, 0.02, 1.2, wood))
+    parts.append(blob(0.6, 0.55))
     return join("board", parts)
 
 
@@ -97,6 +98,7 @@ def shoeshine():
         parts.append(box(sx + dx, dy, 0, sx + dx + 0.03, dy + 0.03, 0.24, dark))
     parts.append(lathe([(0.045, 0, tin), (0.045, 0.03, tin), (0.0, 0.031, dark)], seg=10, at=(0.05, -0.3, 0)))  # the tin of polish
     parts.append(box(-0.2, -0.36, 0, -0.04, -0.3, 0.05, dark))  # the brush
+    parts.append(blob(0.75, 0.5, at=(0.25, 0)))
     return join("shoeshine", parts)
 
 
@@ -173,26 +175,124 @@ def lamp():
     arm = box(0.0, -0.02, 2.36, 0.34, 0.02, 2.4, iron)
     cap = lathe([(0.0, 2.36, iron), (0.11, 2.34, iron), (0.12, 2.3, iron)], seg=12, at=(0.34, 0, 0))
     globe = lathe([(0.03, 2.02, red)] + [(0.13 * math.sin(k / 8 * math.pi) + 0.012, 2.3 - 0.28 * (1 - k / 8) if False else 2.02 + 0.28 * k / 8, mix(glow, red, abs(k / 8 - 0.5) * 2)) for k in range(1, 8)] + [(0.05, 2.3, red)], seg=14, at=(0.34, 0, 0))
-    return join("lamp", [post, arm, cap, globe])
+    return join("lamp", [post, arm, cap, globe, blob(0.4, 0.4)])
+
+
+def quads(name, Q):
+    """A mesh of quads that share no vertices, each one colour: Q is [(four points, colour)]. Bands of colour stay
+    crisp (a shared vertex would blend its neighbours), and a flat panel is lit as a flat panel."""
+    V, F, C = [], [], []
+    for pts, col in Q:
+        n = len(V)
+        V += [tuple(p) for p in pts]
+        F.append(tuple(range(n, n + len(pts))))
+        C += [col] * len(pts)
+    ob = make(name, np.array(V, float), F, np.array(C, float))
+    for p in ob.data.polygons:
+        p.use_smooth = False
+    return ob
+
+
+def blob(rx, ry, at=(0, 0), dark=0.6, name="shadow"):
+    """What a thing puts on the ground under it: a soft dark patch, densest in the middle and gone at its edge."""
+    seg, rings = 24, [(0.0, dark), (0.45, dark * 0.85), (0.78, dark * 0.4), (1.0, 0.0)]
+    V, A = [], []
+    for r, al in rings:
+        for k in range(seg):
+            t = k / seg * 2 * math.pi
+            V.append((at[0] + math.cos(t) * rx * max(r, 0.02), at[1] + math.sin(t) * ry * max(r, 0.02), 0.035))
+            A.append(al)
+    ob = make(name, np.array(V), grid_faces(len(rings), seg, wrap=True) + [tuple(range(seg - 1, -1, -1))], np.tile(hexc(0x05060a), (len(V), 1)))
+    att = ob.data.color_attributes["Col"]
+    col = np.zeros(len(V) * 4)
+    att.data.foreach_get("color", col)
+    col = col.reshape(len(V), 4)
+    col[:, 3] = A
+    att.data.foreach_set("color", col.ravel())
+    return ob
 
 
 def tram():
-    """A two-axle-bogie street tram, twelve metres long, standing along x: green below the windows, cream above,
-    a grey roof with its bow collector, a lamp at each end."""
-    green, cream, glass, roof, dark, lampc = hexc(0x2f5a45), hexc(0xe6dcc0), hexc(0xf2d9a0), hexc(0x8b8f8c), hexc(0x26282a), hexc(0xfff0c0)
-    L, W = 6.0, 1.15
-    parts = [box(-L, -W, 0.45, L, W, 1.5, green, "tram"), box(-L, -W, 1.5, L, W, 2.55, cream), box(-L + 0.15, -W + 0.08, 2.55, L - 0.15, W - 0.08, 2.8, roof)]
-    for side in (-1, 1):  # the windows, lit from inside, and the doors at each end
-        for k in range(9):
-            x = -4.5 + k * 1.0
-            parts.append(box(x, side * W - 0.02, 1.62, x + 0.8, side * W + 0.02, 2.38, glass))
-        for x in (-5.7, 5.0):
-            parts.append(box(x, side * W - 0.025, 0.5, x + 0.7, side * W + 0.025, 2.4, dark))
+    """A street tram of the Tamagawa line as it ran to Shibuya until 1969, standing along x on its rails: twelve
+    metres, its ends rounded in plan, green to the waist and cream above, a row of lit windows with their pillars, a
+    door at each end, a cambered grey roof with its bow collector and a destination box over each front, a lamp
+    and a fender at each end, two bogies on eight wheels; under it the rails in their bed of setts, and its shadow."""
+    green, door, cream, glass, glass2, roofc, dark, steel, lampc, sett, sett2 = (hexc(h) for h in (0x2f5a45, 0x274b3a, 0xe6dcc0, 0xf2d79a, 0xd9c88e, 0x7f8482, 0x1f2123, 0x8d9296, 0xfff2c8, 0x4a4c50, 0x55585d))
+    W = 1.16
+
+    def half(x):
+        ax = abs(x)
+        return W if ax <= 5.3 else W * math.sqrt(max(0.1, 1 - ((ax - 5.3) / 0.78) ** 2 * 0.62))
+
+    edges = [-6.0, -5.85, -5.65, -5.45, -5.3, -4.72, -4.56]
+    for k in range(8):
+        edges += [-4.4 + k * 1.1, -4.4 + k * 1.1 + 0.95]
+    xs = sorted(set(round(x, 3) for x in edges + [-x for x in edges]))
+    panes = [(-4.4 + k * 1.1, -4.4 + k * 1.1 + 0.95) for k in range(8)]
+    ZS = [0.42, 0.6, 1.5, 1.58, 2.32, 2.5]
+
+    def profile(w):  # up the right side, over the roof, down the left
+        pts = [(w, z, "side") for z in ZS]
+        pts += [(w * math.cos(k / 12 * math.pi), 2.5 + 0.3 * math.sin(k / 12 * math.pi), "roof") for k in range(1, 12)]
+        pts += [(-w, z, "side") for z in reversed(ZS)]
+        return pts
+
+    def colour(x, z, kind):
+        ax = abs(x)
+        if kind == "roof" or z > 2.5:
+            return roofc
+        if z < 0.6:
+            return dark
+        if z < 1.5:
+            return door if 4.72 < ax < 5.3 else green
+        if z < 1.58:
+            return cream
+        if z < 2.32:
+            if ax > 5.3:
+                return glass2
+            if 4.72 < ax < 5.3:
+                return glass
+            return glass if any(a <= x <= b for a, b in panes) else cream
+        return cream
+
+    Q = []
+    for x0, x1 in zip(xs[:-1], xs[1:]):
+        p0, p1 = profile(half(x0)), profile(half(x1))
+        for i in range(len(p0) - 1):
+            kind = "roof" if "roof" in (p0[i][2], p0[i + 1][2]) and not (p0[i][2] == "side" and p0[i + 1][2] == "side") else "side"
+            zc, xc = (p0[i][1] + p0[i + 1][1]) / 2, (x0 + x1) / 2
+            Q.append(([(x0, p0[i][0], p0[i][1]), (x1, p1[i][0], p1[i][1]), (x1, p1[i + 1][0], p1[i + 1][1]), (x0, p0[i + 1][0], p0[i + 1][1])], colour(xc, zc, kind)))
+    for end in (-1, 1):  # the fronts: a fan from the middle of each, in the same bands (the windscreen in its place)
+        x, pr = end * 6.0, profile(half(6.0))
+        for i in range(len(pr) - 1):
+            zc = (pr[i][1] + pr[i + 1][1]) / 2
+            tri = [(x, pr[i][0], pr[i][1]), (x, pr[i + 1][0], pr[i + 1][1]), (x + end * 0.06, 0.0, 1.55)]
+            Q.append((tri if end > 0 else tri[::-1], colour(x, zc, "roof" if pr[i][2] == "roof" and pr[i + 1][2] == "roof" else "side")))
+        Q.append(([(x, -0.9, 0.0), (x, 0.9, 0.0), (x, 0.9, 0.42), (x, -0.9, 0.42)], dark))
+    parts = [quads("tram", Q), box(-5.9, -1.05, 0.05, 5.9, 1.05, 0.42, dark)]
     for end in (-1, 1):
-        parts.append(box(end * L - 0.02, -0.8, 1.62, end * L + 0.02, 0.8, 2.38, glass))
-        parts.append(box(end * L - 0.04, -0.14, 1.05, end * L + 0.04, 0.14, 1.33, lampc))
-        parts.append(box(end * 3.6 - 0.9, -W + 0.12, 0.0, end * 3.6 + 0.9, W - 0.12, 0.45, dark))  # a bogie
-    parts += [box(-0.9, -0.04, 2.8, 0.9, 0.04, 2.86, dark), box(0.8, -0.5, 2.86, 0.86, 0.5, 3.75, dark, rot=0.0), box(0.5, -0.6, 3.72, 0.9, 0.6, 3.78, dark)]  # the bow collector
+        parts.append(box(end * 6.05 - 0.05, -0.16, 0.92, end * 6.05 + 0.05, 0.16, 1.2, lampc))                     # the lamp
+        parts.append(box(end * 6.12 - 0.05, -1.0, 0.42, end * 6.12 + 0.05, 1.0, 0.56, steel))                     # the fender
+        parts.append(box(end * 5.62 - 0.3, -0.5, 2.74, end * 5.62 + 0.3, 0.5, 2.98, cream))                       # the destination box
+        parts.append(box(end * 5.93 - 0.02 if end > 0 else end * 5.93 - 0.02, -0.42, 2.78, end * 5.93 + 0.02, 0.42, 2.94, dark))
+        parts.append(box(end * 3.7 - 1.0, -0.86, 0.12, end * 3.7 + 1.0, 0.86, 0.4, hexc(0x2b2d30)))               # a bogie
+        for wx in (-0.62, 0.62):
+            for wy in (-0.74, 0.74):                                                                                # its wheels: ten-sided, on the rails
+                cx, r = end * 3.7 + wx, 0.34
+                ring = [(cx + math.cos(k / 10 * 2 * math.pi) * r, r + math.sin(k / 10 * 2 * math.pi) * r) for k in range(10)]
+                Qw = [([(ring[k][0], wy - 0.06, ring[k][1]), (ring[(k + 1) % 10][0], wy - 0.06, ring[(k + 1) % 10][1]), (ring[(k + 1) % 10][0], wy + 0.06, ring[(k + 1) % 10][1]), (ring[k][0], wy + 0.06, ring[k][1])], steel) for k in range(10)]
+                Qw += [([(px, wy + s * 0.06, pz) for px, pz in (ring if s > 0 else ring[::-1])], dark) for s in (-1, 1)]
+                parts.append(quads("wheel", Qw))
+    # the bow collector: its frame up from the roof and the bar across the top
+    parts += [box(-0.6, -0.05, 2.8, 0.6, 0.05, 2.86, dark), box(0.5, -0.45, 2.86, 0.56, -0.39, 3.9, dark), box(0.5, 0.39, 2.86, 0.56, 0.45, 3.9, dark), box(0.46, -0.7, 3.88, 0.6, 0.7, 3.94, steel)]
+    # the rails in their bed of setts, a tram's length and half as much again each way
+    parts.append(box(-11.0, -1.2, 0.0, 11.0, 1.2, 0.03, sett))
+    for k in range(44):
+        if k % 2:
+            parts.append(box(-11.0 + k * 0.5, -1.2, 0.03, -11.0 + k * 0.5 + 0.47, 1.2, 0.034, sett2))
+    for y in (-0.74, 0.74):
+        parts.append(box(-11.0, y - 0.035, 0.0, 11.0, y + 0.035, 0.07, steel))
+    parts.append(blob(7.0, 2.0, dark=0.7))
     return join("tram", parts)
 
 

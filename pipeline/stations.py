@@ -69,6 +69,16 @@ def piers(B, game):
     for bi, ks in by_b.items():
         if B["b"][bi][1] == "roof" or any(B["s"][k][2] <= 0 for k in ks):
             continue  # (a canopy has its posts already: pipeline/arcades.py; a building with a foot on the ground stands on it)
+        # its storeys start at its underside, not at a ground it does not touch: a row of windows was cut in half by the
+        # slab's edge. One underside for the whole building (the lowest its solids have), the ground floor that high,
+        # and the storeys above it shared out over what is left
+        low = min(B["s"][k][2] for k in ks)
+        for k in ks:
+            B["s"][k][2] = low
+        m, wall = B["b"][bi], (max(B["s"][k][3] for k in ks) - low) / 10
+        if len(m) > 12 and wall > 2.6:
+            m[12] = round(low / 10, 2)
+            m[11] = round(wall / max(1, round(wall / 4.3)), 2)
         polys = {k: Polygon([(B["s"][k][4][i] / 10, B["s"][k][4][i + 1] / 10) for i in range(0, len(B["s"][k][4]), 2)]).buffer(0) for k in ks}
         hull = unary_union(list(polys.values()))
         clear = unary_union([w for w in ways if w.intersects(hull)]) if ways else None
@@ -105,13 +115,14 @@ def main():
     B = json.load(open(path, encoding="utf8"))
     cfg = json.load(open(os.path.join(ROOT, "cities", a.city, "city.json"), encoding="utf8"))
     game = json.load(open(os.path.join(d, "game.json"), encoding="utf8")) if os.path.exists(os.path.join(d, "game.json")) else {}
+    before = json.dumps(B, sort_keys=True)
     n = restyle(B, typology.region_name(cfg) == "japan")
     P = piers(B, game)
-    changed = n or P != B.get("piers", {})
     if P:
         B["piers"] = P
     else:
         B.pop("piers", None)
+    changed = json.dumps(B, sort_keys=True) != before
     if changed:
         with open(path, "w") as f:
             json.dump(B, f, separators=(",", ":"))

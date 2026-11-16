@@ -405,52 +405,75 @@ window.OEAudio = (function () {
   // after (someone speaking from another year)
   const VOWELS = [[730, 1090], [270, 2290], [300, 870], [530, 1840], [570, 840]];
   function voice(v = {}) {
-    const b = storyBus(); if (!b || muted) return;
-    const f0 = (v.pitch || 180) * (0.9 + Math.random() * 0.22), [F1, F2] = VOWELS[Math.floor(Math.random() * VOWELS.length)], dur = 0.075 + Math.random() * 0.05;
-    const say = (at, vol) => {
-      const t = ctx.currentTime + at, o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = v.rough ? 'square' : 'sawtooth'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.88, t + dur);
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      for (const [F, k] of [[F1, 1], [F2, 0.55]]) { const bp = ctx.createBiquadFilter(), fg = ctx.createGain(); bp.type = 'bandpass'; bp.frequency.value = F; bp.Q.value = 7; fg.gain.value = k; o.connect(bp); bp.connect(fg); fg.connect(g); }
-      g.connect(b); o.start(t); o.stop(t + dur + 0.02);
-    };
-    say(0, 0.34);
-    if (v.breath) sNoise(0, dur * 1.3, 2600, 0.8, 0.02 * v.breath);
-    if (v.past) { say(0.11, 0.1); say(0.23, 0.04); }
+    // (a pitched syllable for every few letters was tried and read as a toy: what is heard now is the felt tick of
+    // type being set, a little higher for a higher voice, and a second fainter one after it for someone of another year)
+    if (!storyBus() || muted) return;
+    const f = 700 + (v.pitch || 180) * 5;
+    sNoise(0, 0.022, f * (0.9 + Math.random() * 0.2), 2.2, 0.028 + (v.breath ? 0.008 : 0));
+    if (v.past) sNoise(0.09, 0.03, f, 2.2, 0.009);
   }
   // what the story does, heard: each a few notes or a breath of noise, made here
   function sfx(name) {
     if (!storyBus() || muted) return;
     switch (name) {
-      case 'stop': sTone(0, 1.6, 'sine', 62, 34, 0.5, 0.02); sNoise(0, 0.5, 180, 0.7, 0.2, 'lowpass'); break;               // the floor of the sound drops out
-      case 'run': sNoise(0, 0.9, 900, 0.6, 0.12, 'highpass'); sTone(0.05, 0.5, 'sine', 196, 392, 0.1, 0.1); break;            // the air comes back
-      case 'goal': sTone(0, 0.5, 'sine', 659, 0, 0.09); sTone(0.14, 0.9, 'sine', 988, 0, 0.08); break;                        // two notes: here is what to do
-      case 'word': sTone(0, 0.12, 'triangle', 1320, 0, 0.05); break;                                                           // a word in the middle of the frame
-      case 'cam-up': sNoise(0, 0.05, 2600, 2, 0.22); sNoise(0.09, 0.04, 3600, 3, 0.2); sTone(0.09, 0.08, 'square', 1800, 900, 0.03); break; // leather, then the catch
+      // the Stop: the floor of the sound drops out, and over it bells go up into a long room (a fifth, a ninth, an octave:
+      // nothing resolves, it only opens)
+      case 'stop': sNoise(0, 1.1, 5200, 0.5, 0.045, 'highpass'); [1318.5, 1975.5, 2637].forEach((f, k) => glass(0.85 + k * 0.22, f, 0.05 - k * 0.01)); break; // a breath drawn in, then three notes of glass in a long room: no thud
+      case 'run': sNoise(0, 0.9, 900, 0.6, 0.1, 'highpass'); [2637, 1975.5, 1318.5, 880].forEach((f, k) => glass(k * 0.09, f, 0.07)); break; // the air comes back, and the bells come down
+      case 'goal': sNoise(0, 0.55, 1400, 0.6, 0.03); break;                                                                 // a breath of air: here is what to do (no chime)
+      case 'word': break;                                                                                                   // (a word in the frame is read, not rung)
+      case 'cam-up': sNoise(0, 0.05, 2600, 2, 0.2); sNoise(0.09, 0.04, 3600, 3, 0.18); break;                                // leather, then the catch
       case 'cam-down': sNoise(0, 0.06, 1500, 1.5, 0.16); break;
-      case 'found': for (const [k, f] of [1318.5, 1568, 1975.5, 2637].entries()) sTone(k * 0.07, 1.6 - k * 0.2, 'sine', f, 0, 0.055, 0.004); break; // glass: it is in the frame
+      case 'found': [1318.5, 1568, 1975.5, 2637].forEach((f, k) => glass(k * 0.08, f, 0.06)); break;                              // glass: it is in the frame
       case 'wind': for (let k = 0; k < 7; k++) sNoise(0.16 + k * 0.045, 0.02, 2200 - k * 90, 4, 0.13); sNoise(0.5, 0.05, 900, 2, 0.14); break; // the film wound on: a ratchet, a stop
       case 'shutter': sNoise(0, 0.035, 3200, 1.2, 0.5); sNoise(0.06, 0.035, 2400, 1.2, 0.45); break;                           // a focal-plane shutter: two short clicks
       case 'stamp': sTone(0, 0.2, 'sine', 92, 60, 0.5, 0.004); sNoise(0, 0.06, 700, 0.8, 0.3, 'lowpass'); break;             // the postmark struck
       case 'ghost': sTone(0, 2.4, 'sine', 440, 446, 0.05, 0.6); sTone(0, 2.4, 'sine', 659, 652, 0.035, 0.8); sNoise(0, 2.2, 3000, 0.5, 0.012); break; // somebody of another year is here
-      case 'right': sTone(0, 0.7, 'sine', 523, 0, 0.08); sTone(0.1, 0.9, 'sine', 784, 0, 0.07); break;
-      case 'wrong': sTone(0, 0.5, 'triangle', 220, 196, 0.08, 0.02); break;
+      case 'right': glass(0, 1318.5, 0.045); break;
+      case 'wrong': sNoise(0, 0.2, 220, 0.8, 0.1, 'lowpass'); break;
       case 'rain': sNoise(0, 2.5, 4200, 0.4, 0.05, 'highpass'); break;
       case 'end': for (const [k, f] of [220, 277.2, 329.6, 440, 554.4].entries()) sTone(k * 0.32, 4.5 - k * 0.3, 'sine', f, 0, 0.08, 0.05); break; // the evening resolves: a chord, laid note by note
       default: break;
     }
   }
-  // time held: a still, far chord for as long as it is (two fifths, breathing slowly); it fades when time runs
+  // a long room for what is holy in it: a few seconds of noise dying away, made once, that the bells and the choir ring in
+  let room = null;
+  function hall() {
+    const b = storyBus(); if (!b) return null;
+    if (room && room.context === ctx) return room;
+    const len = Math.floor(ctx.sampleRate * 4.2), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
+    room = ctx.createConvolver(); room.buffer = ir;
+    const g = ctx.createGain(); g.gain.value = 0.5; room.connect(g); g.connect(b);
+    return room;
+  }
+  // a bell of glass: a note, and the partials over it that a struck bar has, each dying faster than the one below
+  function glass(at, f, vol) {
+    const r = hall(); if (!r || muted) return;
+    const t = ctx.currentTime + at, out = ctx.createGain(); out.gain.value = 1; out.connect(r); out.connect(storyBus());
+    for (const [k, a, d] of [[1, 1, 3.2], [2.76, 0.42, 1.6], [5.4, 0.2, 0.8], [8.93, 0.08, 0.4]]) tone(out, t, d, 'sine', f * k, 0, vol * a, 0.003);
+    setTimeout(() => { try { out.disconnect(); } catch (e) { /* already gone */ } }, (at + 4) * 1000);
+  }
+  // time held: a choir far off, for as long as it is. Four voices on an open chord (a fifth, an octave, a ninth), each a
+  // buzz through the two resonances of "ah" with a slow tremor in its pitch, in the long room; a thread of high glass
+  // over them. It comes up over two seconds and goes when time runs.
   function held(on) {
     const b = storyBus(); if (!b) return;
     if (on && !pad && !muted) {
-      const g = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain(), os = [110, 164.8, 220.6, 329.2].map((f, i) => { const o = ctx.createOscillator(), og = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; og.gain.value = [0.5, 0.35, 0.25, 0.12][i]; o.connect(og); og.connect(g); o.start(); return o; });
-      lfo.frequency.value = 0.13; lg.gain.value = 0.02; lfo.connect(lg); lg.connect(g.gain); lfo.start();
-      g.gain.value = 0.0001; g.connect(b); ramp(g.gain, 0.07, 2.2);
-      pad = { g, os: os.concat([lfo]) };
+      const r = hall(), g = ctx.createGain(), nodes = [];
+      for (const [i, f] of [110, 164.8, 220, 246.9, 329.6].entries()) {
+        const o = ctx.createOscillator(), vib = ctx.createOscillator(), vg = ctx.createGain(), og = ctx.createGain();
+        o.type = 'sawtooth'; o.frequency.value = f; vib.frequency.value = 4.6 + i * 0.35; vg.gain.value = f * 0.004; vib.connect(vg); vg.connect(o.frequency);
+        for (const [F, k] of [[820, 1], [1180, 0.6], [2700, 0.18]]) { const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = F; bp.Q.value = 9; const fg = ctx.createGain(); fg.gain.value = k; o.connect(bp); bp.connect(fg); fg.connect(og); }
+        og.gain.value = [0.5, 0.42, 0.4, 0.26, 0.3][i]; og.connect(g); o.start(); vib.start(); nodes.push(o, vib);
+      }
+      const hi = ctx.createOscillator(), hg = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+      hi.type = 'sine'; hi.frequency.value = 1318.5; hg.gain.value = 0.05; hi.connect(hg); hg.connect(g); lfo.frequency.value = 0.11; lg.gain.value = 0.03; lfo.connect(lg); lg.connect(hg.gain); hi.start(); lfo.start(); nodes.push(hi, lfo);
+      g.gain.value = 0.0001; g.connect(r); g.connect(b); ramp(g.gain, 0.11, 2.4);
+      pad = { g, os: nodes };
     } else if (!on && pad) {
-      const q = pad; pad = null; ramp(q.g.gain, 0.0001, 0.7);
-      setTimeout(() => { try { q.os.forEach(o => o.stop()); q.g.disconnect(); } catch (e) { /* already gone */ } }, 2500);
+      const q = pad; pad = null; ramp(q.g.gain, 0.0001, 0.9);
+      setTimeout(() => { try { q.os.forEach(o => o.stop()); q.g.disconnect(); } catch (e) { /* already gone */ } }, 3200);
     }
   }
   return { start, get ctx() { return ctx; }, voice, sfx, held, musicBus, murmur, screens, piyo, kakko, walkCall, train, clack, platformChime, doorChime, melody, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, thunder, hush, cicadas, car, skid, beep, step, horn, honk, chime, bell, kan, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };

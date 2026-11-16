@@ -187,7 +187,9 @@ window.OEStory = (function () {
     function aimAt(at, turn) { st.target = at; ctx.beacon(at); if (!at) mark.classList.remove('on'); else if (turn && ctx.look) ctx.look(at); } // (turn: the view is brought round to it, so that a new goal is in front of you)
     function markTick() {
       if (!st.target) return;
-      const q = ctx.screen(st.target), W = ctx.stage.clientWidth, H = ctx.stage.clientHeight, m = 46;
+      const via = ctx.via ? ctx.via(st.target) : null, to = via || st.target; // (a place up a tower: the lift's door first)
+      if (String(via) !== String(st.via)) { st.via = via; ctx.beacon(to); }
+      const q = ctx.screen(to), W = ctx.stage.clientWidth, H = ctx.stage.clientHeight, m = 46;
       let x = q.x * W, y = q.y * H;
       if (!q.front) { x = W - x; y = H - m; } // (behind: its mark at the foot of the frame, on its side)
       const off = !q.front || x < m || x > W - m || y < m || y > H - m;
@@ -215,6 +217,7 @@ window.OEStory = (function () {
       const ep = st.ep || dress();
       if (!ep) return;
       ctx.stage.classList.add('story-on');
+      for (const [i, r] of (ep.set || []).entries()) if (ctx.relic && !st[`set${i}`]) st[`set${i}`] = ctx.relic(Object.assign({ set: true }, r)); // (tonight's own set dressing: a lift's doors, a sign)
       for (const c of ep.cast || []) if (!st.cast[c.id]) st.cast[c.id] = Object.assign(ctx.figure(Object.assign({ alive: true }, c), c.at), { name: c.name, role: c.role, age: c.age, voice: c.voice });
       const k = kept();
       if (k) { st.left = k.left; st.prints = k.prints; }
@@ -230,10 +233,12 @@ window.OEStory = (function () {
     function frame(i) {
       const fr = st.ep.frames[i];
       st.fi = i; st.fr = fr; st.phase = 'go'; st.t = 0; st.late = false; st.asked = 0;
-      if (fr.weather) ctx.weather(fr.weather);
+      if (fr.weather) ctx.weather(fr.weather, !!fr.wet);
       keep();
       // the scene's air (leaves, birds), made again only where the scene's differs; and a car, where the frame sends one
       { const a = JSON.stringify(fr.air || (fr.weather === 'rain' || st.rain ? { leaves: 40, birds: 0 } : {})); if (a !== st.air && ctx.air) { st.air = a; ctx.air(JSON.parse(a)); } }
+      // the score, set to the scene: the evening going into night as the frames go, the roof's air, the rain
+      if (ctx.score) ctx.score(Object.assign({ slot: i < 3 ? 'evening' : 'night', hour: 17.3 + i * 0.55, rain: fr.weather === 'rain' || st.rain ? 0.8 : 0, mode: i === 3 ? 'heli' : 'foot' }, fr.score || {}));
       if (fr.weather === 'rain' && !st.rain) { st.rain = true; later(1500, () => { say('It has begun to rain'); sfx('rain'); }); }
       const go = () => {
         if (st.fr !== fr) return;
@@ -270,6 +275,7 @@ window.OEStory = (function () {
       st.phase = 'stop'; st.t = 0; st.beat = 'still';
       veil.classList.add('on'); ctx.stage.classList.add('story-stop');
       ctx.hush(true); ctx.hold(true); sfx('stop'); if (ctx.held) ctx.held(true);
+      if (fr.light && ctx.light) ctx.light(fr.light); // (a Stop that goes back to an hour: the last one, to the blue hour she waited at)
       pulse();
       if (!first) say('Time has stopped');
       // the view turns through the held street: once round the first time, a quarter turn every time after, so that
@@ -390,7 +396,7 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
       if (st.phase === 'go' && st.beat === 'ride') { // the car: its mark on it as it comes and waits; gone from the frame while you ride; on when you are out, or have walked there
         const r = ctx.rideNow(), R = fr.ride, there = near(R.to, 45);
         if (r && r.state !== 'in') { if (!st.target || Math.hypot(st.target[0] - r.at[0], st.target[1] - r.at[1]) > 1.5) aimAt(spot(r.at)); const text = r.state === 'coming' ? R.line || 'A car is coming for you.' : R.board || 'Your car is here. Get in.'; if (text !== goalText) goal(text); st.inCar = false; }
-        else if (r) { if (!st.inCar) { st.inCar = true; aimAt(null); goal(R.riding || ''); } }
+        else if (r) { if (!st.inCar) { st.inCar = true; aimAt(null); goal(R.riding || ''); if (ctx.score) ctx.score({ mode: 'ride' }); } }
         if (!r || (there && (!r || r.state !== 'in'))) { st.inCar = false; aimAt(null); goal(''); const f = st.rideGo; st.rideGo = null; f(); }
       }
       st.t += dt;
@@ -456,7 +462,9 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
       get stopped() { return st.phase === 'stop'; },
       get scale() { return st.phase === 'idle' || st.phase === 'dressed' || st.phase === 'done' ? 1 : st.k * st.k; }, // how much time the world is given: 1 running, 0 held
       get orbit() { return st.orbit; },
-      get finder() { return st.phase === 'stop' && st.beat === 'shoot' && !!st.cam; }, // the camera is raised: the game shows the lens's view
+      // the camera's own view: while it is raised; and through the last frame's ending (the two of them meeting, and the
+      // words after), which is watched from where the picture was taken, not from a camera behind you that has a wall in it
+      get finder() { return (st.phase === 'stop' && ((st.beat === 'shoot' && !!st.cam) || st.beat === 'meeting' || (st.beat === 'shown' && !!(st.fr && st.fr.finale)))) || (st.phase === 'after' && !!(st.fr && st.fr.finale)); }, // the camera is raised: the game shows the lens's view
       get on() { return st.phase !== 'idle' && st.phase !== 'done'; },
       dispose() {
         timers.forEach(clearTimeout); removeEventListener('keydown', onKey, true); ctx.beacon(null);

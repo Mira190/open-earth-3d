@@ -24,7 +24,7 @@ const { chromium } = require('playwright');
     if (key !== last || i % 8 === 0) { console.log(i, JSON.stringify(s).slice(0, 260)); last = key; await p.screenshot({ path: `${out}/r${String(i).padStart(2, '0')}.png` }); }
     const r = await p.evaluate(() => { const g = window.__game, r = g.story && null; return null; });
     const goal = await p.evaluate(() => document.querySelector('#g-story-goal span').textContent);
-    if (/is here/.test(goal) && s.mode === 'foot') { await p.evaluate(() => { const g = window.__game, t = g.story.state.target, pl = g.player; if (t) { pl.x = t[0] + 2.2; pl.y = t[1] + 1.5; } }); await p.waitForTimeout(700); await p.keyboard.press('KeyE'); }
+    if (/is here|at the kerb/.test(goal) && s.mode === 'foot') { await p.evaluate(() => { const g = window.__game, t = g.story.state.target, pl = g.player; if (t) { pl.x = t[0] + 2.2; pl.y = t[1] + 1.5; } }); await p.waitForTimeout(700); await p.keyboard.press('KeyE'); }
     if (s.mode === 'ride' && /Get out at/.test(s.prompt)) await p.keyboard.press('KeyE');
     if (s.mode === 'ride' && i % 3 === 0) await p.screenshot({ path: `${out}/d${String(i).padStart(2, '0')}.png` });
     if (i % 6 === 0) console.log('  goal:', goal, '| d', Math.round(d));

@@ -125,20 +125,8 @@ window.OEStopFX = (function () {
       }
       birds.children.forEach(m => { m.instanceMatrix.needsUpdate = true; });
     }
-    // the sound of it: a tone falling away to nothing as time slows, and rising back as it is let go
-    function sweep(down) {
-      try {
-        const ac = audio && audio();
-        if (!ac || (sound && !sound())) return;
-        const t = ac.currentTime, o = ac.createOscillator(), o2 = ac.createOscillator(), gn = ac.createGain(), d = down ? 1.5 : 0.8;
-        o.type = 'sine'; o2.type = 'triangle';
-        o.frequency.setValueAtTime(down ? 420 : 46, t); o.frequency.exponentialRampToValueAtTime(down ? 38 : 300, t + d);
-        o2.frequency.setValueAtTime(down ? 633 : 69, t); o2.frequency.exponentialRampToValueAtTime(down ? 57 : 452, t + d);
-        gn.gain.setValueAtTime(0.0001, t); gn.gain.exponentialRampToValueAtTime(0.16, t + 0.06); gn.gain.exponentialRampToValueAtTime(0.0001, t + d);
-        o.connect(gn); o2.connect(gn); gn.connect(ac.destination); o.start(t); o2.start(t); o.stop(t + d + 0.05); o2.stop(t + d + 0.05);
-      } catch (e) { /* no sound: the picture carries it */ }
-    }
-
+    // (it makes no sound of its own: a tone falling away was tried here and was a telephone running out of battery; the
+    // story's own sound has the Stop's: audio.js)
     const drop = o => { if (!o) return; world.remove(o); o.traverse(q => { if (q.geometry && !q.isInstancedMesh) q.geometry.dispose(); if (q.material) q.material.dispose(); if (q.isInstancedMesh) q.dispose(); }); }; // (the models' geometry is kept)
     function dispose() { drop(g); drop(amb); g = amb = leaves = birds = motes = drops = ring = splash = null; }
     // the scene's air: made once per scene, round the player, and running from then on
@@ -166,9 +154,8 @@ window.OEStopFX = (function () {
       ring = new THREE.Mesh(new THREE.RingGeometry(0.965, 1, 128), new THREE.MeshBasicMaterial({ color: 0xbfd6ff, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
       ring.rotation.x = -Math.PI / 2; ring.position.y = 0.12; ring.renderOrder = 19; g.add(ring);
       world.add(g);
-      sweep(true);
     }
-    function release() { if (g && letGo < 0) { letGo = 0; sweep(false); } }
+    function release() { if (g && letGo < 0) letGo = 0; }
     function tick(dt, scale, player, high = false) {
       const wdt = dt * scale, running = scale > 0.5;
       if (want && kit) air(player, { leaves: want.nl, birds: want.nb });

@@ -202,6 +202,8 @@ The owner should not be the one who finds the bug.
     nothing;
   - make one change with the editor's own edit, which says at once when it does not apply; keep a script for
     changes that have to be made together, check every anchor before writing any file, and print the one that failed;
+  - a replacement never ends in a `//` comment unless it ends its line in the file: put into the middle of a line it
+    comments out the rest of that line (this broke the game's script twice);
   - chain what depends on the edit with `&&`, and after a batch look for one of its own new lines (`grep -c`) before
     running, packing or filming anything on top of it;
   - a pass that only looked right because the edit never landed is the worst outcome: when a still shows no change,
