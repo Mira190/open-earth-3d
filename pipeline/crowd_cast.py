@@ -40,6 +40,8 @@ PEOPLE = os.path.join(ROOT, "web", "assets", "people")
 TRIANGLES = 1000
 BODY, HEAD = 128, 64
 CELL = (BODY, BODY + HEAD)          # w, h: the body over the head and the hair cards side by side
+KEEP = 204   # (as blender/build_people.py KEEP)
+HIGH_CAST = 16   # (as web/game/game.js HIGH_CAST)
 UNIFORM = re.compile(r"Police|Pilot|Security|Construction|Delivery|Gardener|Worker|Nurse|Chef")   # (as game.js realCast)
 
 
@@ -63,7 +65,7 @@ def cast(info):
     for cid in live_cities():
         cc = json.load(open(os.path.join(ROOT, "cities", cid, "city.json"))).get("game", {}).get("crowd", {}).get("cast")
         if cc:
-            named |= set(cc.get("f", [])[:6]) | set(cc.get("m", [])[:6])
+            named |= set(cc.get("f", [])[:HIGH_CAST // 2]) | set(cc.get("m", [])[:HIGH_CAST // 2])
     return sorted((named if named else names) & set(npcs))
 
 
@@ -113,6 +115,10 @@ def far_copy(name, sex):
     # (rect: x, y, w, h in the cell's pixels)
     rects = {"body": (0, 0, BODY, BODY), "head": (0, BODY, HEAD, HEAD), "hair": (HEAD, BODY, HEAD, HEAD)}
     pos, nrm, uv, part, idx = [], [], [], [], []
+    # a body whose picture marks its skin in its alpha (build_people.py skin_mask: KEEP, cloth 255) carries the mark into
+    # the cell, where the head and the hair are marked too: the crowd's change of clothes leaves all three as they are
+    # (people.js DRESS). The cards' cut-out stays under the cut-off (0.4) where it was under half.
+    masked = "body" in by and np.asarray(ims[by["body"]["material"]])[..., 3].min() < 255
     for kind in ("body", "head", "hair"):
         p = by.get(kind)
         if not p:
@@ -143,20 +149,22 @@ def far_copy(name, sex):
                         a[..., :3] *= min(1.6, max(0.7, k))
                         mean *= min(1.6, max(0.7, k))
             a[~opaque, :3] = mean
+            if masked:
+                a[..., 3] *= KEEP / 255
             src = Image.fromarray((np.clip(a, 0, 1) * 255).astype(np.uint8), "RGBA")
             # lit as one head of hair: every normal out from the middle of the cards; both sides drawn
             mid = (P.min(0) + P.max(0)) / 2
             N = (P - mid) / np.maximum(1e-6, np.linalg.norm(P - mid, axis=1, keepdims=True))
             I = np.concatenate([I, I[:, [0, 2, 1]]])
-        else:
+        elif not (masked and kind == "body"):
             src = src.copy()
-            src.putalpha(255)
+            src.putalpha(KEEP if masked else 255)
         cell.paste(src.resize((w, h), Image.LANCZOS), (x0, y0))
         base = sum(len(q) for q in pos)
         pos.append(P); nrm.append(N); part.append(np.array(p["part"], np.uint8)); idx.append(I + base)
         uv.append(np.stack([(x0 + np.clip(U[:, 0], 0, 1) * w) / CELL[0], (y0 + np.clip(U[:, 1], 0, 1) * h) / CELL[1]], 1))
     return {"pos": np.concatenate(pos), "nrm": np.concatenate(nrm), "uv": np.concatenate(uv), "part": np.concatenate(part),
-            "idx": np.concatenate(idx), "pivots": g["pivots"], "cell": cell}
+            "idx": np.concatenate(idx), "pivots": {**g["pivots"], **({"mask": 1} if masked else {})}, "cell": cell}
 
 
 class GLB:

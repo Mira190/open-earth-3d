@@ -267,6 +267,16 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
   });
   if (opening) check((opening.kerb < 3 || opening.on < 2) && opening.ph === '3g' && opening.walkers >= 6,
     `the game opens at the scramble's kerb (${opening.kerb.toFixed(1)} m from a crosswalk's end, ${opening.on.toFixed(1)} m from its stripes), in its walk (phase ${opening.ph}), ${opening.walkers} walkers within 10 m`);
+  // a map that says where its people are (game.crowd.places, issue 494) opens with them round you where you start
+  // in one: put there on the crowd's first step, not 45 m off as a latecomer is (actors.js update)
+  const placed = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, at = (g.G.start || {}).at || [pl.x, pl.y];
+    const here = ((g.G.crowd || {}).places || []).find(q => Math.hypot(q.at[0] - at[0], q.at[1] - at[1]) < (q.r || 80));
+    if (!here) return null;
+    const d = g.crowd.P.slice(0, g.crowd.active).filter(q => q.line >= 0).map(q => Math.hypot(q.x - at[0], q.y - at[1]));
+    return { id: here.id || 'a place', near: d.filter(v => v < 60).length, out: g.crowd.active };
+  });
+  if (placed) check(placed.near >= 10, `the crowd is round you where the game starts (${placed.near} walkers within 60 m of the start, in ${placed.id}; ${placed.out} out)`);
   check(onboard.arrived < 4.5, `the arrival hands over to the chase camera (${onboard.arrived.toFixed(2)} s after the start; the camera ${onboard.near.toFixed(1)} m from the player's head)`);
   // the HUD's buttons: the map and the menu stay, the rest fold behind "more" once the tour is over (index.html .g-btns)
   const tray = await p.evaluate(() => {

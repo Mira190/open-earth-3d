@@ -616,8 +616,17 @@
     "scrambles": [
       {"name": "数寄屋橋 Sukiyabashi", "at": [385.0, 279.8], "note": "Harumi-dori and Sotobori-dori in Ginza; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); both diagonals mapped in OSM."}
     ],
-    "crowd": {"cast": {"f": ["R_Business_Female_03", "R_Female_Adult_09_f011_grey", "R_Female_Adult_15_f013", "R_Female_Adult_08", "R_Business_Female_04_f003", "R_Female_Adult_13_f003_brown", "R_Female_Adult_17_f011", "R_Female_Adult_11"], "m": ["R_Business_Male_02", "R_Business_Male_06_m017", "R_Male_Adult_05", "R_Sports_Male_04_m024", "R_Male_Adult_14_m017_grey", "R_Male_Adult_20_m008", "R_Male_Adult_06_m024_brown", "R_Male_Adult_13"], "note": "the walkers drawn as people, in order: Marunouchi's office workers and Ginza's shoppers, and every fourth a visitor from abroad (an estimate)"}, 
+    "crowd": {"cast": {"f": ["R_Business_Female_03", "R_Female_Adult_09_f011_grey", "R_Female_Adult_15_f013", "R_Female_Adult_08", "R_Business_Female_04_f003", "R_Female_Adult_13_f003_brown", "R_Female_Adult_08_f016", "R_Female_Adult_15_f011_brown", "R_Female_Adult_17_f011", "R_Female_Adult_11"], "m": ["R_Business_Male_02", "R_Business_Male_06_m017", "R_Male_Adult_05", "R_Sports_Male_04_m024", "R_Male_Adult_14_m017_grey", "R_Male_Adult_20_m008", "R_Male_Adult_11_m017", "R_Male_Adult_13_m008_grey", "R_Male_Adult_06_m024_brown", "R_Male_Adult_13"], "note": "the walkers drawn as people, in order: Marunouchi's office workers and Ginza's shoppers, and every fourth a visitor from abroad (an estimate)"}, 
       "pedestrians": 520,
+      "pedestrians_peak": 760,
+      "hours": [[0, 0.16], [2, 0.08], [5, 0.12], [7, 0.6], [8, 1], [9, 0.8], [11, 0.72], [12, 1], [13, 0.85], [15, 0.72], [17, 0.86], [18, 1], [20, 0.7], [22, 0.42], [23, 0.26]],
+      "places": [
+        {"id": "marunouchi-plaza", "at": [556, 1206], "r": 70, "share": 0.28, "pull": 0.55, "hours": [[0, 0.5], [7, 1], [9, 0.8], [12, 1], [14, 0.8], [17, 1], [20, 0.8], [23, 0.5]],
+         "paths": [[[598, 1248], [590, 1262], [590, 1284], [590, 1305]],
+                   [[522, 1284], [560, 1284], [590, 1284], [606, 1284]]],
+         "note": "the plaza in front of Tokyo Station's Marunouchi side, where the game starts: commuters at each end of the day, the offices' lunch hour, visitors photographing the brick front between"}
+      ],
+      "places_note": "places: where the crowd gathers (issue 494). paths: ways across the open paving the crowd walks besides the mapped footways (the plaza north of the taxi rotary, between its lawns; none along the rotary's kerb, where people a step from the carriageway held the taxis up), ends joined to mapped footways where one ends within 6 m. share: the part of the walkers put on the street who are put within r of the place; pull: how often a walker near it turns towards it at the end of a footway; hours: [hour, weight] on the share. hours (the crowd's own): the share of the pool out by the hour, an office district's day: the commute at 8:00 and 18:00, lunch at 12:00, few after the last trains (the shape is an estimate, not a count). pedestrians_peak: the pool on a desktop; a phone keeps pedestrians.",
       "cars": 190,
       "radius_m": 450,
       "style": "tokyo"

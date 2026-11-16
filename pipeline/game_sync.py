@@ -70,8 +70,8 @@ def main(cities):
             if travel != game.get("travel"):
                 game["travel"] = travel
                 changed.append(f"{len(travel)} travel points")
-        # the crowd's settings the page reads as they are (the real people's cast, their heights: people.js)
-        for k in ("real", "real_from", "height"):
+        # the crowd's settings the page reads as they are (the real people's cast, their heights: people.js; how many are out, when and where: game.js busy and places)
+        for k in ("real", "real_from", "height", "cast", "pedestrians", "pedestrians_peak", "hours", "weekend", "weekend_night", "places"):
             if k in (gcfg.get("crowd") or {}) and (game.get("crowd") or {}).get(k) != gcfg["crowd"][k]:
                 game.setdefault("crowd", {})[k] = gcfg["crowd"][k]
                 changed.append(f"crowd.{k}")
