@@ -424,6 +424,12 @@ landmarks' meshes, which went on being solid and being stood on where they had b
   cars (the shared models' parts and your own parked car are not read), the cell beside a solid post, and places
   no walker reaches (the inside of the block behind the station: a flood from the level's middle decides). What
   it lists now it names by mesh, and each barred point by what stands there and which line it is on.
+- Shibuya's three were the map's footways going down subway stairs through the entrances' glass (the crowd keeps
+  out of a stair well while the station below is not built) and one along the inside of the station building's
+  hoarding; a fourth line ran through a signal post on Dogenzaka. `cities/shibuya/city.py` `scramble_walls` names
+  them (the wells' rings 1.3 m out, the station's solids, the post) and the lines stop and bend in the data. Shibuya:
+  no unseen wall, no barred footway, nothing walked through; `BARRED_KNOWN` in `tools/game_check.js` is empty, for
+  every map.
 - Sydney's quay had no unseen wall and no barred footway, and 40 things walked through: all that its builder
   stands on the paving, which nothing made solid (the lawn's palms are the level's own, the map's being cleared
   from that ground). The builder now records each as it places it (`cities/sydney/hero.py` `_post`: palms, ball
