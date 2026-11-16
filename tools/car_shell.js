@@ -54,6 +54,8 @@ async function read(file) {
       const M = json.materials[p.material] || {};
       const part = { material: M.name, triangles: I.length / 3, doubleSided: !!M.doubleSided, alphaMode: M.alphaMode || 'OPAQUE',
         alpha: M.pbrMetallicRoughness && M.pbrMetallicRoughness.baseColorFactor ? M.pbrMetallicRoughness.baseColorFactor[3] : 1 };
+      // (its baked occlusion, the vertex colours' red: the mean over its vertices, 1 in the open)
+      if (p.attributes.COLOR_0 != null) { const C = accessor(p.attributes.COLOR_0), n = json.accessors[p.attributes.COLOR_0].type === 'VEC4' ? 4 : 3; let a = 0; for (let i = 0; i < C.length; i += n) a += C[i]; part.ao = a / (C.length / n); part.vertices = C.length / n; }
       parts.push(part);
       for (let t = 0; t < I.length; t += 3) {
         const tri = [];
@@ -105,6 +107,7 @@ function view(tris, ax, sign, box, px, by) {
     if (!m) { console.log(`no mesh ${name}: ${Object.keys(full).join(', ')}`); process.exit(2); }
     const box = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
     for (const t of m.tris) for (let k = 0; k < 9; k++) { box[k % 3] = Math.min(box[k % 3], t[k]); box[3 + k % 3] = Math.max(box[3 + k % 3], t[k]); }
+    console.log('occlusion ' + m.parts.map(q => `${q.material} ${q.ao == null ? '-' : q.ao.toFixed(2)} (${q.vertices} v)`).join('  '));
     for (const [ax, sign, side] of SIDES) {
       const by = {};
       Object.defineProperty(by, 'all', { value: true });

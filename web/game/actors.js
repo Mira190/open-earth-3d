@@ -133,7 +133,9 @@ vCol = tone < 0.5 ? aC0 : tone < 1.5 ? aC1 : tone < 2.5 ? aC2 : tone < 3.5 ? aC3
   : tone < 8.5 ? vec3(0.03) : tone < 9.5 ? vec3(0.8) : tone < 10.5 ? vec3(0.42, 0.43, 0.45) : tone < 11.5 ? vec3(0.78, 0.78, 0.72) : tone < 12.5 ? vec3(0.9, 0.8, 0.42) : vec3(0.7, 0.32, 0.02);
 vEmit = tone > 5.5 && tone < 7.5 ? (tone < 6.5 ? 1.0 : 0.7) : tone > 11.5 && tone < 12.5 ? 0.3 : 0.0; // (a taxi's roof sign: a lit panel, not a lamp, that blooms across the car behind it)
 #ifdef TONE_CARS
-vAO = ao; vTone = tone;
+// (a pane of glass takes no occlusion: its few vertices lie under its frame, where the bake is darkest, and fewer are
+// left in the mid and far copies, sedan 0.68, 0.40, 0.14, so that the far glass lost its reflection and drew black, #525)
+vAO = tone > 3.5 && tone < 4.5 ? 1.0 : ao; vTone = tone;
 // a car's brake lights and indicators (#355), per car in aC3 (a tone no car has): x how hard it brakes, y its
 // indicators (1 left, -1 right, 2 both: hazards), flashing 85 times a minute; the left lamps are on the model's +x
 float sgn = aC3.y, flash = step(0.5, fract(uTime * 1.42));

@@ -9,6 +9,7 @@
 // Env: TIER (quality.js: high by default; low, medium), LEAN=1 (a phone, as tools/game_shot.js), TIME ("12:00"),
 // MODEL (a model's name instead of the bus, "Car_Van"), FAR_ONLY=1 keeps the near models from coming (cars.glb is
 // refused), so that every still is of the far stand-in, as in the seconds after the game opens.
+// FAR_THEN_NEAR=1 takes each view twice of the same bus: of the stand-in with cars.glb held back, then with it in.
 // A view is taken from the nearest bearing to the one asked that shows the bus (the frame drawn with it and without,
 // compared), the world run on until there is one. Prints, per still, the bus's place, the bearing taken, the share
 // of the frame it fills, the mesh it was drawn in and how many of each mesh were drawn.
@@ -34,6 +35,11 @@ const views = viewsArg.split(',').map(s => { const [dist, az = 90, up = 1.7, fov
     };
   });
   if (process.env.FAR_ONLY) await p.route('**/assets/vehicles/cars.glb', r => r.abort());
+  // FAR_THEN_NEAR=1: cars.glb is held back while the views are taken of the far stand-in, then let through and the
+  // same views taken of the same bus with its near models in
+  const both = !!process.env.FAR_THEN_NEAR && !process.env.FAR_ONLY;
+  let release = () => {};
+  if (both) { const held = new Promise(r => { release = r; }); await p.route('**/assets/vehicles/cars.glb', async r => { await held; r.continue(); }); }
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   fs.mkdirSync(outDir, { recursive: true });
@@ -48,7 +54,7 @@ const views = viewsArg.split(',').map(s => { const [dist, az = 90, up = 1.7, fov
     if (g.cine.active) g.cine.skip();
   });
   // the near and mid models in (or kept out), then a bus on the road
-  if (!process.env.FAR_ONLY) await p.evaluate(() => window.__game.lateReady && window.__game.lateReady());
+  if (!process.env.FAR_ONLY && !both) await p.evaluate(() => window.__game.lateReady && window.__game.lateReady());
   const found = await p.evaluate(async ([model, time]) => {
     const g = window.__game, C = g.cars.C, c0 = g.clock;
     const [hh, mm] = time.split(':').map(Number);
@@ -61,8 +67,12 @@ const views = viewsArg.split(',').map(s => { const [dist, az = 90, up = 1.7, fov
   }, [process.env.MODEL || '', process.env.TIME || '12:00']);
   if (!found) { console.log(`no ${process.env.MODEL || 'bus'} in ${city}'s traffic`); await b.close(); process.exit(1); }
   console.log(JSON.stringify(found));
-  for (const v of views) {
-    const name = `${city}_${lean ? 'phone' : tier}${process.env.FAR_ONLY ? '_faronly' : ''}_d${v.dist}_az${v.az}${v.fov ? `_fov${v.fov}` : ''}`;
+  for (const pass of both ? ['far', 'near'] : [process.env.FAR_ONLY ? 'far' : 'near']) for (const v of views) {
+    if (both && pass === 'near' && v === views[0]) {
+      release();
+      await p.evaluate(async () => { const g = window.__game; g.photoMode(false); await g.lateReady(); for (let i = 0; i < 100 && !g.late().fleetNear; i++) await new Promise(r => setTimeout(r, 200)); });
+    }
+    const name = `${city}_${lean ? 'phone' : tier}${pass === 'far' ? '_faronly' : ''}_d${v.dist}_az${v.az}${v.fov ? `_fov${v.fov}` : ''}`;
     const info = await p.evaluate(async v => {
       const g = window.__game, c = window.__bus, RAD = Math.PI / 180;
       // you stand beside it (the traffic and the map are kept round you), out of the picture; photo mode holds the camera
