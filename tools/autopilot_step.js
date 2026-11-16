@@ -178,11 +178,20 @@ async function assistStep({ log = false, fresh = true } = {}) {
     // up to speed, in its lane (as lane keeping reads it), clear of a junction: towards each place offered in turn, a minute each (after 30 s
     // a shorter clear stretch will do: lanes with a junction every 50 m)
     let up = false, tried = 0, t = 0;
+    const tries = [];
     for (const d of g.destinations(st.x, st.y).filter(d => d.id !== 'car')) {
       if (tried >= 3) break;
       if (!(g.pilotTo(d, { quiet: true }) && g.pilot().len > 200)) { g.pilotOff(); continue; }
       tried++;
-      for (t = 0; t < 60 && g.pilot(); t += 0.25) { g.advance(0.25); const o = g.pilot(), q = o && o.drv.st; if (q && !o.join && st.speed > (t < 30 ? 4 : 3) && !q.mv && !(q.toLine < (t < 30 ? 30 : 12)) && Math.abs(q.shift) < 0.1 && o.drv.remaining() > (t < 30 ? 120 : 60) && (() => { const L = g.laneHere(st); if (!L || Math.abs(L.d) >= 0.8 || Math.abs(L.dh) >= 0.3) return false;
+      let vmax = 0; const whyNot = {};
+      for (t = 0; t < 60 && g.pilot(); t += 0.25) { g.advance(0.25); const o = g.pilot(), q = o && o.drv.st;
+        vmax = Math.max(vmax, st.speed);
+        // (CHAIN=1: the first twelve seconds of each try and every fifth after, with the cars of the traffic by it)
+        if (log && q && (t < 12 ? t % 1 === 0 : t % 5 === 0)) out.log.push(`${d.name} ${t}s at ${st.x.toFixed(1)},${st.y.toFixed(1)} v ${st.speed.toFixed(1)} (its driver ${q.v.toFixed(1)}, ${q.why || '-'}${o.join ? `, joining: ${o.joinWhy || '?'}` : ''}, wedged ${(q.wedged || 0).toFixed(1)}, ${Math.hypot(st.x - q.x, st.y - q.y).toFixed(1)} m off its line) ${A.footprint(st.x, st.y, st.z, st.h, c.C.half * 0.95, c.C.hw * 0.95, 0).toFixed(2)} m into a car; near: ${A.C.filter(k => k.line >= 0 && Math.hypot(k.x - st.x, k.y - st.y) < 9).map(k => `car ${A.C.indexOf(k)} ${Math.hypot(k.x - st.x, k.y - st.y).toFixed(1)} m v ${k.v.toFixed(1)} ${k.why || ''}${k.park ? ' parked' : ''}`).join(', ') || 'none'}`);
+        // (what kept this quarter second from being the stretch, counted, for the line when none is found)
+        const no = !q ? 'handed back' : o.join ? 'joining its lane' : st.speed <= (t < 30 ? 4 : 3) ? `slow (${q.why || 'pulling away'})` : q.mv ? 'in a junction' : q.toLine < (t < 30 ? 30 : 12) ? 'a stop line near' : Math.abs(q.shift) >= 0.1 ? 'out of its lane round something' : o.drv.remaining() <= (t < 30 ? 120 : 60) ? 'near the end of its way' : '';
+        if (no) { whyNot[no] = (whyNot[no] || 0) + 1; continue; }
+        if ((() => { const L = g.laneHere(st); if (!L || Math.abs(L.d) >= 0.8 || Math.abs(L.dh) >= 0.3) return false;
         // (and no wall across the way 60 m on: a street shut off at its end, where lane keeping goes straight on)
         // (along the way it is driving, not straight ahead: a winding street meets a facade at every bend)
         const P = o.drv.path, at = {};
@@ -196,12 +205,14 @@ async function assistStep({ log = false, fresh = true } = {}) {
         // (and straight ahead for 25 m, where lane keeping goes on as the way turns: a street shut off at its end, Kyoto)
         const fx = Math.sin(st.h), fy = Math.cos(st.h);
         for (let a = 3; a < 25; a += 2) { const x = st.x + fx * a, y = st.y + fy * a, w = g.nav.push(x, y, st.z, 0.3, 1.6); if (Math.hypot(w.x - x, w.y - y) > 0.01) return false; }
-        return true; })()) { up = true; break; } }
+        return true; })()) { up = true; break; }
+        whyNot['no clear 40 m of one road ahead'] = (whyNot['no clear 40 m of one road ahead'] || 0) + 1; }
+      tries.push(`${d.name}: ${t.toFixed(0)} s, ${(vmax * 3.6).toFixed(0)} km/h at most, ${Object.entries(whyNot).sort((x, y) => y[1] - x[1]).slice(0, 4).map(([k, n]) => `${k} ${(n / 4).toFixed(0)} s`).join(', ') || 'nothing in the way'}${g.pilot() ? '' : `, ${g.pilotEnd() || 'ended'}`}`);
       if (up) break;
       g.pilotOff();
     }
     if (!tried) return 'no place to drive towards';
-    if (!up) { g.pilotOff(); return 'the car never got up to speed on a clear stretch'; }
+    if (!up) { g.pilotOff(); return `the car never got up to speed on a clear stretch (${tries.join('; ')})`; }
     // handed over where your car rolls on by itself for a second: a wall on a narrow street can stand into the lane
     // its driver follows (the autopilot's car goes by it on the lane's line; the car that you drive meets it). If it
     // stops, the autopilot takes it on 60 m and hands it over again, four times at most
@@ -219,7 +230,7 @@ async function assistStep({ log = false, fresh = true } = {}) {
     }
     return null;
   };
-  { const no = getGoing(); if (no) return { none: no }; }
+  { const no = getGoing(); if (no) return { none: no, log: out.log }; }
   if (!g.assist.lane) g.assistToggle('lane');
   if (!g.assist.cruise) g.assistToggle('cruise');
   Object.assign(out, { set: g.assist.set, off: 0, laneT: 0, cruiseT: 0, over: 0, deep: 0, red: 0, stops: 0, vmin: st.speed, dist: 0 });
@@ -338,8 +349,8 @@ async function railStep() {
     if (X) break;
   }
   if (!X) return { none: 'no street near you busy and long enough for a crossing' };
-  const w = X.rail.w, out = { line: X.line, cls: L[X.line].c, crossedOpen: 0, onShut: 0, stoodOn: 0, waited: 0, crossedAfter: null, kept: 0, log: [] };
-  const was = new Map(), stood = new Map(), hist = new Map();
+  const w = X.rail.w, out = { line: X.line, cls: L[X.line].c, crossedOpen: 0, onShut: 0, stoodOn: 0, waited: 0, crossedAfter: null, kept: 0, forPerson: 0, log: [] };
+  const was = new Map(), stood = new Map(), hist = new Map(), forPerson = new Set();
   const step = (secs, tag) => {
     for (let t = 0; t < secs; t += 0.25) {
       g.advance(0.25);
@@ -356,8 +367,12 @@ async function railStep() {
         if (h.length > 32) h.shift();
         const st = on && c.v < 0.3 ? (stood.get(c) || 0) + 0.25 : 0;
         stood.set(c, st);
+        // (one that stands for a person walking across in front of it is not a queue on the rails: it cannot drive on, and
+        // is counted apart; on the rails once the crossing is shut it fails all the same, above)
+        if (!st) forPerson.delete(c); else if (c.why === 'person') forPerson.add(c);
+        if (st === 3 && forPerson.has(c)) out.forPerson++;
         // (not one already there when the check laid the crossing down under it)
-        if (st === 3 && !(tag === 'open' && t < 5)) { out.stoodOn++; if (out.log.length < 6) out.log.push(`${tag} ${t}s: car ${A.C.indexOf(c)} stood on the rails, ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''} [${d.toFixed(1)} m past the middle, lane ${c.ln || 0}${c.mv ? ', in a junction' : ''}${c.rev ? ', backing' : ''}; in front ${c.front ? `car ${A.C.indexOf(c.front)} ${((c.front.s - c.s) * c.dir).toFixed(1)} m on${c.front.line !== c.line ? ` on piece ${c.front.line}` : ''}, v ${c.front.v.toFixed(1)}, lane ${c.front.ln || 0}, ${c.front.why || 'going'}${c.front.park ? ', parked' : ''}${c.front.parking ? ', parking' : ''}` : 'no car'}; its last 8 s, m past the middle/speed/lane/why/front: ${(hist.get(c) || []).join(' ')}]`); }
+        if (st === 3 && !forPerson.has(c) && !(tag === 'open' && t < 5)) { out.stoodOn++; if (out.log.length < 6) out.log.push(`${tag} ${t}s: car ${A.C.indexOf(c)} stood on the rails, ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''} [${d.toFixed(1)} m past the middle, lane ${c.ln || 0}${c.mv ? ', in a junction' : ''}${c.rev ? ', backing' : ''}; in front ${c.front ? `car ${A.C.indexOf(c.front)} ${((c.front.s - c.s) * c.dir).toFixed(1)} m on${c.front.line !== c.line ? ` on piece ${c.front.line}` : ''}, v ${c.front.v.toFixed(1)}, lane ${c.front.ln || 0}, ${c.front.why || 'going'}${c.front.park ? ', parked' : ''}${c.front.parking ? ', parking' : ''}` : 'no car'}; its last 8 s, m past the middle/speed/lane/why/front: ${(hist.get(c) || []).join(' ')}]`); }
         if (tag === 'shut' && c.why === 'light' && c.v < 0.3 && d < 0 && d > -30) out.waited = Math.max(out.waited, 1);
         if (c.why === 'rails') out.kept++;
       }
@@ -377,7 +392,7 @@ async function railStep() {
 function railChecks(r) {
   if (r.none) return [[true, `level crossings: ${r.none}`]];
   return [
-    [r.onShut === 0 && r.stoodOn === 0, `at a level crossing on a ${r.cls} street the traffic stops for the alarm and keeps the rails clear (${r.crossedOpen} crossed while it was open; shut, ${r.queue} queued and ${r.onShut} car-steps on the rails; ${r.stoodOn} stood on them; held back for room beyond ${r.kept} car-steps)${r.log.length ? `: ${r.log.join('; ')}` : ''}`],
+    [r.onShut === 0 && r.stoodOn === 0, `at a level crossing on a ${r.cls} street the traffic stops for the alarm and keeps the rails clear (${r.crossedOpen} crossed while it was open; shut, ${r.queue} queued and ${r.onShut} car-steps on the rails; ${r.stoodOn} stood on them, ${r.forPerson || 0} for a person walking across; held back for room beyond ${r.kept} car-steps)${r.log.length ? `: ${r.log.join('; ')}` : ''}`],
     [r.crossedOpen === 0 || r.queue === 0 || r.crossedAfter != null, `and goes on when it opens (${r.crossedAfter != null ? `the first across ${r.crossedAfter.toFixed(1)} s after` : 'none came'})`],
   ];
 }

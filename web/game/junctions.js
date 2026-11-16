@@ -107,6 +107,13 @@ window.OEJunctions = (function () {
   // in decimetres; keep: the side the traffic keeps to; lane: its lane's offset from the line (m)
   function create(net, { signals = null, stops = [], giveWay = [], keep = 'left', lane = 1.7, midCrossings = null, scrambles = null, foot = null } = {}) {
     const L = net.L, side = keep === 'right' ? -1 : 1, tmp = {};
+    // is a line's end (0 its start, 1 its end) at the edge of the map: within 120 m of the box round every road
+    let box = null;
+    const atEdge = (l, end) => {
+      if (!box) { box = [Infinity, Infinity, -Infinity, -Infinity]; for (const q of L) for (let k = 0; k < q.pts.length; k += 3) { box[0] = Math.min(box[0], q.pts[k]); box[1] = Math.min(box[1], q.pts[k + 1]); box[2] = Math.max(box[2], q.pts[k]); box[3] = Math.max(box[3], q.pts[k + 1]); } }
+      const k = end ? l.pts.length - 3 : 0, x = l.pts[k], y = l.pts[k + 1];
+      return x < box[0] + 120 || x > box[2] - 120 || y < box[1] + 120 || y > box[3] - 120;
+    };
     const nodeKey = (line, end) => { const l = L[line], k = end ? l.pts.length / 3 - 1 : 0; return net.key(l.pts[3 * k], l.pts[3 * k + 1]); };
     // can a car leave a node along line `line` from its end `end` (0: with its points)?
     const canLeave = (line, end) => (end === 0 ? L[line].ow !== -1 : L[line].ow !== 1);
@@ -468,7 +475,12 @@ window.OEJunctions = (function () {
       // along (net.avoid: through a building, route.js), unless that is all there is
       // nor, given another way, a short stub that ends in nothing (the map's edge, a lane the data
       // leaves unjoined), where a car could only turn round
-      const stub = e => { const far = 1 - e.m.end; return L[e.m.line].len < 40 && !armOf.get(e.m.line * 2 + far) && !net.next(e.m.line, far, true); };
+      // nor a one-way street of any length that ends in nothing inside the map (a road the data leaves off where it
+      // goes under cover: Shibuya's Route 246 stops at the station it passes under, 79 m past junction 946), where a
+      // car cannot even turn round: in sight it stood at the end, in the wall there, then backed out the whole way
+      // into the junction behind and held it (car 184, 69 s). At the map's edge such a street is the way out of
+      // the map, and stays
+      const stub = e => { const far = 1 - e.m.end, l = L[e.m.line]; return (l.len < 40 || (l.ow && !atEdge(l, far))) && !armOf.get(e.m.line * 2 + far) && !net.next(e.m.line, far, true); };
       const av = net.avoid, ok0 = out.filter(e => !(av && av[e.m.line])), ok1 = ok0.filter(e => !stub(e)), ok = ok1.length ? ok1 : ok0, pool = ok.length ? ok : out;
       const fwd = pool.filter(e => Math.abs(e.turn) < 2.6);
       a.exits = fwd.length ? fwd : pool;

@@ -74,6 +74,17 @@ def npc_cast(listing):
             spec["cities"].add(city)
             if look.get("clip"):
                 spec["clips"].add(look["clip"])
+        # ... and its crowd's (game.crowd.cast: the walkers drawn as people; a head or a hair colour of their own on a body
+        # another of the cast wears is one more character here, issue 505)
+        crowd = ((json.load(open(path, encoding="utf8")).get("game") or {}).get("crowd") or {}).get("cast") or {}
+        for cid in (crowd.get("f") or []) + (crowd.get("m") or []):
+            m = NPC_ID.match(cid)
+            if not m or m.group(1) not in by_name or (m.group(2) and m.group(2) not in by_code):
+                raise SystemExit(f"{city}: crowd cast: no Rocketbox avatar for {cid}")
+            spec = cast.setdefault(cid, {"avatar": by_name[m.group(1)], "head": by_code[m.group(2)] if m.group(2) else None,
+                                         "tags": [t for t in m.group(3).split("_") if t],
+                                         "sex": "f" if "Female" in m.group(1) else "m", "clips": set(), "cities": set()})
+            spec["cities"].add(city)
     # the reef and alpine sites' people: every 'R_...' the viewer's scripts name, with the clip beside it if any
     for path in sorted(glob.glob(os.path.join(ROOT, "web", "reef", "*.js")) + glob.glob(os.path.join(ROOT, "web", "reef", "game", "*.js"))):
         for m2 in re.finditer(r"""['"](R_[A-Za-z0-9_]+)['"](?:\s*,\s*clip:\s*['"](\w+)['"])?""", open(path, encoding="utf8").read()):

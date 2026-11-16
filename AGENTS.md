@@ -193,6 +193,12 @@ The owner should not be the one who finds the bug.
   `tools/story_play.js` does. Stills force the desktop tier; a software renderer picks the low
   one for itself.
 - Say what you could not check: a real GPU, WebGPU, Safari or iOS.
+- A pose laid over an animation is taken off before the next frame. Twice a bone was turned after the mixer had posed
+  it (an old woman's back, the guide dog's head to look at you), and wound round and round: the turn was added to the
+  bone every frame, and the clip did not put the bone back (it does not key that bone, or the frame had no time in it:
+  a stopped world, a paused game). Keep the bone's pose as the clip left it, restore it before `mixer.update`, and lay
+  the turn over it after (`web/game/companion.js`, the story's `figure` in `web/game/game.js`). Anything that moves in
+  the story is looked at for five seconds of stills while time is held, not in one.
 - Scripted edits land whole or are seen to fail. Several times a batch of exact-string replacements was run from one
   script that asserted every anchor: one anchor was wrong (typed from memory with the wrong indentation, or made stale
   by an edit earlier in the same batch, or a pair that changed nothing), the assert stopped the script before it

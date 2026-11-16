@@ -3187,6 +3187,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       for (const l of lifts) { const far = l.stops.find(s => Math.abs(s.at[2] - z) < 16 && Math.hypot(s.at[0] - at[0], s.at[1] - at[1]) < 120), near = l.stops.find(s => Math.abs(s.at[2] - player.z) < 8); if (far && near && far !== near) best = near; }
       return best ? [best.at[0], best.at[1], best.at[2] + 1.2, best.at[2]] : null;
     },
+    // a guide (companion.js): an animal that goes ahead of you to where the story wants you
+    guide: g => (window.OECompanion && g.model ? OECompanion.create({ url: g.model, world, W, ground: (x, y) => Math.max(0, nav.terrain(x, y)), player, height: g.scale || 1,
+      people: (x, y, r) => { const out = []; if (crowd && crowd.P) for (let i = 0, n = Math.min(crowd.active, crowd.P.length); i < n; i++) { const q = crowd.P[i]; if (q.line >= 0 && Math.abs(q.x - x) < r && Math.abs(q.y - y) < r) out.push([q.x, q.y]); } return out; } }) : null),
     // the view turned towards a place (gently, and never against the player's own hand on it)
     look: at => { if (player.mode === 'foot') cam.yawTo = Math.atan2(at[0] - player.x, at[1] - player.y); },
     // the air of the scene (stopfx.js): leaves coming down and birds going over, there before time stops and held when it does

@@ -13,10 +13,16 @@
 // textures and buffers; exits 1 when a city goes over its budget:
 //   MEM_GPU   peak GPU memory, MB (default 270: quality.js budget, a tenth above the heaviest live map at the level a phone starts at, issues 406 and 443)
 //   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 400: a tenth above the heaviest live map's district)
+// The clock is pinned (GAME_TIME, 2026-11-02T10:00 in the city's time zone unless given; "live": the real clock), as the
+// game check's is: the weather is a hash of the date and the lamps follow the hour, so on the real clock the same code
+// measured 263 MB one morning and 283 the next, in the rain. Then the heaviest hour a player meets is asked for, not
+// waited for: rain at ten at night (the wet street's mirror, the umbrellas, the lamps and the windows lit), held
+// WET seconds (default 12), and the peak counts it. The line says which part the peak fell in.
 // QUERY='?district=off' measures the whole map on the phone tier, to compare with its district (pipeline/district.py).
 // TIER=low|medium|high (default low). QUERY=?a=b adds a query to the page's address. LV=n: the phone's set at level n (quality.js level: 0 the fullest, 2 what a phone starts at, 3 the lightest). SNAP=file (%c for the city) writes a heap snapshot at the end (tools/heap_owners.js). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
+const { pinClock } = require('./pin_clock');
 const fs = require('fs');
 const cities = process.argv.slice(2).length ? process.argv.slice(2) : ['shibuya'];
 const GPU_MB = +(process.env.MEM_GPU || 270), HEAP_MB = +(process.env.MEM_HEAP || 400), TOP = +(process.env.TOP || 8);
@@ -150,6 +156,7 @@ async function measure(b, city) {
     };
   });
   const p = await ctx.newPage();
+  await pinClock(p, city, process.env.GAME_TIME || '2026-11-02T10:00');
   const cdp = await ctx.newCDPSession(p);
   await cdp.send('Performance.enable');
   // SAMPLE=1: where the live objects were allocated (the sampling heap profiler, from the start), by function and script line
@@ -181,6 +188,9 @@ async function measure(b, city) {
   })();
   const t0 = Date.now();
   let ok = true, map = null, district = null;
+  // the parts of the run, each with the GPU memory held as it ended and the peak so far: the peak's part is named
+  const parts = [];
+  const part = async name => { const m = await p.evaluate(() => ({ now: window.__mem.sum, peak: window.__mem.peak })).catch(() => null); if (m) parts.push({ name, now: m.now, peak: m.peak }); };
   try {
     await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || '?walk=1'}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 400000 });
@@ -192,6 +202,7 @@ async function measure(b, city) {
       if (g.heli && g.heli.want) await g.heli.want();
       if (g.lateReady) await g.lateReady();
     });
+    await part('the load and the first play');
     // the map built round the player (world.js mapAt, issue 443): the player taken to the map's far corner and back, as a
     // helicopter or a train would take them, so the peak counts the cells of both places while they change over; the
     // cell under the player must come back whole each time
@@ -215,6 +226,7 @@ async function measure(b, city) {
       out.back = st.vertices === v0;
       return out;
     });
+    await part('the map moved to the far corner and back');
     // a phone's district (pipeline/district.py, world.js load): loaded where the map has one, everything the game
     // names inside it, and its edge held on foot (a walk out along a street that the edge cuts) and in the air
     district = await p.evaluate(async want => {
@@ -253,6 +265,16 @@ async function measure(b, city) {
       if (map.moves.some(m => m.here !== undefined && m.here !== 0) || !map.moves[0].changed || !map.back) { ok = false; errors.push(`the map round the player: ${JSON.stringify(map)}`); }
     }
     await p.waitForTimeout(+(process.env.SETTLE || 8) * 1000);
+    await part('the walk to the district\'s edge, settled');
+    // the heaviest hour: rain at ten at night, on the game's own clock and weather, drawn for WET seconds
+    const wet = await p.evaluate(() => {
+      const g = window.__game, c = g.clock;
+      if (!g.weather || !g.setClock || !c) return false;
+      g.setClock(c.y, c.m, c.d, 22 * 60);
+      g.weather.set('rain', { now: true });
+      return true;
+    }).catch(() => false);
+    if (wet) { await p.waitForTimeout(+(process.env.WET || 12) * 1000); await part('rain at ten at night'); }
   } catch (e) { ok = false; errors.push(String(e).slice(0, 200)); }
   stop = true;
   await sampler;
@@ -322,7 +344,7 @@ async function measure(b, city) {
   }).catch(e => [String(e)]);
   const pr = await p.evaluate(() => { const c = document.getElementById('game-gl'); return c ? { w: c.width, h: c.height } : null; }).catch(() => null);
   await ctx.close();
-  return { city, ok, map, district, astc, smaps, owners, heapEnd, split, sampled, tracked, s: (Date.now() - t0) / 1000, heap: peakHeap, rss: peakRss, gl: r, canvas: pr, errors };
+  return { city, ok, map, district, parts, astc, smaps, owners, heapEnd, split, sampled, tracked, s: (Date.now() - t0) / 1000, heap: peakHeap, rss: peakRss, gl: r, canvas: pr, errors };
 }
 
 (async () => {
@@ -345,6 +367,11 @@ async function measure(b, city) {
     if (m.astc) {
       console.log(`     pictures in ASTC blocks: ${m.astc.packed} packed (${m.astc.mb.toFixed(1)} MB of blocks, the worst ${m.astc.worst.toFixed(1)} dB), ${m.astc.kept} kept as they were`);
       if (process.env.ASTC_LOG) for (const l of m.astc.log) console.log(`       ${l.kept ? 'kept  ' : 'packed'} ${String(l.w).padStart(4)}x${String(l.h).padEnd(4)} ${l.db == null ? '' : `${l.db} dB`}${l.adb ? ` alpha ${l.adb}` : ''} ${l.name}${l.why ? ` (${l.why})` : ''}`);
+    }
+    if (m.parts && m.parts.length) { // (the part the peak rose in last is the one it fell in)
+      let at = m.parts[0].name;
+      for (let i = 1; i < m.parts.length; i++) if (m.parts[i].peak > m.parts[i - 1].peak) at = m.parts[i].name;
+      console.log(`     the peak fell in: ${at}; held as each part ended: ${m.parts.map(q => `${q.name} ${MB(q.now)} MB (peak so far ${MB(q.peak)})`).join(', ')}`);
     }
     if (m.district && m.district.on) console.log(`     a phone's district: ${m.district.frame[0].join('..')} by ${m.district.frame[1].join('..')} m, ${m.district.quests} quests${m.district.walked ? `; a walk out at ${m.district.walked.end.map(Math.round)} stopped at ${m.district.walked.to}${m.district.said ? ', and the game said so' : ''}` : ''}`);
     if (m.map) console.log(`     the map round the player: ${m.map.cells} cells, ${m.map.vertices.toLocaleString()} vertices of buildings; to the far corner ${m.map.moves[0].changed} cells built again in ${m.map.moves[0].ms} ms (${m.map.moves[0].vertices.toLocaleString()} vertices there), back ${m.map.moves[1].changed} in ${m.map.moves[1].ms} ms`);

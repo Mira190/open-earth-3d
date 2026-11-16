@@ -245,6 +245,16 @@ landmarks' meshes, which went on being solid and being stood on where they had b
   `smooth` and `hero`). Before, Shibuya's road by the station was drawn 0.36 m over the floor walked and Sydney's
   paving by the quay 0.41 m (rms 2.3 and 3.9 cm, 106 and 132 points of a metre's grid off by over 15 cm); now both
   are within a centimetre (0.5 cm rms, none over 15 cm). Run the probe again after a level is rebuilt.
+- A level that drapes its ground on the game's terrain is rebuilt when that ground is graded again
+  (`pipeline/street_ground.py`, issues 510 and 522). The Scramble's entry says `"graded": true`: the streets inside it
+  are graded with the rest of the map (its road along the JR embankment north of the station was draped on the
+  smeared survey and tilted up to 51 % towards the embankment; the embankment's own top held the road's edge nodes at
+  the smeared height, and the street now takes those back), then `python blender/build_hero.py --city shibuya`,
+  the floor's export above, `python pipeline/hero_floor.py --city shibuya` and `python pipeline/pack.py`. The
+  landmarks' paving in the level (Hachiko Square's setts, its planters, the crossing's own asphalt shown until the
+  level loads) keeps the ground under it. `python pipeline/street_ground.py --city shibuya --check` measures the
+  drawn floor's cross-fall along the level's roads (0 of 850 m over 6 % now, 50 over 15 % before) and
+  `tools/check.sh` fails if it comes back. A level without the flag (Sydney's quay) keeps the ground it was built on.
 - `tools/unseen_walls.js <city>` audits a level against the picture (a wall with nothing drawn at it, a footway
   with something solid on it, the floor's height over the ground drawn), and `tools/game_check.js` fails a level
   with a wall on one of the crowd's lines or a floor off its lift. Sydney's level had no unseen wall and no

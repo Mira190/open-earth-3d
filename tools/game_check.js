@@ -265,6 +265,16 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
   });
   if (opening) check((opening.kerb < 3 || opening.on < 2) && opening.ph === '3g' && opening.walkers >= 6,
     `the game opens at the scramble's kerb (${opening.kerb.toFixed(1)} m from a crosswalk's end, ${opening.on.toFixed(1)} m from its stripes), in its walk (phase ${opening.ph}), ${opening.walkers} walkers within 10 m`);
+  // a map that says where its people are (game.crowd.places, issue 494) opens with them round you where you start
+  // in one: put there on the crowd's first step, not 45 m off as a latecomer is (actors.js update)
+  const placed = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, at = (g.G.start || {}).at || [pl.x, pl.y];
+    const here = ((g.G.crowd || {}).places || []).find(q => Math.hypot(q.at[0] - at[0], q.at[1] - at[1]) < (q.r || 80));
+    if (!here) return null;
+    const d = g.crowd.P.slice(0, g.crowd.active).filter(q => q.line >= 0).map(q => Math.hypot(q.x - at[0], q.y - at[1]));
+    return { id: here.id || 'a place', near: d.filter(v => v < 60).length, out: g.crowd.active };
+  });
+  if (placed) check(placed.near >= 10, `the crowd is round you where the game starts (${placed.near} walkers within 60 m of the start, in ${placed.id}; ${placed.out} out)`);
   check(onboard.arrived < 4.5, `the arrival hands over to the chase camera (${onboard.arrived.toFixed(2)} s after the start; the camera ${onboard.near.toFixed(1)} m from the player's head)`);
   // the HUD's buttons: the map and the menu stay, the rest fold behind "more" once the tour is over (index.html .g-btns)
   const tray = await p.evaluate(() => {
@@ -2271,7 +2281,13 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
     const g = window.__game, H = g.hero && g.hero(), pl = g.player;
     if (!H) return;
     const near = L => Math.hypot(pl.x - L.h.at[0], pl.y - L.h.at[1]) - (L.h.r || 150) < 200;
-    for (let t = 0; t < 1500 && H.levels.some(L => near(L) && !(L.root && L.root.visible)); t++) { g.advance(0.05); await new Promise(r => requestAnimationFrame(r)); }
+    // (the world steps only while a level waits to be asked for, which the simulation alone decides; once it is loading the
+    // frames go on and the world stands, as in the hero step below. Stepped all the while, the world moved on by however
+    // long the machine took to fetch Sydney's quay-west, three steps in one run and five in the next, and every step after
+    // this one played another game: the autopilot went to another place, and "a car coming at yours dodges it" and "cars
+    // stand at the kerb" failed in one run and passed in the next, #495)
+    const idle = L => { const s = H.state().find(q => q.id === L.h.id); return !!s && s.state === 'idle'; };
+    for (let t = 0; t < 1500 && H.levels.some(L => near(L) && !(L.root && L.root.visible)); t++) { if (H.levels.some(L => near(L) && idle(L))) g.advance(0.05); await new Promise(r => requestAnimationFrame(r)); }
   });
   const gl = await require('./glcare_step')(p, { canvas: 'game-gl', api: '__game', outDir, prefix: `${city}-` });
   check(gl.paused && gl.note, `a lost context holds the game under a note (paused ${gl.paused}, note ${gl.note})`);

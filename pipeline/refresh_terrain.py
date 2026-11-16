@@ -66,7 +66,7 @@ def main():
     water = np.unpackbits(np.frombuffer(base64.b64decode(gw["bits"]), np.uint8))[:nx * ny].reshape(ny, nx).astype(bool)
     g = grid(gt)
     cells = inside & ~water
-    new = np.round(dem / gt["scale"]).astype(np.int16)  # (decimetres from game_data.py, centimetres once street_ground.py has run)
+    new = np.round(dem / gt["scale"]).astype(np.int16)  # (decimetres, as game_data.py and street_ground.py write them)
     # water above the sea at its own level (the city's game_ponds): water to the game, its basin a metre
     # under that level (game_data.py)
     ponds = C.hook("game_ponds")(json.load(open(os.path.join(C.out, "scene.json")))) if C.hook("game_ponds") else []
@@ -128,6 +128,10 @@ def main():
                     moved.append(f"{key} {lm['ground_m']} -> {rule['z_m']} m")
                     lm["ground_m"] = rule["z_m"]
 
+    # the survey the streets are graded from (pipeline/street_ground.py) moves with the ground
+    import street_ground
+    if street_ground.update_survey(C.id, cells, new):
+        print(f"{C.id}: the kept survey follows; grade the streets again: python pipeline/street_ground.py --city {C.id} --force")
     json.dump(game, open(gpath, "w"), separators=(",", ":"))
     json.dump(T, open(tpath, "w"))
     json.dump(scene, open(spath, "w"), separators=(",", ":"))

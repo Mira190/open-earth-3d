@@ -290,6 +290,15 @@ window.OEStory = (function () {
         show(); frames.classList.add('on');
         if (!a || !(a.lines || []).length) return task();
         st.beat = 'seek'; st.from = [ctx.player.x, ctx.player.y];
+        // the guide (ep.guide, companion.js): the dog the bronze by the station is of walks in every Stop. He comes to you
+        // (from beside his plinth where that is near, else from a few steps off), goes ahead of you to whoever is still
+        // moving, waits when you fall behind, and sits by them
+        const gd = st.ep.guide;
+        if (gd && ctx.guide && !st.dog) {
+          const d = ctx.guide(gd);
+          if (d) { const nearHome = gd.from && near(gd.from, 70), at = nearHome ? gd.from : [ctx.player.x + 3, ctx.player.y + 2.5]; d.place(at[0], at[1], Math.atan2(ctx.player.y - at[1], ctx.player.x - at[0])); st.dog = d; if (st.fi === 0 && gd.line) later(600, () => ctx.toast(esc(gd.line))); }
+        }
+        if (st.dog && st.ghost) st.dog.lead([st.ghost.x, st.ghost.y], a.reach_m || 3.2);
         goal(a.seek || 'Someone is still moving. Go to them.');
         aimAt(spot([st.ghost.x, st.ghost.y, st.ghost.z]), true);
         if (!st.hinted) { st.hinted = true; hint(true); }
@@ -301,7 +310,9 @@ window.OEStory = (function () {
       st.beat = 'shoot'; goalText = '';
       if (st.fr.task.relic && ctx.relic && !st.relic) st.relic = ctx.relic(st.fr.task.relic); // (what the camera sees here that tonight does not have)
       finder.dataset.year = (st.fr.afterimage && st.fr.afterimage.year) || ''; // (the year the finder shows: the camera sees the evening it was loaded for)
-      st.cam = false; camLabel(); camBtn.classList.remove('up'); camBtn.classList.add('on'); // (in the hand: the player raises it)
+      st.cam = false; camLabel(); camBtn.classList.remove('up'); camBtn.classList.add('on');
+      // (the guide goes to sit where the picture is taken from, or beside what it is of, looking at it)
+      if (st.dog) { const T = st.fr.task, R = T.relic, px = ctx.player.x, py = ctx.player.y; let to = T.stand ? [T.stand[0] + 1.2, T.stand[1] + 0.8] : null; if (!to && R && Math.hypot(R.at[0] - px, R.at[1] - py) < 30) { const l = Math.hypot(px - R.at[0], py - R.at[1]) || 1; to = [R.at[0] + (px - R.at[0]) / l * 2.2 + 0.8, R.at[1] + (py - R.at[1]) / l * 2.2]; } if (to) st.dog.go(to, R ? [R.at[0], R.at[1], (R.at[2] != null ? R.at[2] : ctx.floor(R.at[0], R.at[1])) + 0.8] : T.subject || null); } // (in the hand: the player raises it)
     }
     // the finder's rectangle in the picture, as fractions from its top left
     const finderRect = () => { const f = finder.getBoundingClientRect(), s = ctx.stage.getBoundingClientRect(); return [(f.left - s.left) / s.width, (f.top - s.top) / s.height, (f.right - s.left) / s.width, (f.bottom - s.top) / s.height]; };
@@ -351,6 +362,7 @@ showPrint(st.prints[st.prints.length - 1], st.prints.length);
       say('Time runs again'); sfx('run'); if (ctx.held) ctx.held(false);
       pulse();
       for (const k of ['ghost', 'ghost2', 'relic']) if (st[k]) { st[k].remove(); st[k] = null; }
+      if (st.dog) { const d = st.dog; st.dog = null; d.leave((st.ep.guide || {}).from || [d.x, d.y], () => d.remove()); st.gone = d; } // (the guide runs off as the world runs on, and is gone before he gets anywhere)
       if (ctx.finder) ctx.finder(null);
       const said = late ? [fr.late || 'The lights changed. Come back to where it stopped, and it will stop again.'] : fr.after || [];
       said.forEach((line, i) => later(1400 + i * 4200, () => ctx.toast(esc(line))));
@@ -386,10 +398,11 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
 
     function tick(dt) {
       const ep = st.ep, fr = st.fr;
+      if (st.gone) { st.gone.tick(dt); if (st.gone.state === 'away') st.gone = null; } // (a guide on his way off)
       if (!ep || !fr || st.phase === 'idle' || st.phase === 'dressed' || st.phase === 'done') return;
       { // under the goal, how: one plain line for whoever has not played a game like this (and the first frame says the keys)
         const K = ctx.touch ? 'Left thumb walks, drag to look.' : 'W A S D walk · mouse looks · Shift runs.', f = st.beat === 'shoot' && fr.task ? framed() : null;
-        const how = !goalText ? '' : st.beat === 'meet' ? 'Walk up to them: they speak when you are close.' : st.beat === 'approach' ? `Follow the ring. ${st.fi === 0 ? K : ''}` : st.beat === 'seek' ? `Walk to the ring: the pale figure. ${st.fi === 0 ? K : ''}`
+        const how = !goalText ? '' : st.beat === 'meet' ? 'Walk up to them: they speak when you are close.' : st.beat === 'approach' ? `Follow the ring. ${st.fi === 0 ? K : ''}` : st.beat === 'seek' ? `${st.dog ? `Follow ${(st.ep.guide || {}).name || 'the dog'}: he goes ahead to the pale figure.` : 'Walk to the ring: the pale figure.'} ${st.fi === 0 ? K : ''}`
           : st.beat === 'ride' ? 'Walk to the car and press E to get in. Or walk the whole way.' : f ? (!f.placed ? 'Stand in the light on the ground.' : !st.cam ? 'The camera is in your hand. With it up you see what it sees.' : !f.aimed ? (fr.task.relic ? 'Look through the frame lines: something stands there that tonight does not have. Walk closer if it is small.' : 'Turn until it is inside the frame lines.') : ctx.touch ? 'Tap the shutter.' : 'Press F, or click the shutter.') : '';
         if (how !== st.how) { st.how = how; goalEl.querySelector('em').textContent = how; }
       }
@@ -423,6 +436,7 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
         const g = st.ghost, a = fr.afterimage, leftS = Math.max(0, (fr.stop_s || 420) - st.t);
         goalEl.querySelector('small').textContent = st.beat === 'meeting' ? S.title || '' : `The Stop · ${clockOf(leftS)}`;
         for (const q of [g, st.ghost2]) if (q) { q.animate(dt); if (!q.to) q.face(ctx.player.x, ctx.player.y); }
+        if (st.dog) st.dog.tick(dt);
         if (st.beat === 'seek') {
           // the keys are put away once they have been used
           if (st.from && Math.hypot(ctx.player.x - st.from[0], ctx.player.y - st.from[1]) > 3) { st.from = null; hint(false); }
