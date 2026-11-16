@@ -62,7 +62,10 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
       }
     }
   }
-  out.traffic = watch.map(w => ({ id: w.id, from: w.line, onto: w.onto ?? null, secs: +w.t.toFixed(1), deep: +w.deep.toFixed(2), deepAt: w.deepAt, done: w.done, gone: w.gone, gaveUp: !!w.gaveUp, went: +w.went.toFixed(1), still: w.still || (w.c.rev ? `still reversing (waited ${w.c.rev.wait.toFixed(1)} s, ${w.c.rev.d.toFixed(1)} m back)` : '') }));
+  out.traffic = watch.map(w => ({ id: w.id, from: w.line, onto: w.onto ?? null, secs: +w.t.toFixed(1), deep: +w.deep.toFixed(2), deepAt: w.deepAt, done: w.done, gone: w.gone, gaveUp: !!w.gaveUp, went: +w.went.toFixed(1), still: w.still || (w.c.rev ? `still reversing (waited ${w.c.rev.wait.toFixed(1)} s, ${w.c.rev.d.toFixed(1)} m back${(() => { // (and what it stands at: where on its piece, how long at the box behind, who is behind it, when it last moved)
+      const c = w.c, R = c.rev, l = L[c.line], b = R.by;
+      return `; at ${c.s.toFixed(1)} of ${l.len.toFixed(1)} m of piece ${c.line} going ${c.dir > 0 ? 'up' : 'down'} it, ${(R.boxT || 0).toFixed(1)} s at the box behind, last moved at ${(w.moved || 0).toFixed(0)} s of ${w.t.toFixed(0)}, ${Math.hypot(c.x - g.player.x, c.y - g.player.y).toFixed(0)} m from you, behind it ${b ? `car ${C.indexOf(b)} (${b.why}${b.rev ? `, backing out too: waited ${b.rev.wait.toFixed(1)} s, ${b.rev.d.toFixed(1)} m back` : ''}, v ${(+b.v || 0).toFixed(1)}, on piece ${b.line})` : 'nothing'}`;
+    })()})` : '') }));
   if (!tryRide) return out;
   // the ride, put on a one-way street near you and asked to turn round (one ordered and boarded first, as
   // game_check.js's turn step does, if none is under way)
