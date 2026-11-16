@@ -338,8 +338,8 @@ async function railStep() {
     if (X) break;
   }
   if (!X) return { none: 'no street near you busy and long enough for a crossing' };
-  const w = X.rail.w, out = { line: X.line, cls: L[X.line].c, crossedOpen: 0, onShut: 0, stoodOn: 0, waited: 0, crossedAfter: null, kept: 0, log: [] };
-  const was = new Map(), stood = new Map(), hist = new Map();
+  const w = X.rail.w, out = { line: X.line, cls: L[X.line].c, crossedOpen: 0, onShut: 0, stoodOn: 0, waited: 0, crossedAfter: null, kept: 0, forPerson: 0, log: [] };
+  const was = new Map(), stood = new Map(), hist = new Map(), forPerson = new Set();
   const step = (secs, tag) => {
     for (let t = 0; t < secs; t += 0.25) {
       g.advance(0.25);
@@ -356,8 +356,12 @@ async function railStep() {
         if (h.length > 32) h.shift();
         const st = on && c.v < 0.3 ? (stood.get(c) || 0) + 0.25 : 0;
         stood.set(c, st);
+        // (one that stands for a person walking across in front of it is not a queue on the rails: it cannot drive on, and
+        // is counted apart; on the rails once the crossing is shut it fails all the same, above)
+        if (!st) forPerson.delete(c); else if (c.why === 'person') forPerson.add(c);
+        if (st === 3 && forPerson.has(c)) out.forPerson++;
         // (not one already there when the check laid the crossing down under it)
-        if (st === 3 && !(tag === 'open' && t < 5)) { out.stoodOn++; if (out.log.length < 6) out.log.push(`${tag} ${t}s: car ${A.C.indexOf(c)} stood on the rails, ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''} [${d.toFixed(1)} m past the middle, lane ${c.ln || 0}${c.mv ? ', in a junction' : ''}${c.rev ? ', backing' : ''}; in front ${c.front ? `car ${A.C.indexOf(c.front)} ${((c.front.s - c.s) * c.dir).toFixed(1)} m on${c.front.line !== c.line ? ` on piece ${c.front.line}` : ''}, v ${c.front.v.toFixed(1)}, lane ${c.front.ln || 0}, ${c.front.why || 'going'}${c.front.park ? ', parked' : ''}${c.front.parking ? ', parking' : ''}` : 'no car'}; its last 8 s, m past the middle/speed/lane/why/front: ${(hist.get(c) || []).join(' ')}]`); }
+        if (st === 3 && !forPerson.has(c) && !(tag === 'open' && t < 5)) { out.stoodOn++; if (out.log.length < 6) out.log.push(`${tag} ${t}s: car ${A.C.indexOf(c)} stood on the rails, ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''} [${d.toFixed(1)} m past the middle, lane ${c.ln || 0}${c.mv ? ', in a junction' : ''}${c.rev ? ', backing' : ''}; in front ${c.front ? `car ${A.C.indexOf(c.front)} ${((c.front.s - c.s) * c.dir).toFixed(1)} m on${c.front.line !== c.line ? ` on piece ${c.front.line}` : ''}, v ${c.front.v.toFixed(1)}, lane ${c.front.ln || 0}, ${c.front.why || 'going'}${c.front.park ? ', parked' : ''}${c.front.parking ? ', parking' : ''}` : 'no car'}; its last 8 s, m past the middle/speed/lane/why/front: ${(hist.get(c) || []).join(' ')}]`); }
         if (tag === 'shut' && c.why === 'light' && c.v < 0.3 && d < 0 && d > -30) out.waited = Math.max(out.waited, 1);
         if (c.why === 'rails') out.kept++;
       }
@@ -377,7 +381,7 @@ async function railStep() {
 function railChecks(r) {
   if (r.none) return [[true, `level crossings: ${r.none}`]];
   return [
-    [r.onShut === 0 && r.stoodOn === 0, `at a level crossing on a ${r.cls} street the traffic stops for the alarm and keeps the rails clear (${r.crossedOpen} crossed while it was open; shut, ${r.queue} queued and ${r.onShut} car-steps on the rails; ${r.stoodOn} stood on them; held back for room beyond ${r.kept} car-steps)${r.log.length ? `: ${r.log.join('; ')}` : ''}`],
+    [r.onShut === 0 && r.stoodOn === 0, `at a level crossing on a ${r.cls} street the traffic stops for the alarm and keeps the rails clear (${r.crossedOpen} crossed while it was open; shut, ${r.queue} queued and ${r.onShut} car-steps on the rails; ${r.stoodOn} stood on them, ${r.forPerson || 0} for a person walking across; held back for room beyond ${r.kept} car-steps)${r.log.length ? `: ${r.log.join('; ')}` : ''}`],
     [r.crossedOpen === 0 || r.queue === 0 || r.crossedAfter != null, `and goes on when it opens (${r.crossedAfter != null ? `the first across ${r.crossedAfter.toFixed(1)} s after` : 'none came'})`],
   ];
 }
