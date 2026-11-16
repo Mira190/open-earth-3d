@@ -382,7 +382,7 @@ stood within 32 m of the player at Tokyo's or Sydney's start. Three causes, thre
   scrambles were places already (`crowd.hot`, set from the junctions).
 - *Ways across open paving* (`places[].paths`). Footways are mapped as lines, and a quay thirty metres wide has
   two: the crowd walked those in file and left the paving bare. A place adds the ways people take across it (the
-  water's edge, the pavement along the station's front), for the crowd only; `game.js` lays them on the ground and
+  water's edge, the plaza between its lawns), for the crowd only; `game.js` lays them on the ground and
   joins each end to a mapped footway's end within 6 m, and drops what is not ground to walk on.
 
 Tokyo and Sydney have `hours` now (an office district's day; a commuter quay and foreshore's), with
