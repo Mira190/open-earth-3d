@@ -60,7 +60,8 @@ window.OEPeople = (function () {
       W_Casual: 3, W_Formal: 1.6, W_Suit: 1.4, W_Worker: 0.5, W_Adventurer: 1.2, W_Punk: 0.2 },
   };
   // Japan carries the clear vinyl umbrellas sold at every konbini, and black and navy ones
-  STYLES.tokyo.umbrellas = ['clear', 'clear', 'clear', 'clear', 'clear', '#1d1f26', '#22304a', '#1d1f26', '#f2f2f2', '#6b2a35'];
+  // (black, navy and grey first, as a wet evening's crowd reads from above; one in ten the convenience store's clear vinyl)
+  STYLES.tokyo.umbrellas = ['#1d1f26', '#1d1f26', '#1d1f26', '#22304a', '#22304a', '#2b4a6b', '#3a3f47', '#5b626c', '#7b8794', 'clear'];
   STYLES.kyoto = Object.assign({}, STYLES.tokyo, {
     tops: ['#1f2328', '#1f2328', '#1d2b4a', '#1d2b4a', '#e9e6df', '#f2f0ea', '#2b2f3a', '#9aa3a8', '#d7c6a5', '#46604f', '#8a2f39', '#5b6b7a', '#c9c2b5', '#7a4e8f'],
   });
@@ -1102,7 +1103,7 @@ transformed = crowdPose(transformed, false);`);
     }
     // umbrellas for the rain: each person's own colour (Tokyo carries clear vinyl), and whether they
     // put one up in a drizzle (some don't bother) or only when it really rains
-    const UMB = (styleOf(style) || STYLE || {}).umbrellas || ['#1d1f26', '#1d1f26', '#22304a', '#2f3b33', '#5a1f2b', '#7b8794', '#c9b28a', '#2b4a6b'];
+    const UMB = (styleOf(style) || STYLE || {}).umbrellas || ['#1d1f26', '#1d1f26', '#1d1f26', '#22304a', '#22304a', '#2b4a6b', '#3a3f47', '#5b626c', '#7b8794'];
     let us = 977; // (its own random run, so the crowd's looks and pace stay as they were without it)
     const urnd = () => ((us = (us * 1664525 + 1013904223) >>> 0) / 4294967296);
     for (const p of P) { p.umbK = urnd(); p.look.umbrella = UMB[Math.floor(urnd() * UMB.length)]; }
