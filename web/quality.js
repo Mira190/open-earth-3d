@@ -326,9 +326,13 @@ window.OEQuality = (function () {
       tick(now, active = true) {
         const ms = last ? now - last : 0;
         last = now;
-        if (!active || !ms || ms > 250) return;
-        ema = ema ? ema + (ms - ema) * 0.08 : ms;
-        if (g.auto) decide(ms);
+        // (a stall of seconds is a tab coming back or a shader compiling, not the scene's cost. A frame of a quarter of
+        // a second or more is: it was left out with the stalls, so a device drawing four frames a second was never
+        // governed at all, and an M3 sat at five for minutes in the story's rain. It counts, as a quarter of a second.)
+        if (!active || !ms || ms > 3000) return;
+        const fms = Math.min(ms, 250);
+        ema = ema ? ema + (fms - ema) * (fms >= 250 ? 0.3 : 0.08) : fms;
+        if (g.auto) decide(fms);
       },
       reset() { last = 0; ema = 0; since = calm = floorT = 0; flat = false; e0 = flatTry = kept = 0; flatTop = Infinity; },
       get flat() { return flat; },
@@ -363,6 +367,10 @@ window.OEQuality = (function () {
       // its ceiling under it, and a heavy half minute left a device at thirty frames a second for good)
       if (halved && ema < 0.7 * target) { fullT += ms; if (fullT > 2000) { halved = false; fullT = 0; calm = 0; return; } } else fullT = 0;
       if (since < 1000) return; // (a change settles into the average first)
+      // under ten frames a second, six times over the frame's budget, is not a step's worth: everything a frame can
+      // do without goes at once, and what the device can afford comes back by the ordinary way up (not while the
+      // floor is being asked what it bought: those frames are as slow at any size)
+      if (!flat && ema >= 100 && load > 6 && (g.scale > g.min + 1e-6 || g.extras > 0)) { tried = 0; calm = 0; floorT = 0; if (climbing) { climbing = false; wait = 4000; } failed(g.scale); change(g.min, 0); return; }
       if (load > 1.15) {
         calm = 0;
         if (tried && since < 4000) { // the try up did not fit (2: it was the extras')
