@@ -34,15 +34,17 @@ function tipStep() {
   }
   for (const [name, from, keys] of runs) {
     put(from);
-    let pitch = 0, roll = 0, rise = 0;
+    let pitch = 0, roll = 0, rise = 0, at = '';
     for (let t = 0; t < 40; t++) {
       g.advance(0.1, keys);
       // (off the ground's own slope there: the terrain under its axles and its sides, as cars.js tilts it on a hill)
       const fx = Math.sin(st.h), fy = Math.cos(st.h), wb = c.C.wheelbase / 2, T = nav.terrain;
       const gp = -Math.atan2(T(st.x + fx * wb, st.y + fy * wb) - T(st.x - fx * wb, st.y - fy * wb), 2 * wb), gr = Math.atan2(T(st.x - fy * c.C.hw, st.y + fx * c.C.hw) - T(st.x + fy * c.C.hw, st.y - fx * c.C.hw), 2 * c.C.hw);
-      pitch = Math.max(pitch, Math.abs(st.pitch - gp) * D); roll = Math.max(roll, Math.abs(st.roll - gr) * D); rise = Math.max(rise, st.z - T(st.x, st.y));
+      pitch = Math.max(pitch, Math.abs(st.pitch - gp) * D); roll = Math.max(roll, Math.abs(st.roll - gr) * D);
+      // (where it stood highest over the ground, and on what: named when the step fails)
+      if (st.z - T(st.x, st.y) > rise) { rise = st.z - T(st.x, st.y); const f = lowFloor(st.x, st.y, st.z); at = `${(t / 10).toFixed(1)} s on at ${st.x.toFixed(1)},${st.y.toFixed(1)}, ${st.z.toFixed(2)} m up, on ${f ? `${f.kind || 'a floor'} at ${f.z.toFixed(2)} m` : 'no floor'}, the ground ${T(st.x, st.y).toFixed(2)} m${st.air ? ', in the air' : ''}`; }
     }
-    r.runs.push({ name, pitch, roll, rise });
+    r.runs.push({ name, pitch, roll, rise, at, from: `${from.x.toFixed(1)},${from.y.toFixed(1)}, ${from.z.toFixed(2)} m up, heading ${from.h.toFixed(2)}` });
   }
   g.resetCar(); g.advance(1);
   r.reset = { pitch: Math.abs(st.pitch) * D, roll: Math.abs(st.roll) * D, rise: st.z - nav.terrain(st.x, st.y) };
@@ -53,7 +55,7 @@ function tipStep() {
 }
 function tipChecks(check, tip) {
   if (tip.none) return;
-  for (const q of tip.runs) check(tip.inCar && q.pitch < 9 && q.roll < 9 && q.rise < 0.45, `your car driven ${q.name} stays on its wheels at the street's level (pitch ${q.pitch.toFixed(1)}° and roll ${q.roll.toFixed(1)}° off the ground's slope, ${q.rise.toFixed(2)} m over the ground)`);
+  for (const q of tip.runs) check(tip.inCar && q.pitch < 9 && q.roll < 9 && q.rise < 0.45, `your car driven ${q.name} stays on its wheels at the street's level (pitch ${q.pitch.toFixed(1)}° and roll ${q.roll.toFixed(1)}° off the ground's slope, ${q.rise.toFixed(2)} m over the ground${q.pitch < 9 && q.roll < 9 && q.rise < 0.45 ? '' : `: from ${q.from}; highest ${q.at}`})`);
   check(tip.reset.pitch < 3 && tip.reset.roll < 3 && Math.abs(tip.reset.rise) < 0.35, `R puts your car back on the road the right way up (pitch ${tip.reset.pitch.toFixed(1)}°, roll ${tip.reset.roll.toFixed(1)}°, ${tip.reset.rise.toFixed(2)} m)`);
 }
 module.exports = { tipStep, tipChecks };
