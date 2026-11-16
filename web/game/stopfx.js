@@ -40,47 +40,70 @@ window.OEStopFX = (function () {
       const o = new THREE.Points(geo, mat); o.frustumCulled = false; o.renderOrder = 18;
       return o;
     }
-    // leaves and handbills: small cards, each with a place, a way it was falling and a way it was turning
+    // the models of what hangs (blender/build_stop.py): leaves, a handbill, a pigeon in five parts. Each geometry is
+    // taken about its own joint, and `at` is where that joint sits in the model
+    let kit = null;
+    new THREE.GLTFLoader().load('assets/stop/stop.glb', gl => {
+      gl.scene.updateMatrixWorld(true); const k = {};
+      gl.scene.traverse(o => { if (o.isMesh) { const at = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld); k[o.name] = { geo: o.geometry.clone().applyMatrix4(o.matrixWorld).translate(-at.x, -at.y, -at.z), at }; } });
+      kit = k;
+    }, undefined, e => console.warn('The leaves and birds of the stopped air are unavailable:', e));
+    // lit by the scene, so their form reads; and a share of their own colour given back unlit, as the screens and
+    // shop fronts all round would light them (the night's sky light alone leaves a gold leaf olive)
+    const GLOW = 0.5;
+    const lit = () => { const m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: 0 }); m.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\n totalEmissiveRadiance += diffuseColor.rgb * ${GLOW.toFixed(2)};`); }; return m; };
+    const inst = (name, n) => { const m = new THREE.InstancedMesh(kit[name].geo, lit(), n); m.frustumCulled = false; return m; };
+    const shown = (o, fade) => o.children.forEach(m => { m.material.opacity = fade; });
+
+    // leaves and handbills, each with a place, a way it was falling and a way it was turning. Ginkgo and zelkova
+    // are the trees of these streets; a leaf is drawn half as big again as life, to be seen across the crossing
+    const KIND = [{ name: 'ginkgo', size: [0.085, 0.115], tint: [0xe6b422, 0xd9a520, 0xf0c838, 0xc9a227] }, { name: 'zelkova', size: [0.11, 0.15], tint: [0xb5521e, 0xc8742a, 0x9a4a22, 0xd08a2e] }, { name: 'bill', size: [0.21, 0.21], tint: [0xffffff] }];
     function cards(n) {
-      const mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true, opacity: 0 }), n);
-      const TINT = [0xd8b04a, 0xc9963a, 0xb8672a, 0xd0a23c, 0x9a7a2e, 0xc4862f], it = [];
+      const o = new THREE.Group(), it = [], kindOf = i => i % 9 === 0 ? 2 : i % 3 === 1 ? 1 : 0, count = [0, 0, 0];
+      for (let i = 0; i < n; i++) count[kindOf(i)]++;
+      const mesh = KIND.map((k, j) => inst(k.name, Math.max(1, count[j]))), at = [0, 0, 0];
       for (let i = 0; i < n; i++) {
-        const a = Math.random() * 6.283, close = i % 5 < 3, d = close ? rnd(1.2, 9) : 1.5 + Math.sqrt(Math.random()) * (R + 8), bill = i % 9 === 0;
-        it.push({ p: new THREE.Vector3(Math.cos(a) * d, close ? rnd(0.4, 3.4) : rnd(0.25, bill ? 5 : 10), Math.sin(a) * d), v: new THREE.Vector3(rnd(-0.5, 0.5), -rnd(0.5, 1.3), rnd(-0.5, 0.5)), e: new THREE.Euler(rnd(0, 6.3), rnd(0, 6.3), rnd(0, 6.3)), w: new THREE.Vector3(rnd(-3, 3), rnd(-3, 3), rnd(-3, 3)), s: bill ? [0.15, 0.21] : [rnd(0.1, 0.15), rnd(0.11, 0.17)] });
-        mesh.setColorAt(i, new THREE.Color(i % 9 === 0 ? 0xe9e5db : TINT[i % 6]).multiplyScalar(rnd(0.8, 1.05)));
+        const a = Math.random() * 6.283, close = i % 5 < 3, d = close ? rnd(1.2, 9) : 1.5 + Math.sqrt(Math.random()) * (R + 8), j = kindOf(i), k = KIND[j], bill = j === 2;
+        it.push({ m: mesh[j], k: at[j], p: new THREE.Vector3(Math.cos(a) * d, close ? rnd(0.4, 3.4) : rnd(0.25, bill ? 5 : 10), Math.sin(a) * d), v: new THREE.Vector3(rnd(-0.5, 0.5), -rnd(0.5, 1.3), rnd(-0.5, 0.5)), e: new THREE.Euler(rnd(0, 6.3), rnd(0, 6.3), rnd(0, 6.3)), w: new THREE.Vector3(rnd(-3, 3), rnd(-3, 3), rnd(-3, 3)), s: rnd(k.size[0], k.size[1]) });
+        mesh[j].setColorAt(at[j]++, new THREE.Color(k.tint[i % k.tint.length]).multiplyScalar(rnd(0.82, 1.05)));
       }
-      mesh.userData.it = it; mesh.frustumCulled = false;
-      return mesh;
+      mesh.forEach(m => o.add(m)); o.userData.it = it;
+      return o;
     }
     function layCards(dt) {
       const it = leaves.userData.it;
       for (let i = 0; i < it.length; i++) {
         const c = it[i];
-        if (dt > 0) { c.p.addScaledVector(c.v, dt); c.e.x += c.w.x * dt; c.e.y += c.w.y * dt; c.e.z += c.w.z * dt; if (c.p.y < 0.03) { c.p.y = 0.03; c.v.set(0, 0, 0); c.w.set(0, 0, 0); c.e.x = Math.PI / 2; } }
-        M.compose(c.p, Q.setFromEuler(c.e), S.set(c.s[0], c.s[1], 1)); leaves.setMatrixAt(i, M);
+        if (dt > 0) { c.p.addScaledVector(c.v, dt); c.e.x += c.w.x * dt; c.e.y += c.w.y * dt; c.e.z += c.w.z * dt; if (c.p.y < 0.03) { c.p.y = 0.03; c.v.set(0, 0, 0); c.w.set(0, 0, 0); c.e.x = c.e.z = 0; } } // (the models lie in the ground plane)
+        M.compose(c.p, Q.setFromEuler(c.e), S.setScalar(c.s)); c.m.setMatrixAt(c.k, M);
       }
-      leaves.instanceMatrix.needsUpdate = true;
+      leaves.children.forEach(m => { m.instanceMatrix.needsUpdate = true; });
     }
-    // birds: a body and two wings each, the wings wherever in the beat they were
+    // birds: pigeons taking off together, each a body and two wings of two parts, the wings wherever in the beat
+    // they were. The model faces +z with +x its left; a bird is drawn a third bigger than life
+    const PART = ['pigeon', 'pigeon_arm_l', 'pigeon_hand_l', 'pigeon_arm_r', 'pigeon_hand_r'], BIRD = 1.35;
     function flock(n) {
-      const geo = new THREE.BufferGeometry(), pos = new Float32Array(n * 27), it = [];
+      const o = new THREE.Group(), it = [];
       const head = rnd(0, 6.283), dir = new THREE.Vector3(Math.cos(head), 0.16, Math.sin(head)).normalize(), base = new THREE.Vector3(rnd(-3, 3), 2.2, rnd(-3, 3)).addScaledVector(dir, 5);
-      for (let i = 0; i < n; i++) it.push({ p: base.clone().add(V.set(rnd(-3.5, 3.5), rnd(-1.4, 3.6), rnd(-3.5, 3.5))), ph: rnd(0, 6.283), sp: rnd(4, 6.5) });
-      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      const o = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x566074, side: THREE.DoubleSide, transparent: true, opacity: 0 }));
-      o.userData = { it, dir, side: new THREE.Vector3(-dir.z, 0, dir.x).normalize() }; o.frustumCulled = false;
+      for (let i = 0; i < n; i++) it.push({ p: base.clone().add(V.set(rnd(-3.5, 3.5), rnd(-1.4, 3.6), rnd(-3.5, 3.5))), ph: rnd(0, 6.283), sp: rnd(4, 6.5), q: new THREE.Quaternion().setFromEuler(new THREE.Euler(-rnd(0.15, 0.5), Math.atan2(dir.x, dir.z) + rnd(-0.3, 0.3), rnd(-0.25, 0.25), 'YXZ')) });
+      PART.forEach(name => o.add(inst(name, n)));
+      o.userData = { it, dir };
       return o;
     }
+    const MA = new THREE.Matrix4(), MB = new THREE.Matrix4(), MJ = new THREE.Matrix4();
     function layBirds(dt) {
-      const { it, dir, side } = birds.userData, a = birds.geometry.attributes.position, up = V.set(0, 1, 0);
-      const put = (k, v) => a.setXYZ(k, v.x, v.y, v.z), A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+      const { it, dir } = birds.userData, [body, armL, handL, armR, handR] = birds.children;
       for (let i = 0; i < it.length; i++) {
         const b = it[i]; b.p.addScaledVector(dir, b.sp * dt); b.ph += 13 * dt;
-        const lift = Math.sin(b.ph) * 0.34, k = i * 9;
-        put(k, A.copy(b.p).addScaledVector(dir, 0.24)); put(k + 1, B.copy(b.p).addScaledVector(dir, -0.24).addScaledVector(side, 0.08)); put(k + 2, C.copy(b.p).addScaledVector(dir, -0.24).addScaledVector(side, -0.08)); // the body
-        for (const sgn of [1, -1]) { const q = k + (sgn > 0 ? 3 : 6); put(q, A.copy(b.p).addScaledVector(dir, 0.14)); put(q + 1, B.copy(b.p).addScaledVector(dir, -0.14)); put(q + 2, C.copy(b.p).addScaledVector(side, sgn * 0.46).addScaledVector(up, lift).addScaledVector(dir, -0.04)); }
+        const a = 0.25 + Math.sin(b.ph), h = 0.55 * Math.sin(b.ph - 1) - 0.1; // the arm's beat, and the hand's a little behind it
+        M.compose(b.p, b.q, S.setScalar(BIRD)); body.setMatrixAt(i, M);
+        for (const [arm, hand, sgn] of [[armL, handL, 1], [armR, handR, -1]]) {
+          const sh = kit[sgn > 0 ? 'pigeon_arm_l' : 'pigeon_arm_r'].at, wr = kit[sgn > 0 ? 'pigeon_hand_l' : 'pigeon_hand_r'].at;
+          MA.copy(M).multiply(MJ.makeTranslation(sh.x, sh.y, sh.z)).multiply(MJ.makeRotationZ(sgn * a)); arm.setMatrixAt(i, MA);
+          MB.copy(MA).multiply(MJ.makeTranslation(wr.x - sh.x, wr.y - sh.y, wr.z - sh.z)).multiply(MJ.makeRotationZ(sgn * h)); hand.setMatrixAt(i, MB);
+        }
       }
-      a.needsUpdate = true;
+      birds.children.forEach(m => { m.instanceMatrix.needsUpdate = true; });
     }
     // the sound of it: a tone falling away to nothing as time slows, and rising back as it is let go
     function sweep(down) {
@@ -99,7 +122,7 @@ window.OEStopFX = (function () {
     function dispose() {
       if (!g) return;
       world.remove(g);
-      g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      g.traverse(o => { if (o.geometry && !o.isInstancedMesh) o.geometry.dispose(); if (o.material) o.material.dispose(); if (o.isInstancedMesh) o.dispose(); }); // (the models' geometry is kept for the next Stop)
       g = leaves = birds = motes = drops = ring = splash = null;
     }
     function start(centre, { rain = false } = {}) {
@@ -107,8 +130,7 @@ window.OEStopFX = (function () {
       g = new THREE.Group(); g.position.copy(centre); age = 0; fall = 0; letGo = -1;
       motes = points(1400, R, 4.2, 0.06, 0xfff1d6, true); g.add(motes);
       if (rain) { drops = points(4200, R - 2, H, 0.05, 0xcfe0ff, false); g.add(drops); }
-      leaves = cards(rain ? 90 : 300); g.add(leaves); layCards(0);
-      birds = flock(rain ? 4 : 11); g.add(birds); layBirds(0);
+      if (kit) { leaves = cards(rain ? 90 : 300); g.add(leaves); layCards(0); birds = flock(rain ? 4 : 11); g.add(birds); layBirds(0); }
       { const n = 260, o = points(n, 1, 1, 0.05, 0xdcebff, false), a = o.geometry.attributes.position, th = rnd(0, 6.283), cx = Math.cos(th) * 3.2, cz = Math.sin(th) * 3.2;
         for (let i = 0; i < n; i++) { const u = Math.random(), an = Math.random() * 6.283, r = 0.08 + u * rnd(0.3, 0.75); a.setXYZ(i, cx + Math.cos(an) * r, 0.05 + Math.sin(Math.PI * Math.min(1, u * 1.15)) * rnd(0.5, 1.25), cz + Math.sin(an) * r); }
         o.material.uniforms.uH.value = 1e6; splash = o; g.add(o); }
@@ -129,8 +151,7 @@ window.OEStopFX = (function () {
       motes.material.uniforms.uFall.value = fall * 0.12; motes.material.uniforms.uFade.value = fade * 0.85; motes.material.uniforms.uP.value.copy(local);
       if (drops) { drops.material.uniforms.uFall.value = fall * 7.5; drops.material.uniforms.uFade.value = fade * 0.85; drops.material.uniforms.uP.value.copy(local); }
       if (splash) { splash.material.uniforms.uFall.value = letGo >= 0 ? letGo * letGo * 4 : 0; splash.material.uniforms.uFade.value = fade * 0.9; splash.material.uniforms.uP.value.copy(local); }
-      leaves.material.opacity = fade; birds.material.opacity = fade;
-      if (wdt > 0) { layCards(wdt); layBirds(wdt); }
+      if (leaves) { shown(leaves, fade); shown(birds, fade); if (wdt > 0) { layCards(wdt); layBirds(wdt); } }
       if (ring) { const k = Math.min(1, age / 1.1), e = 1 - Math.pow(1 - k, 3); ring.scale.setScalar(1 + e * 85); ring.material.opacity = 0.9 * (1 - k); if (k >= 1) { g.remove(ring); ring.geometry.dispose(); ring.material.dispose(); ring = null; } }
     }
     return { start, release, tick, dispose, get on() { return !!g; } };

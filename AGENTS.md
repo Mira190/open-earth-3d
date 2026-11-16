@@ -241,6 +241,9 @@ The owner should not be the one who finds the bug.
   Both scripts also write the parts the pages load before playable and after (`cars_far.glb`,
   `trees_far.glb`, `trees_near.glb`: `python pipeline/meshopt.py split <model.glb>`);
   `tools/check.sh` fails on a stale part.
+- What hangs in the air of a stopped world (`web/assets/stop/stop.glb`: a ginkgo leaf, a zelkova leaf, a
+  handbill, and a pigeon in five parts) is built by `blender -b -P blender/build_stop.py`;
+  `web/game/stopfx.js` places it.
 - The main characters (the people you play) are Microsoft Rocketbox avatars and clips (MIT;
   keep `web/assets/people/LICENSE-Rocketbox.txt` with them), built by `blender/build_people.py`
   (`python pipeline/fetch_rocketbox.py` first).
