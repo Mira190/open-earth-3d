@@ -4,6 +4,7 @@
 // takes a still at each beat, prints the state at each, and exits 1 if the last card is not reached or the page throws.
 //   python3 -m http.server 8800 --directory web &
 //   node tools/story_play.js out_dir [WxH]          (GPU=metal on a Mac; under xvfb-run -a elsewhere)
+// FROM=6: from the last frame only. LIMIT=seconds: how long the whole play may take.
 const { chromium } = require('playwright');
 const fs = require('fs');
 const [,, out = '/tmp/story-play', size = '1440x900'] = process.argv;
@@ -18,6 +19,8 @@ const [,, out = '/tmp/story-play', size = '1440x900'] = process.argv;
   p.on('response', r => { if (r.status() >= 400) console.log('http', r.status(), r.url()); });
   fs.mkdirSync(out, { recursive: true });
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
+  // FROM=n: as a case left at frame n (counted from 0) and opened again
+  if (process.env.FROM) await p.addInitScript(n => { try { localStorage.setItem('oe-story-late', JSON.stringify({ fi: n, left: 7 - n, prints: Array.from({ length: n }, (_, i) => ({ src: null, stamp: `frame ${i + 1}`, cap: '' })) })); } catch (e) { /* storage blocked */ } }, +process.env.FROM);
   await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.Q || ''}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction(() => { const t = document.getElementById('g-title'); return window.__game && t && !t.hidden; }, null, { timeout: 900000, polling: 500 });
   await p.waitForTimeout(2000);

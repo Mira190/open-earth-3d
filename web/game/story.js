@@ -50,7 +50,7 @@ window.OEStory = (function () {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   // ctx: { story (the data), stage, player, touch, toast(html), say(who, lines, done), ask(who, lines, choices, done), hush(on),
-  //        dress(date, light, weather), weather(kind), walkIn(seconds), floor(x, y) -> the ground's height there,
+  //        hold(on): time held or let go (what hangs in the air), dress(date, light, weather), weather(kind), walkIn(seconds), floor(x, y) -> the ground's height there,
   //        figure(look, at) -> { x, y, z, face(x, y), walkTo(x, y, speed), animate(dt), remove() } (look.alive: a living person),
   //        person(id) -> one of the map's people { x, y, z, name, role }, beacon(at | null): a light standing at [x, y, , floor]
   //        (none: taken away), screen(at) -> { x, y, front, dist } where [x, y, z] is in the frame (0..1), aim(at) -> degrees
@@ -74,7 +74,7 @@ window.OEStory = (function () {
     goalEl.setAttribute('role', 'status'); goalEl.setAttribute('aria-live', 'polite');
     const pulse = () => { flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on'); };
     // phase: idle, dressed, go (the world runs: a word with the living, the way to the next place), stop, after, done
-    const st = { ep: null, phase: 'idle', beat: '', t: 0, left: N, fi: 0, fr: null, ghost: null, ghost2: null, target: null, prints: [], from: null, late: false, miss: 0, cast: {}, hinted: false, asked: 0 };
+    const st = { ep: null, phase: 'idle', beat: '', t: 0, left: N, fi: 0, fr: null, ghost: null, ghost2: null, target: null, prints: [], from: null, late: false, miss: 0, cast: {}, hinted: false, asked: 0, k: 1, orbit: 0 };
     const timers = [];
     const later = (ms, fn) => timers.push(setTimeout(fn, ms));
     const show = () => { frames.querySelector('b').textContent = String(st.left).padStart(2, '0'); frames.querySelectorAll('.strip i').forEach((c, i) => c.classList.toggle('spent', i < N - st.left)); };
@@ -166,8 +166,9 @@ window.OEStory = (function () {
       const ep = st.ep, fr = st.fr, a = fr.afterimage, first = st.fi === 0 && !st.late;
       st.phase = 'stop'; st.t = 0; st.beat = 'still';
       veil.classList.add('on'); ctx.stage.classList.add('story-stop');
-      ctx.hush(true);
+      ctx.hush(true); ctx.hold(true);
       pulse();
+      if (first) { st.orbit = 0.5; later(4200, () => { st.orbit = 0; }); } // (the first time, the view turns round you through the held street)
       if (a && !st.ghost) { st.ghost = ctx.figure(a, a.at); st.ghost.face(ctx.player.x, ctx.player.y); }
       if (fr.afterimage2 && !st.ghost2) { st.ghost2 = ctx.figure(fr.afterimage2, fr.afterimage2.at); st.ghost2.face(ctx.player.x, ctx.player.y); }
       // the world holds a breath (the first time, the title falls on it), and then the one thing to do
@@ -224,7 +225,7 @@ window.OEStory = (function () {
       st.phase = 'after'; st.t = 0; st.beat = ''; st.late = !!late;
       veil.classList.remove('on'); ctx.stage.classList.remove('story-stop');
       shutter.classList.remove('on'); finder.classList.remove('on'); hint(false); aimAt(null); goal('');
-      ctx.hush(false);
+      ctx.hush(false); ctx.hold(false); st.orbit = 0;
       pulse();
       for (const k of ['ghost', 'ghost2']) if (st[k]) { st[k].remove(); st[k] = null; }
       const said = late ? [fr.late || 'The lights changed. Come back to where it stopped, and it will stop again.'] : fr.after || [];
@@ -258,7 +259,9 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
       const ep = st.ep, fr = st.fr;
       if (!ep || st.phase === 'idle' || st.phase === 'dressed' || st.phase === 'done') return;
       st.t += dt;
-      for (const id in st.cast) if (st.phase !== 'stop') st.cast[id].animate(dt); // (the living hold still with the world)
+      // time is not cut, it is braked: the world slows to nothing over most of a second, and runs up again faster
+      st.k = st.phase === 'stop' ? Math.max(0, st.k - dt / 0.95) : Math.min(1, st.k + dt / 0.6);
+      for (const id in st.cast) st.cast[id].animate(dt * st.k * st.k); // (the living slow and hold with the world)
       if (st.phase === 'go') {
         goalEl.querySelector('small').textContent = `${S.title || ''} · Frame ${st.fi + 1} of ${N}`;
         if (st.beat === 'meet') {
@@ -313,6 +316,8 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
     return {
       dress, begin, tick, shoot, state: st,
       get stopped() { return st.phase === 'stop'; },
+      get scale() { return st.phase === 'idle' || st.phase === 'dressed' || st.phase === 'done' ? 1 : st.k * st.k; }, // how much time the world is given: 1 running, 0 held
+      get orbit() { return st.orbit; },
       get finder() { return st.phase === 'stop' && st.beat === 'shoot'; }, // the camera is raised: the game shows the lens's view
       get on() { return st.phase !== 'idle' && st.phase !== 'done'; },
       dispose() {

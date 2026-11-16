@@ -3086,6 +3086,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // ------------------------------------------------------------ the story (story.js): a map's episodes, and the Stop, in which
   // the world is given no time while the player walks on. Asked for with ?story=1 while it is being made.
   let storyBeacon = null;
+  const stopFx = window.OEStopFX ? OEStopFX.create({ THREE, world, audio: () => A.ctx, sound: () => { const c = $('#gm-sound'); return !c || c.checked; } }) : null; // what hangs in the air of a stopped world (stopfx.js)
   const story = window.OEStory && G.story && !new URLSearchParams(location.search).has('walk') ? OEStory.create({
     story: G.story, stage, player, touch, toast: t => H.toast(t),
     // the goal's light: a pale column standing where the next thing to do is, and a ring at its foot
@@ -3127,6 +3128,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     free: () => { const u = new URL(location.href); u.searchParams.set('walk', '1'); u.searchParams.delete('overture'); location.href = u.toString(); },
     say: (who, lines, done) => dlg.show(Object.assign({ color: who.alive ? '#ffcf8a' : '#9fc4ff' }, who), lines.map(l => fill(l)), null, done),
     hush: on => { if (A.hush) A.hush(on); },
+    // time held and let go: what was falling or flying hangs where it was (stopfx.js)
+    hold: on => { if (!stopFx) return; if (on) stopFx.start(W(player.x, player.y, player.z), { rain: !!(weather && weather.state && weather.state.rain > 0.15) }); else stopFx.release(); },
     ask: (who, lines, choices, done) => dlg.show(Object.assign({ color: who.alive ? '#ffcf8a' : '#9fc4ff' }, who), lines.map(l => fill(l)), choices, done), // (a question: the lines, then answers to pick from)
     dress: (date, light, wx) => {
       const [m, d] = date || [clock.m, clock.d];
@@ -5545,7 +5548,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     gov.raf(now);
     if (!gov.due(now)) { requestAnimationFrame(frame); return; } // (the frame-rate cap on a faster display: this frame is not drawn)
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); // the first frame can be stamped before the loop started
-    last = now; if (!simHold && !(story && story.stopped)) clockT += dt; // (the Stop holds the world's clock; a harness's hold: only advance() moves the world's clock)
+    last = now; if (!simHold) clockT += dt * (story ? story.scale : 1); // (the Stop holds the world's clock; a harness's hold: only advance() moves the world's clock)
     U.uTime.value = clockT;
     const titleOn = preTitle || !hud('#g-title').hidden, paused = titleOn || !hud('#g-menu').hidden || (window.OEMetro && OEMetro.isOpen()) || photo.on || simHold;
     stage.classList.toggle('titled', titleOn);
@@ -5586,12 +5589,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (hero) hero.update(camera, dt);
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) applyDensity();
     if (atmos) atmos.update(clockUtc, now / 1000, U);
-    weatherTick(simHold || (story && story.stopped) ? 0 : dt, titleOn, titleOn || paused || photo.on); // (held by a harness: the weather eases on only with advance(), which ticks it; stepped by the frames too, it eased by however many the machine drew, #420)
+    weatherTick(simHold ? 0 : dt * (story ? story.scale : 1), titleOn, titleOn || paused || photo.on); // (held by a harness: the weather eases on only with advance(), which ticks it; stepped by the frames too, it eased by however many the machine drew, #420)
     if (show) show.tick(now);
     if (window.OEKit) OEKit.setNight(U.uNight.value); // cabin windows and navigation lights
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
     if (life && !simHold) life.tick(dt, paused, titleOn); // (held by a harness: the day moves on only with advance())
-    if (story && !paused) story.tick(dt);
+    if (story && !paused) { story.tick(dt); if (stopFx) stopFx.tick(dt, story.scale, W(player.x, player.y, player.z)); if (story.orbit && player.mode === 'foot') cam.yaw += story.orbit * dt; } // (and what hangs in the stopped air; the first Stop turns the view round you once)
     if (story && heli.group) heli.group.visible = false; // (the story has no helicopter: none stands on the roof it climbs to)
     if (storyBeacon && storyBeacon.visible) storyBeacon.userData.col.material.uniforms.uT.value = performance.now() / 1000;
     if (!simHold) dlg.tick(dt); // (held by a harness: a conversation goes on only as it asks, dlg.tick, so that one closing on the real clock starts nothing at another step of its run)
@@ -5751,7 +5754,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       A.engine(0.3 + Math.min(1, Math.abs(v.speed) / 9) * 0.7);
       player.rig.animate(dt, 0, 'ground', clockT);
     }
-    if (story && story.stopped) dt = 0; // the Stop: you have moved; from here on the world is given no time
+    if (story) dt *= story.scale; // (it slows into the Stop and runs up out of it: story.js)
+    if (story && story.stopped && story.scale === 0) dt = 0; // the Stop: you have moved; from here on the world is given no time
     if (fish) fishTick(dt, held ? 0 : Math.max(-1, Math.min(1, side)));
     if (coachHeli) coachHeli.update(dt); // (on into the step out, once landed)
     if (player.mode !== 'heli') { heli.update(dt, {}, []); A.rotor(heli.st.rotor * Math.max(0, 1 - Math.hypot(heli.st.x - player.x, heli.st.y - player.y) / 300)); }

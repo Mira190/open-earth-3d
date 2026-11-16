@@ -212,6 +212,23 @@ the world runs, and stops again when you come back. A page closed mid-case opens
 lit, the city that never sleeps; down to the kerb; the crossing from above as the title falls; the
 lights change.
 
+**The Stop has to be seen to be believed.** A street that merely stands still looks like a
+photograph of a street. What the best held moments on screen have in common (the camera moving
+through hanging debris in *The Matrix*, the kitchen in *X-Men: Days of Future Past*, Bend Time in
+*Dishonored*, the frozen storm in *Life is Strange*, the stutters of *Quantum Break*) is evidence
+of motion interrupted, at every depth, that the viewer then moves through. So (`web/game/stopfx.js`):
+
+- time is braked, not cut: the world slows to nothing over most of a second, and a tone falls away
+  with it; it runs up again faster than it stopped;
+- a ring runs out along the ground from where you stand: the moment has an edge;
+- what was falling or flying hangs where it was: ginkgo leaves and handbills at the height of a
+  face, a flock of pigeons half way off the pavement with their wings wherever the beat left them,
+  a splash of water caught as a crown of beads, dust in the air lit by the screens;
+- in the rain of the last frame, the rain itself: thousands of beads hanging, which stand aside
+  as you walk through them;
+- the first time, the view turns once round you through all of it while the title falls;
+- when time is let go, everything that hung falls.
+
 **In the world, not in menus.** The map's old instruments are gone from the story. People are
 solid: in the Stop nobody can make way, so the crowd on the crossing is something to thread, and
 the afterimage is the one figure in it that turns its head.
