@@ -2004,6 +2004,8 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
       for (let t = 0; t < 90 && !st.done; t += 0.25) { // (a red is 10 s at most, junctions.js RED: a queue standing longer is held by a jam beyond, and another is tried)
         g.advance(0.25);
         const lt = g.junctions.light(arm); if (!seq.length || seq[seq.length - 1][1] !== lt) seq.push([t, lt]); // (the light it waits at, as it changes)
+        // (what it went round was none of the traffic: a car parked at the kerb, a bus at its stop, standing in its lane)
+        if (Math.abs(st.shift) > Math.max(0.2, r.shift)) { const rl = st.passed && st.passed.length ? st.passed : (st.rounded || {}).cars || []; r.roundOut = rl.length > 0 && rl.every(c => C.indexOf(c) < 0); }
         if (Math.abs(st.shift) > Math.max(0.2, r.shift)) r.round = (st.passed && st.passed.length ? st.passed : (st.rounded || {}).cars || []).map(c => `car ${C.indexOf(c)} (${c.whyRound || ''}; ${c.why}${c.stay ? ', parked' : ''}${c === g.myCar() ? ', yours' : ''}, v ${(+c.v || 0).toFixed(1)}${c.q ? ', queueing' : ''}, stood ${typeof c.still === 'number' ? c.still.toFixed(0) : c.still} s${c.stuck ? `, stuck ${c.stuck.toFixed(0)} s` : ''}${(() => { const ch = []; for (let x = c.front, k = 0; x && k < 6; x = x.front, k++) ch.push(`${C.indexOf(x) >= 0 ? C.indexOf(x) : 'you'} ${x.why || ''} v ${(+x.v || 0).toFixed(1)}${x.q ? ' q' : ''}`); return ch.length ? `; ahead of it ${ch.join(' < ')}` : ''; })()})`).join(', ') + (st.rounded ? ` (held ${st.rounded.held.toFixed(0)} s)` : '') || 'nothing';
         r.shift = Math.max(r.shift, Math.abs(st.shift));
         const a = st.h, bl = st.block;
@@ -2043,7 +2045,10 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
     // (none of the tries caught up with its queue before the light changed: the waiting is not tried,
     // noted above; the lane is still checked for the way up to it)
     if (!queue.behind) console.log(`note a ride behind a queue at a red light: not tried, the light changed before it caught up with any (out of its lane by ${queue.shift.toFixed(2)} m at most)`);
-    check(queue.shift < 0.5 && (queue.behind || !queue.round), `a ride behind a queue of ${queue.n} at a red light waits in its lane (out of it by ${queue.shift.toFixed(2)} m at most${queue.round ? `, going round ${queue.round}` : ''}${queue.behind ? '' : ', never caught up with the queue'})`);
+    // (out of its lane round something standing in it that is not of the traffic, with no queued car passed, is
+    // not jumping the queue: Tokyo's taxi went 2.3 m round two cars parked in its lane on its way up to the queue)
+    const roundParked = queue.roundOut && !(queue.passed || []).length;
+    check((queue.shift < 0.5 || roundParked) && (queue.behind || !queue.round || roundParked), `a ride behind a queue of ${queue.n} at a red light waits in its lane (out of it by ${queue.shift.toFixed(2)} m at most${queue.round ? `, going round ${queue.round}` : ''}${roundParked ? ': parked in its lane, none of the queue passed' : ''}${queue.behind ? '' : ', never caught up with the queue'})`);
     check(queue.passed.length === 0, `it never passes a car queueing there${queue.passed.length ? ` (passed ${(queue.passedHow || []).join('; ')})` : ''}`);
     check(!queue.overtook.length, `the traffic behind it queues behind it${queue.overtook.length ? ` (car ${queue.overtook.join(', ')} came past it)` : ''}`);
     if (queue.jams.length) console.log(`note a queue not tried to the end (it did not move in 90 s, or moved off before the taxi came up): ${queue.jams.join(' | ')}`);

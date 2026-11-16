@@ -3,7 +3,7 @@
 // reverseStep runs in the page (page.evaluate(reverseStep, { ride, stills })), once the game has started (stills: a
 // still at three points as the ride backs out, through window.__still(name), which the caller exposes):
 //   traffic  up to three cars of the traffic on one-way streets near you are asked to back out
-//            (cars.reverse); each must end up on another piece of road, going on, within 90 s (150 s while still
+//            (cars.reverse); each must end up on another piece of road, going on, within 90 s (240 s while still
 //            moving, behind another backing out), never into
 //            another car on the way (its body 0.1 m into one at most);
 //   ride     (with ride: true; a ride is ordered and boarded if none is under way) the ride is put on a one-way
@@ -43,7 +43,9 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
     // (90 s: it backs up to 80 m at a walking pace, and may wait up to 20 s at a time on the way for the junction behind)
     // (and on to 150 s for one still backing out that has moved in the last 20 s: behind another backing out of the same street,
     // waiting at the junction behind for room, it waits its turn)
-    for (let t = 0; (t < 90 || (t < 150 && watch.some(w => !w.done && !w.gone && !w.gaveUp && t - (w.moved || 0) < 20))) && watch.some(w => !w.done && !w.gone && !w.gaveUp); t += 0.1) {
+    // (240 s, not 150: Tokyo's car 28 was 41 m back along a long street and still backing, having waited 5 s in all,
+    // when 150 s were up: behind another backing out of the next piece of the same street)
+    for (let t = 0; (t < 90 || (t < 240 && watch.some(w => !w.done && !w.gone && !w.gaveUp && t - (w.moved || 0) < 20))) && watch.some(w => !w.done && !w.gone && !w.gaveUp); t += 0.1) {
       const was = new Map(C.map(o => [o, [o.x, o.y, o.why, o.v]])); // (where each stood before the step: which of two moved into the other)
       g.advance(0.1);
       for (const w of watch) {
