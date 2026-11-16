@@ -272,7 +272,7 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     if (fc && QF && QF.lean && typeof createImageBitmap === 'function') await Promise.all(Object.values(lib.far).map(L => {
       const t = L.map, im = t.image;
       if (!im || !im.width) return null;
-      return createImageBitmap(im, { resizeWidth: im.width >> 1, resizeHeight: im.height >> 1, resizeQuality: 'high' })
+      return createImageBitmap(im, { resizeWidth: im.width >> 1, resizeHeight: im.height >> 1, resizeQuality: 'high', premultiplyAlpha: 'none' })
         .then(bm => { t.image = bm; t.needsUpdate = true; if (im.close) im.close(); }).catch(() => {});
     }));
     if (fc && window.OETex && OETex.stats.on) await Promise.all(Object.values(lib.far).map(F => OETex.pack(F.map)));
@@ -312,7 +312,7 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
           if (!im || !(im.width > LEAN_PX || im.height > LEAN_PX) || t.userData.oeLean || typeof createImageBitmap !== 'function') continue;
           t.userData.oeLean = true;
           const f = LEAN_PX / Math.max(im.width, im.height);
-          jobs.push(createImageBitmap(im, { resizeWidth: Math.round(im.width * f), resizeHeight: Math.round(im.height * f), resizeQuality: 'high' })
+          jobs.push(createImageBitmap(im, { resizeWidth: Math.round(im.width * f), resizeHeight: Math.round(im.height * f), resizeQuality: 'high', premultiplyAlpha: 'none' })
             .then(bm => { t.image = bm; t.needsUpdate = true; if (im.close) im.close(); }).catch(() => {})); // (else as it came)
         }
       });
@@ -409,7 +409,7 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
       const h = lib.heroes[name], c = lib.npcs[name];
       if (c) {
         return lib.loading[name] || (lib.loading[name] = Promise.all([get(c.file), clipsOf(c.sex)]).then(([g, clips]) =>
-          ready(name, { scene: g.scene, textured: true, clips, speeds: NP.clips[c.sex].ground_speed, bones: NP.bones || {} }, true)));
+          ready(name, { scene: g.scene, textured: true, clips, speeds: NP.clips[c.sex].ground_speed, bones: NP.bones || {}, mask: !!c.mask }, true)));
       }
       if (!h) return plain(name);
       return lib.loading[name] || (lib.loading[name] = get(h.file).then(g =>
@@ -725,7 +725,7 @@ ${PAT_GLSL}`)
           if (!o.isSkinnedMesh || Array.isArray(o.material) || !o.material.map || /_opacity$|_head$/.test(o.material.name || '')) return;
           const m = o.material.clone();
           m.userData = { dress: { value: new THREE.Vector3(1, 0, 1) }, dye: { value: new THREE.Vector2() } };
-          dressMaterial(m); litMaterial(m);
+          dressMaterial(m, !!T.mask && /_body$/.test(m.name || '')); litMaterial(m);
           o.material = m;
           dressMats.push(m);
         });
@@ -939,7 +939,13 @@ transformed = crowdPose(transformed, false);`);
   const DRESS_GLSL = `{
     vec3 c = diffuseColor.rgb; float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b));
     float gr = c.g / max(c.r, 1e-4), bg = c.b / max(c.g, 1e-4), sat = (mx - mn) / max(mx, 1e-4);
+    #ifdef OE_SKIN_MASK
+    // (the character's own mask, in its picture's alpha: 0.8 on skin, and on a far copy's head and hair, 1 on cloth.
+    // blender/build_people.py skin_mask, issue 505: every garment changes, a tan waistcoat too, and no hand is dyed)
+    float skin = 1.0 - smoothstep(0.86, 0.95, diffuseColor.a);
+    #else
     float skin = step(c.g, c.r) * step(c.b, c.g) * smoothstep(0.3, 0.38, gr) * (1.0 - smoothstep(0.78, 0.86, gr)) * smoothstep(0.3, 0.4, bg) * smoothstep(0.26, 0.36, mx);
+    #endif
     float Y = dot(c, vec3(0.299, 0.587, 0.114)), I = dot(c, vec3(0.596, -0.274, -0.322)), Q = dot(c, vec3(0.211, -0.523, 0.312));
     vec2 iq = vec2(I * dress.x - Q * dress.y, I * dress.y + Q * dress.x);
     float neutral = (1.0 - smoothstep(0.3, 0.62, sat)) * (1.0 - smoothstep(0.42, 0.7, Y));
@@ -952,7 +958,7 @@ transformed = crowdPose(transformed, false);`);
     diffuseColor.rgb = mix(d, c, skin);
   }`;
   // a near person's clothes (their body's material, a copy of its own): rig.dress, below
-  function dressMaterial(m) {
+  function dressMaterial(m, masked) {
     const own = m.onBeforeCompile, key = m.customProgramCacheKey;
     m.onBeforeCompile = (sh, r) => {
       if (own) own.call(m, sh, r);
@@ -960,7 +966,8 @@ transformed = crowdPose(transformed, false);`);
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uDress;\nuniform vec2 uDye;')
         .replace('#include <map_fragment>', `#include <map_fragment>\n{ vec3 dress = uDress; vec2 dye = uDye;\n${DRESS_GLSL} }`);
     };
-    m.customProgramCacheKey = () => `dress5|${key ? key.call(m) : ''}`;
+    if (masked) m.defines = Object.assign({}, m.defines, { OE_SKIN_MASK: '' });
+    m.customProgramCacheKey = () => `dress6${masked ? 'm' : ''}|${key ? key.call(m) : ''}`;
   }
 
   // A scanned cast member's far copy (lib.far, pipeline/crowd_cast.py): its own picture, swung as the dolls are. Lit as
@@ -983,7 +990,8 @@ vDress = iDress; vDye = iDye;`)
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vDress;\nvarying vec2 vDye;')
         .replace('#include <map_fragment>', `#include <map_fragment>\n{ vec3 dress = vDress; vec2 dye = vDye;\n${DRESS_GLSL} }`); // (the clothes this walker wears: DRESS)
     };
-    mat.customProgramCacheKey = () => 'crowd-cast-dress5';
+    if (ex.mask) mat.defines = { OE_SKIN_MASK: '' };
+    mat.customProgramCacheKey = () => `crowd-cast-dress6${ex.mask ? 'm' : ''}`;
     const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: L.map, alphaTest: 0.4 });
     depth.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, uni, { uTime: U.uTime });

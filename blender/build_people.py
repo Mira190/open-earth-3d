@@ -320,6 +320,8 @@ def export(rig, path, colour_px=1024, data_px=512, mesh=True, clips=True, shared
                               **({} if clips and mesh else {"export_vertex_color": "NONE"}))
     before = os.path.getsize(path)
     slim_glb(path, shared=shared, quantize=not clips)
+    embed_masks(path)
+    MASKS.clear()
     compress(path)
     print(f"wrote {path} ({os.path.getsize(path) / 1e6:.2f} MB; {before / 1e6:.2f} MB as exported)")
 
@@ -868,6 +870,160 @@ def match_skin(arm, mesh):
     put_pixels(node.image, px)
 
 
+KEEP = 204   # the alpha of a body texel the crowd's change of clothes leaves as it is: skin (people.js DRESS; cloth is 255)
+BARE = re.compile(r" (Hand|Finger|Forearm|UpperArm|Neck|Clavicle|Thigh|Calf|Foot|Toe)")   # the bones a body can be bare on
+LEG = re.compile(r" (Thigh|Calf|Foot|Toe)")
+
+
+def skin_mask(arm, mesh):
+    """Mark the bare skin on the body's picture, in its alpha (KEEP; cloth stays 255): what the crowd's change of
+    clothes (people.js DRESS) must leave alone (issue 505). The page found skin by its colour alone, so a tan
+    waistcoat or a beige coat was taken for skin and never changed, and a dark hand could be taken for cloth and
+    dyed. Here skin is this character's own: the colour of its hands (or its face, in gloves), and only where a
+    body can be bare and the skin is joined to a hand, to the neck or is on a leg:
+
+    - a face of the body is a candidate when most of its texels have the hands' hue (the share of red and green in
+      the colour, which shading does not move) and a lightness near theirs;
+    - candidates count when a walk over the mesh through other candidates reaches a hand or the head's edge, or
+      when they are on a leg (a skirt's or shorts' bare legs meet no hand);
+    - inside those faces, grown a few texels, each texel is tested again, more loosely for the creases, so a
+      watch, a ring or a cuff's edge inside the grown area stays cloth.
+    Returns the share of the body's texels marked."""
+    from PIL import Image, ImageDraw, ImageFilter
+    slots = mesh.material_slots
+    body = next((sl.material for sl in slots if sl.material and sl.material.name.endswith("_body") and base_image(sl.material)), None)
+    if body is None:
+        return 0.0
+    node = base_image(body)
+    w, h = node.image.size
+    px = pixels(node.image)
+    names = {g.index: g.name for g in mesh.vertex_groups}
+    vs, polys = mesh.data.vertices, mesh.data.polygons
+
+    def share(p, rx):   # how much of a face's weight is on the bones rx names
+        return sum(g.weight for i in p.vertices for g in vs[i].groups if rx.search(names.get(g.group, ""))) / max(1, len(p.vertices))
+
+    bp = [p for p in polys if slots[p.material_index].material is body]
+    hands = [p for p in bp if share(p, re.compile(r" (Hand|Finger)")) > 0.5]
+    ref = None
+    m = (uv_mask(mesh, hands, w, h, grow=0) > 0.5) & skin_like(px) if hands else None
+    if m is not None and m.sum() > 300:
+        ref = np.median(px[m, :3], axis=0)
+    else:   # gloves: the face's colour, if the legs or arms are bare
+        for sl in slots:
+            n2 = sl.material and sl.material.name.endswith("_head") and base_image(sl.material)
+            if n2:
+                hp = pixels(n2.image)
+                hm = skin_like(hp) & (luma(hp) > 0.3)
+                if hm.sum() > 500:
+                    ref = np.median(hp[hm, :3], axis=0)
+    if ref is None:
+        return 0.0
+    hue = lambda c: c[..., :2] / (c[..., :3].sum(-1, keepdims=True) + 1e-4)
+    dh = np.linalg.norm(hue(px) - hue(ref), axis=-1)
+    ratio = luma(px) / max(1e-4, float(luma(ref)))
+    like = skin_like(px) & (dh < 0.035) & (ratio > 0.35) & (ratio < 1.6)
+    loose = skin_like(px) & (dh < 0.06) & (ratio > 0.2) & (ratio < 1.9)
+    # each face's texels, by a picture of face numbers
+    ids = Image.new("I", (w, h), 0)
+    d = ImageDraw.Draw(ids)
+    uv = mesh.data.uv_layers.active.data
+    for k, p in enumerate(bp):
+        d.polygon([(uv[i].uv[0] * w, uv[i].uv[1] * h) for i in p.loop_indices], fill=k + 1)
+    ids = np.asarray(ids, dtype=np.int64)
+    tot = np.bincount(ids.ravel(), minlength=len(bp) + 1)[1:]
+    hit = np.bincount(ids.ravel(), weights=like.ravel().astype(np.float64), minlength=len(bp) + 1)[1:]
+    frac = hit / np.maximum(1, tot)
+    cand = (frac > 0.5) & (tot > 0)
+    bare = np.array([share(p, BARE) > 0.3 for p in bp])
+    cand &= bare | (frac > 0.9)
+    # the faces that meet at a place (the head's are not welded to the body's after a swap: by place, to 2 mm)
+    key = lambda i: tuple(np.round(np.array(vs[i].co) * 500).astype(int))
+    at = {}
+    for k, p in enumerate(bp):
+        for i in p.vertices:
+            at.setdefault(key(i), []).append(k)
+    head_edge = {key(i) for p in polys if HEADISH.search(slots[p.material_index].name) for i in p.vertices}
+    hand_set = {p.index for p in hands}
+    seeds = [k for k, p in enumerate(bp) if cand[k] and (p.index in hand_set or share(p, LEG) > 0.5 or any(key(i) in head_edge for i in p.vertices))]
+    seen, todo = set(seeds), list(seeds)
+    while todo:
+        k = todo.pop()
+        for i in bp[k].vertices:
+            for o in at[key(i)]:
+                if cand[o] and o not in seen:
+                    seen.add(o)
+                    todo.append(o)
+    # (and on from those through bare faces that pass the looser test: a tanned thigh's shaded side, a forearm's crease)
+    lhit = np.bincount(ids.ravel(), weights=loose.ravel().astype(np.float64), minlength=len(bp) + 1)[1:]
+    cand2 = bare & (lhit / np.maximum(1, tot) > 0.6) & (tot > 0)
+    todo = list(seen)
+    while todo:
+        k = todo.pop()
+        for i in bp[k].vertices:
+            for o in at[key(i)]:
+                if cand2[o] and o not in seen:
+                    seen.add(o)
+                    todo.append(o)
+    gate = uv_mask(mesh, [bp[k] for k in seen], w, h, grow=3) > 0.5
+    skin = gate & loose
+    # (specks gone, pinholes filled: a 3 x 3 majority)
+    im = Image.fromarray((skin * 255).astype(np.uint8), "L").filter(ImageFilter.MedianFilter(3))
+    skin = np.asarray(im) > 127
+    MASKS[body.name] = skin[::-1].copy()   # (rows from the top, as a picture file has them; embed_masks writes it into the exported file)
+    return float(skin.mean())
+
+
+MASKS = {}   # a body material's name -> its skin mask (skin_mask), for the file being built
+
+
+def embed_masks(path):
+    """Write each body picture's skin mask (MASKS) into its alpha in the GLB at path, and repack the binary. The
+    exporter writes a base colour's picture without an alpha unless the material is see-through, which a body is
+    not: the material stays opaque and three.js ignores the alpha, but for the crowd's shader (people.js DRESS)."""
+    import io
+    from PIL import Image
+    data = open(path, "rb").read()
+    jlen = struct.unpack("<I", data[12:16])[0]
+    j = json.loads(data[20:20 + jlen])
+    off = 20 + jlen
+    buf = data[off + 8:off + 8 + struct.unpack("<I", data[off:off + 4])[0]]
+    new = {}
+    for mat in j.get("materials", []):
+        mask = MASKS.get(mat.get("name"))
+        tex = mat.get("pbrMetallicRoughness", {}).get("baseColorTexture")
+        if mask is None or not tex:
+            continue
+        t = j["textures"][tex["index"]]
+        src = t.get("source", t.get("extensions", {}).get("EXT_texture_webp", {}).get("source"))
+        v = j["bufferViews"][j["images"][src]["bufferView"]]
+        im = Image.open(io.BytesIO(buf[v.get("byteOffset", 0):v.get("byteOffset", 0) + v["byteLength"]])).convert("RGB")
+        m = Image.fromarray((mask * 255).astype(np.uint8), "L").resize(im.size, Image.BILINEAR)
+        a = np.where(np.asarray(m) > 127, KEEP, 255).astype(np.uint8)
+        im.putalpha(Image.fromarray(a, "L"))
+        b = io.BytesIO()
+        im.save(b, "WEBP", quality=80, method=6, exact=True)   # (the alpha itself is kept exactly)
+        new[j["images"][src]["bufferView"]] = b.getvalue()
+        mat.pop("alphaMode", None)
+        mat.pop("alphaCutoff", None)
+    if not new:
+        return
+    out = bytearray()
+    for k, v in enumerate(j["bufferViews"]):
+        out += b"\0" * (-len(out) % 4)
+        chunk = new.get(k, buf[v.get("byteOffset", 0):v.get("byteOffset", 0) + v["byteLength"]])
+        v["byteOffset"], v["byteLength"] = len(out), len(chunk)
+        out += chunk
+    out += b"\0" * (-len(out) % 4)
+    j["buffers"][0]["byteLength"] = len(out)
+    js = json.dumps(j, separators=(",", ":")).encode()
+    js += b" " * (-len(js) % 4)
+    with open(path, "wb") as f:
+        f.write(struct.pack("<III", 0x46546C67, 2, 12 + 8 + len(js) + 8 + len(out)))
+        f.write(struct.pack("<II", len(js), 0x4E4F534A)); f.write(js)
+        f.write(struct.pack("<II", len(out), 0x004E4942)); f.write(out)
+
+
 SKELETON = {}   # sex -> the first NPC's bind pose, to check the others against
 
 
@@ -910,6 +1066,7 @@ def build_npc(cid, spec):
             raise SystemExit(f"{cid}: no tag {tag} (HAIR, CLOTH, PATTERN, TOP, SUIT, bare or plain)")
     same_skeleton(cid, arm, spec["sex"])
     arm.name = f"{cid}_Rig"
+    spec["skin"] = round(skin_mask(arm, mesh), 4)
     return arm, mesh
 
 
@@ -932,7 +1089,7 @@ def build_npcs(only=None, clips=True):
         export(rig, os.path.join(out, f"{cid}.glb"), clips=False, data_px=256)
         chars[cid] = {"file": f"{cid}.glb", "sex": spec["sex"], "avatar": spec["avatar"], "head": spec["head"], "tags": spec["tags"],
                       "height_m": round(max((mesh.matrix_world @ v.co).z for v in mesh.data.vertices), 3), "triangles": tris,
-                      "cities": sorted(spec["cities"])}
+                      "cities": sorted(spec["cities"]), **({"mask": spec["skin"]} if spec.get("skin") else {})}   # (mask: its body's picture marks the skin, and how much of it)
         print(f"{cid}: {tris} triangles")
     clip_files = dict(sec.get("clips", {}))
     for sex in sorted({s["sex"] for s in cast.values()}) if clips else []:

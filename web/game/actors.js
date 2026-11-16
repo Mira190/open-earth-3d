@@ -490,14 +490,14 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
     // can the camera see someone standing at (x, y, z)? Near it, or ahead of it and within sight with no
     // building between (the walls, sampled along the line from the eye to the walker's head)
     const look = new THREE.Vector3();
-    function seen(x, y, z) {
+    function seen(x, y, z, cone = 0.2) {
       if (!eye) return false;
       const ex = eye.position.x, ey = -eye.position.z, ez = eye.position.y, dx = x - ex, dy = y - ey, d = Math.hypot(dx, dy); // (sim y is -z)
       if (d > SEEN) return false;
       if (d < SEEN_NEAR) return true;
       eye.getWorldDirection(look);
       const h = Math.hypot(look.x, look.z); // (looking down from high up, all round it)
-      if (h > 0.3 && (dx * look.x - dy * look.z) / (d * h) < 0.2) return false;
+      if (h > 0.3 && (dx * look.x - dy * look.z) / (d * h) < cone) return false;
       if (!wall) return true;
       const k = Math.ceil(d / 2.5), dz = z + 1.5 - ez;
       for (let i = 1; i < k; i++) if (wall(ex + dx * i / k, ey + dy * i / k, ez + dz * i / k)) return false;
@@ -540,7 +540,9 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         const x = tmp.x - tmp.hy * dir * p.side, y = tmp.y + tmp.hx * dir * p.side;
         if (hot && (Math.hypot(x - hot.x, y - hot.y) > hot.r || Math.hypot(x - cx, y - cy) < rMe)) continue;
         if (shut && (shut(x, y) || shutLine(line))) continue; // (not in a subway entrance's stair well)
-        if (unseen && seen(x, y, tmp.z)) continue;
+        // (with a margin: a little outside the view's edge, and hidden at the footway's line too, where its first steps
+        // may take it; on an open square a walker put at the very edge of sight was in it a step later)
+        if (unseen && (seen(x, y, tmp.z, 0.05) || seen(tmp.x, tmp.y, tmp.z, 0.05))) continue;
         const X = api.crossings && api.crossings.byLine.get(line);
         if (X && X.some(q => Math.abs(q.s - s) < q.kerb + 0.5)) continue; // (not out in a road at a crossing)
         if (api.crossings && api.crossings.major && api.crossings.road && api.crossings.road(tmp.x, tmp.y) && api.crossings.major(tmp.x, tmp.y)) continue; // (nor out in a major road)
