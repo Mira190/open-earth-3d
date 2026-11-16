@@ -119,28 +119,6 @@ void main() {
     // or in a square the city keeps clear of poles (city.json night.clear: [x, y, radius m], as over
     // a scramble crossing much wider than its streets)
     const clear = st.clear || [], inClear = (x, y) => clear.some(([cx, cy, r]) => Math.hypot(x - cx, y - cy) < r);
-    // nor on a line people walk (night.json foot: the footways, 0.5 m either side and within a storey): a pole a few
-    // metres along instead, or on the way's other side. The crowd walked round a post in the middle of a path
-    const footSeg = new Map(), FC = 8, fkey = (cx, cy) => cx * 131071 + cy;
-    if (N.foot) {
-      const FI = unpack(N.foot), FP = unpack(N.foot_pts);
-      for (let i = 0, k = 0; i < FI.length; i += 3) for (let j = 0, n = FI[i + 2]; j < n; j++, k += 3) {
-        if (!j) continue;
-        const ax = FP[k - 3] * XY, ay = FP[k - 2] * XY, bx = FP[k] * XY, by = FP[k + 1] * XY, seg = [ax, ay, FP[k - 1] * ZU, bx, by, FP[k + 2] * ZU];
-        for (let cx = Math.floor((Math.min(ax, bx) - 0.5) / FC); cx <= Math.floor((Math.max(ax, bx) + 0.5) / FC); cx++) for (let cy = Math.floor((Math.min(ay, by) - 0.5) / FC); cy <= Math.floor((Math.max(ay, by) + 0.5) / FC); cy++) {
-          const g = footSeg.get(fkey(cx, cy));
-          if (g) g.push(seg); else footSeg.set(fkey(cx, cy), [seg]);
-        }
-      }
-    }
-    const onFoot = (x, y, z) => {
-      const g = footSeg.get(fkey(Math.floor(x / FC), Math.floor(y / FC)));
-      if (g) for (const [ax, ay, az, bx, by, bz] of g) {
-        const ex = bx - ax, ey = by - ay, l2 = ex * ex + ey * ey, t = l2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / l2)) : 0;
-        if (Math.hypot(x - ax - ex * t, y - ay - ey * t) < 0.5 && Math.abs(az + (bz - az) * t - z) < 2.5) return true;
-      }
-      return false;
-    };
     const inRoad = (x, y, z) => inClear(x, y) || !!ST.roads && ST.roads.depth(x, y, z, 0.15) > 0;
     roads.forEach(r => {
       const [spacing, width, h, both, bright] = ROAD[r.cls] || ROAD.unclassified;
@@ -156,7 +134,7 @@ void main() {
           let placed = false;
           for (const d of [0, 4, -4, 8, -8]) { // (where that is in another road, a few metres along)
             const t = Math.max(0, Math.min(1, (next - acc + d) / len)), x = ax + (bx - ax) * t - uy * s * off, y = ay + (by - ay) * t + ux * s * off, z = az + (bz - az) * t;
-            if (!inRoad(x, y, z) && !onFoot(x, y, z)) { lamp(x, y, z + h, colour, b, ux, uy, h, s); placed = true; break; }
+            if (!inRoad(x, y, z)) { lamp(x, y, z + h, colour, b, ux, uy, h, s); placed = true; break; }
           }
           if (!placed && ST.roads) { // or out of that road to its own kerb, so the footway beside it keeps its light
             const t = Math.max(0, Math.min(1, (next - acc) / len)), z = az + (bz - az) * t, q = ST.roads.kerbside(ax + (bx - ax) * t - uy * s * off, ay + (by - ay) * t + ux * s * off, z, 0.15, 6);
@@ -197,10 +175,9 @@ void main() {
           for (; next <= acc + len; next += spacing) {
             const t = (next - acc) / len, px = ax + (bx - ax) * t, py = ay + (by - ay) * t, z = az + (bz - az) * t;
             if (lampWithin(px, py, 0.7 * spacing)) continue;
-            let x = px - uy * s * ARM, y = py + ux * s * ARM, sd = s; // the pole beside the way, its head over it
-            if (onFoot(x, y, z)) { x = px + uy * s * ARM; y = py - ux * s * ARM; sd = -s; } // (on another way there: on this one's other side)
-            if (inRoad(x, y, z) || onFoot(x, y, z)) continue;
-            lamp(x, y, z + h, colour, bright * (0.9 + 0.2 * rnd()), ux, uy, h, sd);
+            const x = px - uy * s * ARM, y = py + ux * s * ARM; // the pole beside the way, its head over it
+            if (inRoad(x, y, z)) continue;
+            lamp(x, y, z + h, colour, bright * (0.9 + 0.2 * rnd()), ux, uy, h, s);
             hash(px, py);
           }
           acc += len;

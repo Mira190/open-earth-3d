@@ -406,8 +406,10 @@ landmarks' meshes, which went on being solid and being stood on where they had b
   (`pipeline/game_extras.py` `bend_round`), cut back where one ends at a post, and stopped at a wall
   (`clip_closed`). Run twice it changes nothing more; a way that stops under the tracks has its bay a metre
   longer than itself (`rail.py`), or each run cut it shorter. The plaza's four three-lamp posts are solid
-  (`game.hero[].posts`), and no generated lamp post stands on a footway line (`web/night.js` `onFoot`: a few
-  metres along, or on the way's other side). Tokyo: no unseen wall, no barred footway, nothing walked through.
+  (`game.hero[].posts`). Tokyo: no unseen wall, no barred footway, nothing walked through. (Tried and taken
+  out: keeping every generated lamp post off the footway lines in `web/night.js`. None of the posts the audit
+  listed was one of those, and moving one pole four metres along a trunk road three kilometres away was enough
+  to change which car the traffic's one-way-street step watched, and fail it.)
 - The audit's "walked through" list was mostly its own noise: the crowd (sent away before it reads the scene),
   cars (the shared models' parts and your own parked car are not read), the cell beside a solid post, and places
   no walker reaches (the inside of the block behind the station: a flood from the level's middle decides). What

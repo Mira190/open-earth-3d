@@ -2063,25 +2063,34 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
   check(heldQ.gates.min >= 0, `the scrambles' counts of those waiting at their kerbs never go below none (${heldQ.gates.min}${heldQ.gates.at ? ` at ${heldQ.gates.at}` : ''})`);
 
   // nobody appears where the camera can see (actors.js seen: a walker put on a footway or at a scramble's kerb
-  // once the game is under way is out of sight, and walks into view), and nobody is in a subway entrance's shut
+  // once the game is under way is out of sight, and walks into view; one who alights from a vehicle at its door is
+  // not counted), and nobody is in a subway entrance's shut
   // stair well (game.js WELLS: its stub of footway is not walked, its mouth is a wall to the crowd)
   // (after the traffic's long watch, so that this step's 20 s do not shift what that one sees)
   const crowdSeen = await p.evaluate(() => {
     const g = window.__game, C = g.crowd, last = new Map();
     let moved = 0, seen = 0, inWell = 0, n = 0;
+    const who = []; // each one seen: where from, where to, what it was doing and how far from the camera
     for (let k = 0; k < 80; k++) {
       g.advance(0.25);
       for (let i = 0; i < C.active; i++) {
         const q = C.P[i];
         if (q.line < 0) { last.delete(i); continue; }
         const l = last.get(i);
-        if (k > 0 && (!l || Math.hypot(q.x - l[0], q.y - l[1]) > 4)) { moved++; if (C.seen(q.x, q.y, q.z)) seen++; }
-        last.set(i, [q.x, q.y]);
+        if (k > 0 && (!l || Math.hypot(q.x - l[0], q.y - l[1]) > 4)) {
+          moved++;
+          // (someone stepping out of a bus or a tram at its door is seen, and is meant to be: actors.js board() puts
+          // those who alight at the door, state "leave". Sydney's step failed on two of them 32 m from the camera
+          // when a bus happened to stop in view during these 20 s)
+          if (q.state !== 'leave' && C.seen(q.x, q.y, q.z)) { seen++; who.push(`walker ${i} ${l ? `from ${l[0].toFixed(0)}, ${l[1].toFixed(0)} (${l[2]})` : 'new'} to ${q.x.toFixed(1)}, ${q.y.toFixed(1)}, ${q.z.toFixed(1)} (${q.state}${q.mode ? ' ' + q.mode : ''}, line ${q.line}), ${Math.hypot(q.x - g.camera.position.x, q.y + g.camera.position.z).toFixed(0)} m from the camera, at ${(k * 0.25).toFixed(2)} s`); }
+        }
+        last.set(i, [q.x, q.y, `${q.state}${q.mode ? ' ' + q.mode : ''}`]);
         n++; if (C.shut && C.shutLine(q.line) && q.state === 'walk' && !q.pz) inWell++;
       }
     }
-    return { moved, seen, inWell, n, wells: !!C.shut };
+    return { moved, seen, inWell, n, wells: !!C.shut, who };
   });
+  for (const w of crowdSeen.who.slice(0, 6)) console.log('  in sight: ' + w);
   check(crowdSeen.n > 0 && crowdSeen.seen === 0 && crowdSeen.inWell === 0, `nobody of the crowd appears in the camera's sight (${crowdSeen.seen} of ${crowdSeen.moved} put somewhere new in 20 s were in sight)${crowdSeen.wells ? `, and nobody walks a shut stair well's footway (${crowdSeen.inWell})` : ''}`);
   qNote('a queue at a signal held through more than two greens', heldQ.queues);
   qNote('held at a signal by your car, a ride or you in the road (not the junction\'s doing)', heldQ.yours);
