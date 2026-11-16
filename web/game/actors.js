@@ -1854,7 +1854,9 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
     // (and the way out again, ahead of it: the same three places on the other side. sgn -1 the way in, +1 the way out)
     function wayIn(c, line, s, dir, sgn = -1) {
       const k = side * kerbLo(line), base = side * JN.shiftOf(net.L[line], 0), len = net.L[line].len;
-      for (const [d, f] of [[3, 0.95], [6, 0.63], [9, 0.32]]) { // (the way pulling in goes: update's loT)
+      // (every metre and a half of it, not three places 3 m apart: between two of them the corner of a car parked behind
+      // the place went unseen, and Shibuya's car 64, pulling in at 7.7 m/s, swept 0.17 m into parked car 110)
+      for (let d = 1.5; d <= 10.5; d += 1.5) { const f = Math.min(1, (12 - d) / 9.5); // (the way pulling in goes: update's loT)
         const s1 = s + sgn * dir * d;
         if (s1 < 0 || s1 > len) return false;
         lanePos(line, s1, dir, tmp, base + (k - base) * f);
