@@ -360,7 +360,10 @@ async function railStep() {
         if (p != null && p < 0 && d >= 0) { if (tag === 'open') out.crossedOpen++; if (tag === 'after' && out.crossedAfter == null) out.crossedAfter = t; }
         was.set(c, d);
         const on = Math.abs(d) < w / 2 + c.half - 0.3; // (any of its body over the corridor)
-        if (on && tag === 'shut' && t >= 4) { out.onShut++; if (out.log.length < 6) out.log.push(`shut ${t}s: car ${A.C.indexOf(c)} ${d.toFixed(1)} m past the middle, v ${c.v.toFixed(1)}, ${c.why}`); }
+        // (4 s shut, after 3 s of warning, for a car to be off them; a long vehicle on its way off has its length more at a
+        // queue's pace: Tokyo's car 139, a bus over the line when the alarm began, was 4.8 m past the middle at 3.6 m/s at 4 s
+        // and clear a second later)
+        if (on && tag === 'shut' && t >= 4 + (c.v > 2 && d > 0 ? Math.max(0, c.half - 2.5) * 2 / 3 : 0)) { out.onShut++; if (out.log.length < 6) out.log.push(`shut ${t}s: car ${A.C.indexOf(c)} ${d.toFixed(1)} m past the middle, v ${c.v.toFixed(1)}, ${c.why}`); }
         // (its last 8 s, for the log of one that ends up stood on the rails: how far past the middle, speed, lane, why, the car in front and how far on)
         const h = hist.get(c) || []; hist.set(c, h);
         h.push(`${d.toFixed(1)}/${c.v.toFixed(1)}/l${c.ln || 0}${c.lo ? `(${c.lo.toFixed(1)})` : ''}/${c.why || '-'}/${c.front ? `${A.C.indexOf(c.front)}@${((c.front.s - c.s) * c.dir).toFixed(0)}${c.front.line !== c.line ? 'x' : ''}` : '-'}`);

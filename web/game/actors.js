@@ -3266,7 +3266,11 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
           // (and its whole body where it will stand: the test above, shifted back, leaves its front 0.3 m out, and the lane's
           // bend into a junction's mouth moves the car sideways as it backs; so it went 0.18 m into a car backing out beside
           // its nose, Shibuya's car 94, #348)
-          if (bd === 0 && overlaps(c, tmp.x, tmp.y, hx0, hy0, 0.1, 0.1) === 0 && peopleIn(c, tmp.x, tmp.y, hx0, hy0) === 0) { c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.backoff -= dt; }
+          // (never back onto a level crossing's rails: clear of them, it stays clear. Tokyo's car 79, a bus 10 m past the
+          // crossing's middle in a queue, backed off 2 m for the one behind and stood with its tail on the rails, the alarm on)
+          const rl = JN.midsOn && JN.midsOn(c.line), onto = !!rl && rl.some(X => { const r = X.rail && X.rail.w / 2 + c.half; return r && Math.abs(c.s - X.mid) >= r - 0.3 && Math.abs(sb - X.mid) < r; });
+          if (onto) c.backoff -= dt;
+          else if (bd === 0 && overlaps(c, tmp.x, tmp.y, hx0, hy0, 0.1, 0.1) === 0 && peopleIn(c, tmp.x, tmp.y, hx0, hy0) === 0) { c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.backoff -= dt; }
           else if (bk && bk.v < 0.5 && (bk.x - c.x) * hx0 + (bk.y - c.y) * hy0 < 0 && Math.sin(bk.h) * hx0 + Math.cos(bk.h) * hy0 > 0.5 && backOff(bk, c.backoff)) c.backoff -= dt * 0.25; // (the car behind it, stopped and going its way, backs off first)
           else c.backoff -= dt;
           held = true;
