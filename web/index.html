@@ -872,7 +872,16 @@ window.dispatchEvent(new Event('three-ready'));
     $('g-load-msg').textContent = city ? 'Blue Hour needs WebGL 2, which this browser has turned off or does not support.' : 'The map could not be loaded.';
     $('g-loader').classList.add('err'); return;
   }
-  OEPlate.play($('g-loader'), city, null); // the loading plate: the map's aerial survey assembling (plate.js)
+  // the loading screen (story.css): the job as it was given and the roll being loaded, a frame exposed for each
+  // seventh of the load
+  $('g-loader').classList.add('has-roll');
+  $('g-loader').insertAdjacentHTML('afterbegin', `<figure class="roll" aria-hidden="true"><div class="roll-sky"></div>
+    <p class="roll-brief"><span>Survey order · Shibuya 渋谷</span><b>Hachiko corner, from the north-west kerb, 17:14.</b><i>Seven frames on the roll</i></p>
+    <div class="roll-film"><div class="roll-frames">${[1, 2, 3, 4, 5, 6, 7].map(n => `<s style="--x:${20 + (n * 37) % 60}%"><em>${n}</em></s>`).join('')}</div></div>
+    <span class="roll-count">Loading the roll · frame <b>1</b> of 7</span></figure>`);
+  const frames = [...$('g-loader').querySelectorAll('.roll-frames s')], count = $('g-loader').querySelector('.roll-count b');
+  const expose = () => { const k = Math.min(6, Math.floor((parseFloat($('g-load-bar').style.width) || 0) / 100 * 7)); frames.forEach((f, i) => { f.classList.toggle('on', i < k); f.classList.toggle('now', i === k); }); count.textContent = k + 1; };
+  new MutationObserver(expose).observe($('g-load-bar'), { attributes: true, attributeFilter: ['style'] }); expose();
   window.OpenEarthGame(MAP);
 })();
 </script>
