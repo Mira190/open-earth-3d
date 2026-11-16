@@ -448,6 +448,8 @@ def facade_style(R, cls, top, floors, area, facade_material, name, seed, overrid
         return "heritage"
     if cls in {"church", "cathedral", "chapel", "synagogue", "temple", "shrine", "mosque"}:
         return "civic" if R.get("name") == "japan" else "heritage"
+    if cls == "train_station" and R.get("name") == "japan":
+        return "office"  # concrete, panel and glass, unless its record says brick or stone (above); pipeline/stations.py for a file built before this
     if cls in HERITAGE:
         return "heritage" if top <= 50 else "office"
     if R.get("machiya") and (cls in HOUSE | TERRACE or not cls) and narrow and (floors or 2) <= 2 and top <= 9:

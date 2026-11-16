@@ -985,5 +985,5 @@ window.OEBuildings = (function () {
     return im;
   }
 
-  return { create, start, cells, cellInstances, STYLES, guessStyle: GEO.guessStyle, canopyPosts, POST };
+  return { create, start, cells, cellInstances, STYLES, guessStyle: GEO.guessStyle, canopyPosts, POST, PIER: GEO.PIER };
 })();

@@ -67,10 +67,48 @@ window.OEStory = (function () {
       if (q('#gt-play')) q('#gt-play').innerHTML = `<span>${ep0.no ? `Episode ${esc(ep0.no)} · ` : ''}${esc(ep0.title || 'Begin')}</span><kbd>↵</kbd>`;
     }
     const el = (id, html, tag = 'div') => { const e = document.createElement(tag); e.id = id; e.innerHTML = html; ctx.stage.appendChild(e); return e; };
-    const frames = el('g-story-frames', `<span><b></b>frames left</span><span class="strip">${'<i></i>'.repeat(N)}</span>`), card = el('g-story-card', '<div><small></small><span></span></div>'), veil = el('g-story-veil', ''), flash = el('g-story-flash', '');
+    const frames = el('g-story-frames', `<span><b></b>frames left</span><span class="strip">${'<i></i>'.repeat(N)}</span><em>${ctx.touch ? 'Tap' : '<kbd>Tab</kbd>'} · the roll</em>`, 'button'), card = el('g-story-card', '<div><small></small><span></span></div>'), veil = el('g-story-veil', ''), flash = el('g-story-flash', '');
     const goalEl = el('g-story-goal', '<small></small><span></span>'), mark = el('g-story-mark', '<i></i><b></b>'), keys = el('g-story-keys', ''), finder = el('g-story-finder', '');
     const shutter = el('g-story-shutter', `<i></i>Take the picture${ctx.touch ? '' : ' <kbd>F</kbd> · wheel: the lens'}`, 'button'), endEl = el('g-story-end', '');
     shutter.type = 'button';
+    // the roll so far: every print kept, laid out as prints on a table; opened from the film strip or with Tab
+    const album = el('g-story-album', '');
+    const fileName = n => `blue-hour-${(st.ep && st.ep.id) || 'roll'}-${n}`;
+    function albumDraw(big) {
+      const P = st.prints, cell = i => { const p = P[i]; return p ? `<li class="${i === big ? 'big' : ''}" style="--r:${((i * 37) % 7 - 3) * 0.6}deg"><button type="button" data-i="${i}" aria-label="Frame ${i + 1}">${p.src ? `<img alt="" src="${p.src}">` : '<i></i>'}<span><b>${i + 1}</b>${esc(p.stamp)}</span></button>${p.cap ? `<p>${esc(p.cap)}</p>` : ''}${p.src ? `<a download="${fileName(`frame-${i + 1}`)}.jpg" href="${p.src}">Save this print</a>` : ''}</li>` : `<li class="blank"><span><b>${i + 1}</b>not yet taken</span></li>`; };
+      album.innerHTML = `<div class="table"><header><small>${esc(S.title || '')}${st.ep && st.ep.no ? ` · Episode ${st.ep.no}` : ''}</small><h2>The roll</h2><span>${P.length} of ${N} frames taken</span></header>
+<ol>${Array.from({ length: N }, (_, i) => cell(i)).join('')}</ol>
+<div class="row">${P.some(p => p.src) ? '<button type="button" data-do="sheet">Save the contact sheet</button>' : ''}<button type="button" class="go" data-do="close">Back to the street${ctx.touch ? '' : ' <kbd>Tab</kbd>'}</button></div></div>`;
+    }
+    function albumOpen(on) {
+      if (on && (st.phase === 'idle' || st.phase === 'dressed')) return;
+      album.classList.toggle('on', on);
+      if (on) { albumDraw(-1); if (document.exitPointerLock) document.exitPointerLock(); }
+    }
+    // the whole roll as one picture, to keep: the frames in a strip of film, numbered and stamped
+    function saveSheet() {
+      const P = st.prints, w = 560, h = 374, pad = 28, cols = 4, rows = Math.ceil(N / cols), c = document.createElement('canvas'), x = c.getContext('2d');
+      c.width = pad + cols * (w + pad); c.height = 150 + rows * (h + 74) + 40;
+      x.fillStyle = '#0b0d12'; x.fillRect(0, 0, c.width, c.height);
+      x.fillStyle = '#f4efe6'; x.font = '200 54px sans-serif'; x.textBaseline = 'top'; x.fillText((S.title || '').toUpperCase().split('').join(' '), pad, 40);
+      x.fillStyle = '#ffcf8a'; x.font = '22px monospace'; x.fillText(`${st.ep && st.ep.no ? `EPISODE ${st.ep.no} · ` : ''}${((st.ep && st.ep.title) || '').toUpperCase()} · ${P.length} OF ${N} FRAMES`, pad, 104);
+      Promise.all(P.map(p => new Promise(res => { if (!p.src) return res(null); const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = p.src; }))).then(ims => {
+        for (let i = 0; i < N; i++) {
+          const X = pad + (i % cols) * (w + pad), Y = 150 + Math.floor(i / cols) * (h + 74), im = ims[i];
+          x.fillStyle = '#05060a'; x.fillRect(X, Y, w, h);
+          if (im) { const k = Math.max(w / im.width, h / im.height), sw = w / k, sh = h / k; x.drawImage(im, (im.width - sw) / 2, (im.height - sh) / 2, sw, sh, X, Y, w, h); }
+          x.strokeStyle = 'rgba(244,239,230,0.25)'; x.strokeRect(X + 0.5, Y + 0.5, w - 1, h - 1);
+          x.fillStyle = '#ffcf8a'; x.font = '20px monospace'; x.fillText(`${i + 1}${P[i] ? ` · ${P[i].stamp}` : ''}`.toUpperCase().slice(0, 44), X, Y + h + 14);
+        }
+        c.toBlob(b => { if (!b) return; const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `${fileName('contact-sheet')}.jpg`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }, 'image/jpeg', 0.9);
+      });
+    }
+    album.addEventListener('click', e => {
+      const d = e.target.closest('button[data-do]'), b = e.target.closest('button[data-i]');
+      if (d) return d.dataset.do === 'sheet' ? saveSheet() : albumOpen(false);
+      if (b) { const li = b.parentNode, was = li.classList.contains('big'); album.querySelectorAll('li.big').forEach(q => q.classList.remove('big')); li.classList.toggle('big', !was); return; }
+      if (e.target === album) albumOpen(false);
+    });
     goalEl.setAttribute('role', 'status'); goalEl.setAttribute('aria-live', 'polite');
     const pulse = () => { flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on'); };
     // phase: idle, dressed, go (the world runs: a word with the living, the way to the next place), stop, after, done
@@ -208,6 +246,7 @@ window.OEStory = (function () {
       let print = null;
       try { print = ctx.snap(); } catch (e) { print = null; }
       st.prints.push({ src: print, stamp: fr.stamp || '', cap: fr.caption || '' });
+      frames.classList.remove('kept'); void frames.offsetWidth; frames.classList.add('kept'); // (the strip says the print is kept, and where the roll is)
       pulse();
       st.left = Math.max(0, st.left - 1); show();
       shutter.classList.remove('on'); finder.classList.remove('on'); aimAt(null); goal('');
@@ -246,15 +285,19 @@ window.OEStory = (function () {
 ${st.prints.length > 1 ? `<ol class="sheet">${st.prints.slice(0, -1).map((p, i) => `<li>${p.src ? `<img alt="Frame ${i + 1}" src="${p.src}">` : ''}<span>${i + 1} · ${esc(p.stamp)}</span></li>`).join('')}</ol>` : ''}
 <small>${esc(S.title || '')}${ep.no ? ` · Episode ${ep.no}` : ''}</small><h2>${esc(E.title || 'To be continued')}</h2>
 ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next)}</p>` : ''}
-<div class="row"><button type="button" class="go" data-do="free">${esc(E.free || 'Walk the city')}</button><button type="button" data-do="again">Play it again</button></div></div>`;
+<div class="row">${st.prints.some(p => p.src) ? '<button type="button" data-do="sheet">Save the contact sheet</button>' : ''}<button type="button" class="go" data-do="free">${esc(E.free || 'Walk the city')}</button><button type="button" data-do="again">Play it again</button></div></div>`;
       endEl.classList.add('on');
       requestAnimationFrame(() => endEl.classList.add('in'));
       const go = endEl.querySelector('button.go');
       if (go) go.focus({ preventScroll: true });
     }
-    endEl.addEventListener('click', e => { const b = e.target.closest('button[data-do]'); if (b) (b.dataset.do === 'again' ? ctx.again : ctx.free)(); });
+    endEl.addEventListener('click', e => { const b = e.target.closest('button[data-do]'); if (b) (b.dataset.do === 'sheet' ? saveSheet : b.dataset.do === 'again' ? ctx.again : ctx.free)(); });
     shutter.addEventListener('click', shoot);
-    const onKey = e => { if (e.code === 'KeyF' && !e.repeat && st.beat === 'shoot') { e.preventDefault(); e.stopPropagation(); shoot(); } };
+    frames.type = 'button'; frames.addEventListener('click', () => albumOpen(true));
+    const onKey = e => {
+      if (e.code === 'KeyF' && !e.repeat && st.beat === 'shoot') { e.preventDefault(); e.stopPropagation(); shoot(); }
+      else if ((e.code === 'Tab' || (e.code === 'Escape' && album.classList.contains('on'))) && !e.repeat && st.phase !== 'idle' && st.phase !== 'dressed' && st.phase !== 'done') { e.preventDefault(); e.stopPropagation(); albumOpen(!album.classList.contains('on')); }
+    };
     addEventListener('keydown', onKey, true);
 
     function tick(dt) {
@@ -325,7 +368,7 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
       dispose() {
         timers.forEach(clearTimeout); removeEventListener('keydown', onKey, true); ctx.beacon(null);
         ctx.stage.classList.remove('story', 'story-on', 'story-stop');
-        for (const e of [frames, card, veil, flash, goalEl, mark, keys, finder, shutter, endEl]) e.remove();
+        for (const e of [frames, card, veil, flash, goalEl, mark, keys, finder, shutter, endEl, album]) e.remove();
         for (const k of ['ghost', 'ghost2']) if (st[k]) st[k].remove();
         for (const id in st.cast) st.cast[id].remove();
       },

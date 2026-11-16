@@ -14,6 +14,7 @@
   // rows of posts inside a roof over 400 m2 (buildings.json inner_posts, by building: pipeline/arcades.py),
   // those inside this solid's outline
   const POST = 0.3; // a post's side (m)
+  const PIER = 0.9; // a pier's, under a building that stands off the ground (pipeline/stations.py)
   function canopyPosts(s, meta, skip = null, inner = null) {
     if (!(s[2] > 0) || !meta || meta[1] !== 'roof') return [];
     const r = s[4], n = r.length / 2, out = [];
@@ -410,10 +411,10 @@
     }
 
     // a flat polygon (contour + holes, flat x, y metres) at height z, facing up
-    function post(x, y, z0, z1, bi) { // an upright square post, POST on a side
-      const P = BI[bi], h = POST / 2, c = [[x - h, y - h], [x + h, y - h], [x + h, y + h], [x - h, y + h]];
+    function post(x, y, z0, z1, bi, side = POST) { // an upright square post, POST on a side (a pier: PIER)
+      const P = BI[bi], h = side / 2, c = [[x - h, y - h], [x + h, y - h], [x + h, y + h], [x - h, y + h]];
       for (let k = 0; k < 4; k++) {
-        const [ax, ay] = c[k], [bx, by] = c[(k + 1) % 4], nx = (by - ay) / POST, ny = -(bx - ax) / POST, base = buf.n;
+        const [ax, ay] = c[k], [bx, by] = c[(k + 1) % 4], nx = (by - ay) / side, ny = -(bx - ax) / side, base = buf.n;
         for (const [px, py, pz] of [[ax, ay, z0], [bx, by, z0], [bx, by, z1], [ax, ay, z1]]) buf.v(px, py, pz, nx, ny, 0, P.wall, px + py, pz - z0, K_TRIM * 16 + P.si, P.storey, P.ground, P.u, 1, 0, P.mat, bi, P.code);
         buf.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
       }
@@ -543,6 +544,11 @@
         cap(rings, zb, bi, soffitC, K_SOFFIT, 0, true);
         for (const [x, y] of canopyPosts(s, meta[bi], B.no_posts && B.no_posts[bi], B.inner_posts && B.inner_posts[bi])) post(x, y, foot ? Math.min(g0, foot(x, y)) - 0.2 : g0, zb, bi);
       }
+      else if (B.piers && B.piers[si]) { // a building that stands wholly off the ground (a station's concourse over the street: pipeline/stations.py): its underside, and its piers
+        cap(rings, zb, bi, soffitC, K_SOFFIT, 0, true);
+        const q = B.piers[si];
+        for (let i = 0; i < q.length; i += 2) post(q[i] / 10, q[i + 1] / 10, foot ? Math.min(g0, foot(q[i] / 10, q[i + 1] / 10)) - 0.2 : g0, zb, bi, PIER);
+      }
       if (r) { roof(r, g0, bi); return; }
       // flat roof: a parapet round a deck that shows the aerial photo, where the building is big enough
       const par = PARAPET[P.style] && s[3] - s[2] >= 50 ? PARAPET[P.style] : 0;
@@ -641,7 +647,7 @@
     return [...set];
   }
 
-  const api = { build, colourNames, canopyPosts, POST, STYLES, SI, GRID, LOOK, REGION_GRID, STOREY, STOREY_MAX, PARAPET, ROOF_MAT, CURVED,
+  const api = { build, colourNames, canopyPosts, POST, PIER, STYLES, SI, GRID, LOOK, REGION_GRID, STOREY, STOREY_MAX, PARAPET, ROOF_MAT, CURVED,
     K_FACADE, K_WALL, K_ROOF, K_DECK, K_TRIM, K_SOFFIT, hash1, guessStyle, inset };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.OEBuildingsGeo = api;

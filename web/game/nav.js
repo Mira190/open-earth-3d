@@ -890,6 +890,8 @@ window.OENav = (function () {
     const PH = OEBuildings.POST / 2;
     const passages = new Set((D.B.passages || []).map(i => D.B.s[i])); // (a building over a road through it stands on no posts: pipeline/road_passages.py)
     for (const s of shown) if (!passages.has(s)) for (const [x, y] of OEBuildings.canopyPosts(s, D.B.b[s[0]], D.B.no_posts && D.B.no_posts[s[0]], D.B.inner_posts && D.B.inner_posts[s[0]])) col.addBox(x - PH, y - PH, x + PH, y + PH, s[1] / 10 - 1, (s[1] + s[2]) / 10, BUILDING, s[0]);
+    { const R = OEBuildings.PIER / 2, at = new Map(D.B.s.map((s, i) => [s, i])); // (and the piers under a building that stands off the ground: pipeline/stations.py)
+      for (const s of shown) { const q = D.B.piers && D.B.piers[at.get(s)]; if (q) for (let i = 0; i < q.length; i += 2) col.addBox(q[i] / 10 - R, q[i + 1] / 10 - R, q[i] / 10 + R, q[i + 1] / 10 + R, s[1] / 10 - 1, (s[1] + s[2]) / 10, BUILDING, s[0]); } }
     // a sunken promenade's flights of steps (inland.js): the wall beside each, from its foot to a railing's height over
     // its top, so that a walker on the upper treads does not step sideways off them onto the street; but for its first
     // FLIGHT_GATE m, where it opens to the pavement through the railing

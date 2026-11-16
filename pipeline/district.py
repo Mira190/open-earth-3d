@@ -305,8 +305,10 @@ def cut_buildings(B, scene, LM, R):
     for k in ("inner_posts", "no_posts"):
         if isinstance(B.get(k), dict):
             out[k] = {str(bmap[int(bi)]): v for bi, v in B[k].items() if int(bi) in bmap}
+    if isinstance(B.get("piers"), dict):  # (by solid: pipeline/stations.py)
+        out["piers"] = {str(smap[int(si)]): v for si, v in B["piers"].items() if int(si) in smap}
     known = {"fields", "b", "s_fields", "s", "styles", "roof_shapes", "roof_materials", "roof_sources", "r_fields", "r", "f_fields", "f",
-             "p_fields", "p", "passages", "inner_posts", "no_posts", "note"}
+             "p_fields", "p", "passages", "inner_posts", "no_posts", "piers", "note"}
     odd = [k for k in B if k not in known]
     if odd:
         raise SystemExit(f"buildings.json has keys this cut does not know: {odd} (pipeline/district.py cut_buildings)")

@@ -51,7 +51,7 @@
 #g-story-keys kbd + kbd { margin-left: -1px; }
 
 /* ---- the film: seven frames in a strip, the ones spent gone dark; the counter as the camera shows it */
-#g-story-frames { position: absolute; left: max(22px, env(safe-area-inset-left)); bottom: max(22px, env(safe-area-inset-bottom)); z-index: 6; display: grid; gap: 9px; pointer-events: none;
+#g-story-frames { position: absolute; left: max(22px, env(safe-area-inset-left)); bottom: max(22px, env(safe-area-inset-bottom)); z-index: 6; display: grid; gap: 9px; pointer-events: auto; cursor: pointer; text-align: left; border: 0; background: none; padding: 0;
   opacity: 0; transition: opacity 0.9s ease; color: var(--paper); font: 400 10px/1 var(--f-mono); letter-spacing: 0.3em; text-transform: uppercase; text-shadow: 0 1px 10px #000; }
 #g-story-frames.on { opacity: 1; }
 #g-story-frames b { font: 300 30px/0.9 var(--f-mono); letter-spacing: 0; color: var(--amber); font-variant-numeric: tabular-nums; margin-right: 10px; vertical-align: -3px; }
@@ -160,3 +160,36 @@
   #g-story-goal, #g-story-keys, #g-story-end, #g-story-frames, #g-story-card, #g-story-veil, .game-stage #game-gl { transition: none; }
   #g-story-flash.on { animation: none; }
 }
+
+/* ---- the roll so far (Tab, or the film strip): every print kept, laid out as prints on a dark table */
+#g-story-frames:not(.on) { pointer-events: none; }
+#g-story-frames em { font: 400 9px/1 var(--f-mono); letter-spacing: 0.22em; font-style: normal; color: rgba(244, 239, 230, 0.6); }
+#g-story-frames kbd { padding: 3px 5px; margin-right: 3px; border: 1px solid rgba(244, 239, 230, 0.5); border-radius: 2px; font: inherit; letter-spacing: 0.06em; }
+#g-story-frames.kept em { animation: g-story-kept 3.2s ease; }
+@keyframes g-story-kept { 0%, 100% { color: rgba(244, 239, 230, 0.6); } 12%, 70% { color: var(--amber); text-shadow: 0 0 14px rgba(255, 207, 138, 0.8); } }
+#g-story-album { position: absolute; inset: 0; z-index: 10; display: none; overflow: auto; padding: max(28px, env(safe-area-inset-top)) 20px 28px; color: var(--paper);
+  background: radial-gradient(ellipse at 50% 30%, rgba(20, 28, 60, 0.92), rgba(4, 8, 18, 0.96) 70%); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+#g-story-album.on { display: block; animation: g-story-album-in 0.4s ease; }
+@keyframes g-story-album-in { from { opacity: 0; } to { opacity: 1; } }
+#g-story-album .table { max-width: 1120px; margin: 0 auto; display: grid; gap: 26px; justify-items: center; }
+#g-story-album header { text-align: center; display: grid; gap: 10px; }
+#g-story-album header small, #g-story-album header span { font: 400 10px/1 var(--f-mono); letter-spacing: 0.36em; text-transform: uppercase; color: var(--amber); }
+#g-story-album header span { color: rgba(244, 239, 230, 0.6); letter-spacing: 0.26em; }
+#g-story-album h2 { margin: 0; font: 200 clamp(26px, 4vw, 44px)/1.1 var(--f-display); letter-spacing: 0.14em; text-transform: uppercase; }
+#g-story-album ol { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 44vw), 1fr)); gap: 26px 22px; }
+#g-story-album li { display: grid; gap: 10px; justify-items: center; align-content: start; transform: rotate(var(--r, 0deg)); transition: transform 0.3s ease; }
+#g-story-album li button { all: unset; cursor: zoom-in; display: block; width: 100%; box-sizing: border-box; padding: 9px 9px 0; background: var(--paper); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6); }
+#g-story-album li img, #g-story-album li button i { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: #10131c; filter: saturate(0.85) contrast(1.05); }
+#g-story-album li button span, #g-story-album li.blank span { display: flex; gap: 10px; align-items: baseline; padding: 9px 2px 10px; font: 400 9px/1.3 var(--f-mono); letter-spacing: 0.16em; text-transform: uppercase; color: #3a3f4c; }
+#g-story-album li b { font-weight: 500; color: #0b1020; }
+#g-story-album li p { margin: 0; max-width: 34ch; text-align: center; font: 300 13px/1.5 var(--f-body); color: rgba(244, 239, 230, 0.8); }
+#g-story-album li a { font: 400 9px/1 var(--f-mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--amber); text-decoration: none; border-bottom: 1px solid rgba(255, 207, 138, 0.4); padding-bottom: 3px; }
+#g-story-album li.blank { transform: none; align-content: center; min-height: 120px; border: 1px dashed rgba(244, 239, 230, 0.22); }
+#g-story-album li.blank span, #g-story-album li.blank b { color: rgba(244, 239, 230, 0.45); }
+#g-story-album li.big { grid-column: 1 / -1; order: -1; transform: none; }
+#g-story-album li.big button { cursor: zoom-out; max-width: min(100%, 150vh); }
+#g-story-album li:not(.big):not(.blank):hover { transform: rotate(0deg) scale(1.02); }
+#g-story-album .row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+#g-story-album .row button { padding: 15px 22px; border: 1px solid rgba(244, 239, 230, 0.4); border-radius: 2px; background: transparent; color: var(--paper); font: 400 10px/1 var(--f-mono); letter-spacing: 0.24em; text-transform: uppercase; cursor: pointer; }
+#g-story-album .row button.go { border-color: var(--amber); color: var(--amber); }
+#g-story-album .row kbd { margin-left: 8px; padding: 2px 5px; border: 1px solid currentColor; border-radius: 2px; font: inherit; }
