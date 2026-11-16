@@ -367,9 +367,10 @@ window.OEQuality = (function () {
       // its ceiling under it, and a heavy half minute left a device at thirty frames a second for good)
       if (halved && ema < 0.7 * target) { fullT += ms; if (fullT > 2000) { halved = false; fullT = 0; calm = 0; return; } } else fullT = 0;
       if (since < 1000) return; // (a change settles into the average first)
-      // three times over the frame's budget is not a step's worth: everything a frame can do without goes at once,
-      // and what the device can afford comes back by the ordinary way up
-      if (load > 3 && (g.scale > g.min + 1e-6 || g.extras > 0)) { tried = 0; calm = 0; floorT = 0; if (climbing) { climbing = false; wait = 4000; } failed(g.scale); change(g.min, 0); return; }
+      // under ten frames a second, six times over the frame's budget, is not a step's worth: everything a frame can
+      // do without goes at once, and what the device can afford comes back by the ordinary way up (not while the
+      // floor is being asked what it bought: those frames are as slow at any size)
+      if (!flat && ema >= 100 && load > 6 && (g.scale > g.min + 1e-6 || g.extras > 0)) { tried = 0; calm = 0; floorT = 0; if (climbing) { climbing = false; wait = 4000; } failed(g.scale); change(g.min, 0); return; }
       if (load > 1.15) {
         calm = 0;
         if (tried && since < 4000) { // the try up did not fit (2: it was the extras')
