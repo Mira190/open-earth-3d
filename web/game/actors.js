@@ -1595,6 +1595,10 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
     const sendRange = (a, n) => { if (a.clearUpdateRanges) { a.clearUpdateRanges(); a.addUpdateRange(0, n * a.itemSize); } a.needsUpdate = true; };
     function place(i, c) { // into the box mesh's slot, or the next free slot of the model's mesh for this distance
       if (!fleet) { mesh.setMatrixAt(i, m4); return; }
+      (c.m4 || (c.m4 = new THREE.Matrix4())).copy(m4); c.m4At = tick; // (kept for review(), below)
+      show(c);
+    }
+    function show(c) { // car c, at m4, in the mesh of its model for its distance from the eye, if the eye can see it
       const d = eye ? eye.position.distanceTo(at.setFromMatrixPosition(m4)) : 0;
       if (culling && (!frustum.intersectsSphere(ball) || (window.OEVis && !OEVis.seenNext(at.x, -at.z, at.y + 3.6, 3.6)))) return; // (or behind the street wall: visibility.js; 3.6 m: a bus)
       const M = fleet[c.model][d < I.lod1_m ? 0 : d < I.lod2_m ? 1 : 2], j = M.count++, A = M.geometry.attributes;
@@ -3361,10 +3365,28 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         }
       }
       if (mesh) mesh.instanceMatrix.needsUpdate = true;
+      send();
+    }
+    function send() { // the slots taken, to the GPU
       if (fleet) for (const k in fleet) for (const M of fleet[k]) {
         if (!M.count) continue;
         sendRange(M.instanceMatrix, M.count); sendRange(M.geometry.attributes.aC0, M.count); sendRange(M.geometry.attributes.aC1, M.count); sendRange(M.geometry.attributes.aC3, M.count);
       }
+    }
+    // The cars drawn again where they stood at the last update, for the eye as it is now (issue 525). update() picks each
+    // car's mesh by its distance from the eye and leaves out the cars the eye cannot see; while the world is held and
+    // the eye still moves (photo mode, whose camera flies up to 400 m off and turns all round; the menu; a still taken
+    // through photo mode by the tools), that choice stood as it was when the world stopped: a bus the camera came up
+    // to stayed its far model, a thousand triangles filling the frame, and the cars behind the old view were not there.
+    const inv = new THREE.Matrix4();
+    function review() {
+      if (!fleet || !eye || !eye.isCamera) return;
+      for (const k in fleet) for (const M of fleet[k]) M.count = 0;
+      eye.updateMatrixWorld();
+      frustum.setFromProjectionMatrix(fm.multiplyMatrices(eye.projectionMatrix, inv.copy(eye.matrixWorld).invert()), eye.coordinateSystem, eye.reversedDepth);
+      eyeAt.copy(eye.position); culling = true;
+      for (const c of C) if (c.m4 && c.m4At === tick) { m4.copy(c.m4); show(c); }
+      send();
     }
     // the near and mid models, come after the far ones (vehicles.js loadCars, issue 335): each model's stand-ins
     // replaced, the cars put into them at the next update. Returns the meshes put in the world
@@ -3384,7 +3406,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       }
       return added;
     }
-    return Object.assign(api, { update, take, footprint, reverse, canReverse, upgrade, stats: () => Object.assign(JN.stats(), { revs, redRuns, redLog, laneChanges, outOfRing, squeezes, conflicts: JN.conflicts() }) });
+    return Object.assign(api, { update, review, take, footprint, reverse, canReverse, upgrade, stats: () => Object.assign(JN.stats(), { revs, redRuns, redLog, laneChanges, outOfRing, squeezes, conflicts: JN.conflicts() }) });
   }
 
   // ------------------------------------------------------------ text sprites (names, markers)

@@ -1771,6 +1771,11 @@ the loader starts to fade), as the helicopter does:
   mid meshes in where the cars stand. Each car is sized by its near model's exact box (`extras.near_box` on the
   far file's nodes, from the decoded positions), so the traffic drives the same before and after. Your own car
   is parked as soon as `cars.glb` has come; a taxi or a ride asked for before then says it is on its way.
+  The traffic draws a car's faces on both sides, the inside near black, so a face of a decimated copy turned
+  inwards shows as a black hole: `build_vehicles.py` `face_outward` turns each face of the `_LOD1` and `_LOD2`
+  copies to the side it is seen from, and `tools/car_shell.js` (a static check) looks at every model's three
+  meshes from six sides (issue 525). While the world is held and the camera moves (photo mode, the menu),
+  `traffic.review()` puts each car back in the mesh for its distance from the camera as it is now.
 - **Trees.** `trees_far.glb` (the mid and far models and the leaf atlas, 1.3 MB) loads with the city;
   `trees_near.glb` (the near models, 0.9 MB, no atlas) after, through `trees.js` `loadNear()` (the game and
   the city viewer call it); the mid model stands in until then. `trees.json` `parts` names them.
