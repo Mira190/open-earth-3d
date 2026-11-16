@@ -579,10 +579,20 @@ approach's other structures are, not dressed sandstone.
 
 | | Built |
 |---|---|
-| The flight | 4.2 m wide between rendered flank walls, two flights of 18 risers of 170 mm with a landing between, from the street's level to the walkway's (the game's ground at both: 6.1 m, where 32 real steps climb about 5.5 m) |
+| The flight | 4.2 m wide between rendered flank walls, two flights of 16 risers of 167 mm with a landing between, from the street's level to the ground at the stairs' head (the game's ground at both: 5.3 m; the map counts 32 steps) |
 | The flank walls | raked a metre over the nosings with a coping and a string under it, a panelled pier at the foot and one at the head carrying a lamp standard, an iron handrail on each |
 | The covered landing | two bays of round arches a side and one wide arch at the flight's head, iron railings in the arches that are not ways through, a flat roof with a cornice, a lantern hung in each bay; its back wall stands where the bank behind begins |
-| The way on | eight steps down from the landing's north-west arch to the walkway's ground. From there the real walkway runs north over the Argyle Cut onto the bridge's east footway. The model's approach comes down to the ground at 5 %, five metres under the real highway there, so that stretch is not built: the game carries you along it at a walk (`game.lifts` `bridge-stairs`, "Walk on to", `walks.walkway_hop`), from the stairs' head to the deck's footway 16 m from its south end |
+| The way on | fourteen steps down from the landing's north-west arch to the walkway's ground, 2.5 m lower in the game's ground. From there the real walkway runs north over the Argyle Cut onto the bridge's east footway. The model's approach comes down to the ground at 5 %, five metres under the real highway there, so that stretch is not built: the game carries you along it at a walk (`game.lifts` `bridge-stairs`, "Walk on to", `walks.walkway_hop`), from the stairs' head to the deck's footway 16 m from its south end |
+
+The stairs stand on the ground the game draws and walks, its own 5 m grid (`walks._Ground`), not on the builders'
+10 m survey (`archkit.Terrain`): on the bank under the approach the two differ by up to three metres, and stairs
+levelled on the survey had the bank through their covered landing, a walker set on the bank 1.3 m over the floor,
+and their last steps in the air. The landing is cut into the bank: inside the stairs' plan the ground is not drawn
+(landmarks.json `clip`) and the level walked is the stairs' own, every half metre (game.json `patches`, `id`
+`bridge-stairs`, from `walks.patch`; `pipeline/game_extras.py` lays a hook's `patches` by their id, and
+`game_patches` gives the same to a full `game_data.py`). After dark the stairs are lit by their own lanterns:
+their render and treads take no wash from the street's lamps (`street_lit` off), which turned the whole tower one
+flat orange.
 
 The plan of the landing (two bays by one) and every height not read off the photographs are this model's own. The
 1932 photographs are captioned "Sydney Harbour Bridge stairs" and "Bridge Stairs" without a side of the harbour:
@@ -607,7 +617,7 @@ reproduced, no texture taken):
 | Cahill Expressway from East.jpg | Ajayvius | public domain | the walk beside the expressway, its rail and fence |
 
 Stills: `tools/scramble_shot.js sydney tools/views/sydney-walks.json` (the lift from the quay, at its foot, from the
-walk and the air; the walk; the stairs from the street, on the flight, in the landing and from the air).
+walk and the air; the walk; the stairs from the street, on the flight, in the landing, at the way out and from the air).
 
 ## Only what the first frame sees (issue 358)
 
