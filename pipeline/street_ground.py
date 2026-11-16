@@ -352,7 +352,7 @@ def level(T, G, game, keep, on=None, laid=None, water=None):
     lines = [(xy, smooth(G.street(xy[:, 0], xy[:, 1])), hw, PIN_M, 1.0, np.ones(len(xy))) for xy, hw in streets]
     acc = splat(G, lines)
     # a landmark's flat face holds the ground under it where it is the street's own paving, or stands clear of the
-    # street. Where it lies in a street's band and more than PAVING_M over the street's level it is something that
+    # street. Where it lies in a street's band and more than BANK_M over the street's level it is something that
     # stands beside the street (a railway embankment's top at the carriageway's edge, Shibuya's north of the station):
     # the survey smeared its height over the street's outer lane, and the street takes those nodes back, so that the
     # drop is inside the landmark's own walls
@@ -360,7 +360,7 @@ def level(T, G, game, keep, on=None, laid=None, water=None):
     if laid is not None:
         sure = acc[1] > 0
         over = T - np.where(sure, acc[0] / np.where(sure, acc[1], 1), T)
-        freed = laid & sure & (acc[4] <= 0) & (over > PAVING_M)
+        freed = laid & sure & (acc[4] <= 0) & (over > BANK_M)
         keep = keep & ~freed
     # where a line runs onto ground left as it is (a hero level's, a landmark's paving), its say fades over EDGE_M
     # along it, so that it comes onto that ground as it was there, without a crease where the two meet. Along it, not
