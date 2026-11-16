@@ -1057,9 +1057,10 @@
           "stop_s": 540,
           "end": {"title": "To be continued", "line": "Six frames left. Somewhere in this city is the man Sumiko waited sixty years for.", "next": "Episode 2 · The man who is not in the photograph", "free": "Walk Shibuya", "late_title": "The lights changed without you", "late_line": "The Stop lasts nine minutes, once an evening. She will be on the corner again."},
           "afterimage": {"character": "R_Female_Adult_04", "name": "Sumiko 澄子", "year": 1964, "at": [364.5, -994.5], "reach_m": 3.2, "lines": ["遅かったね。 You came late.", "Sixty years I have stood on this corner, every tenth of October, at this hour. I was not waiting for you.", "Still, you are the first who has ever turned to look. Take my camera. There are seven frames left in it.", "I cannot see past this kerb any more. Show me what the crossing has become."]},
-          "after": ["The lights changed. Nobody else saw the crossing stop.", "In your hand, an old rangefinder camera. Its counter reads 6."],
-          "task": {"subject": [350.0, -972.0, 30.0], "within_deg": 45, "lines": ["……So bright. He would have hated it.", "He would have come anyway. Find him for me, before the frames run out."]},
-          "goals": {"seek": "Someone is still moving. Walk to her.", "shoot": "Raise her camera: photograph the screens across the crossing.", "aim": "Turn towards the big screens, then take the picture."},
+          "guide": {"model": "assets/animals/akita.glb", "name": "Hachi", "from": [374.3, -1043.4], "facing": [376.9, -1013.1], "line": "A dog is walking through the stopped crowd. He looks back at you."},
+          "after": ["The lights changed. Nobody else saw the crossing stop.", "Hachi is bronze again, on his plinth. In your hand, an old rangefinder camera. Its counter reads 6."],
+          "task": {"subject": [350.0, -972.0, 30.0], "stand": [360.8, -992.7], "within_deg": 45, "lines": ["……So bright. He would have hated it.", "He would have come anyway. Find him for me, before the frames run out."]},
+          "goals": {"follow": "Follow Hachi. He knows who else is still moving.", "seek": "Someone is still moving. Walk to her.", "shoot": "Raise her camera: photograph the screens across the crossing.", "aim": "Turn towards the big screens, then take the picture."},
           "late": ["The lights changed. The corner where she stood is empty."],
           "overture": {
             "note": "The episode's cold open, fifteen seconds in the rain at blue hour: the wet street at the height of a puddle, the crossing from above as the title falls, then the kerb behind you as the lights change. No guide, no painted filter: the street as it is.",

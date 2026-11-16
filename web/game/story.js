@@ -14,7 +14,10 @@
 //       "stop_s": 540,                                        // how long the Stop lasts if nothing ends it
 //       "afterimage": { "character": "R_...", "name": "...", "year": 1964, "at": [x, y], "reach_m": 3.2,
 //                       "lines": ["..."] },                   // who stands in the stopped world, and what they say
+//       "guide": { "model": "assets/animals/akita.glb", "name": "Hachi", "from": [x, y], "facing": [x, y],
+//                  "line": "..." },                           // who leads you to them (companion.js): where it waits, what is said of it
 //       "task": { "subject": [x, y, z], "within_deg": 40,     // then one thing to do: a photograph of the subject
+//                 "stand": [x, y],                            // (where the guide goes to sit and look at it)
 //                 "lines": ["..."] },                         // (what they say of it)
 //       "goals": { "seek": "...", "shoot": "...", "aim": "..." }, // the one line on screen at each beat
 //       "after": ["..."],                                     // said as the world runs on again
@@ -22,9 +25,11 @@
 //     }]
 //   }
 //
-// A player new to the game is never left without the next thing to do: one line says it (the goal), a light stands
-// where it is (the beacon, with its distance when it is out of the frame), the keys are named the first time they
-// are needed, and the episode ends on a card with what comes next.
+// A player new to the game is never left without the next thing to do: one line says it (the goal), someone goes
+// there ahead of them (the guide: it comes to you, leads, waits when you fall behind and comes back if you stray),
+// a light stands where it is (the beacon, once the guide has sat down there or where there is no guide; its distance
+// is shown when it is out of the frame), the keys are named the first time they are needed, and the episode ends on
+// a card with what comes next.
 //   }
 //
 // The game asks `stopped` each frame and gives the world no time while it is true: the people, the traffic, the
@@ -102,6 +107,7 @@ window.OEStory = (function () {
 
   // ctx: { story (the data), stage, player, touch, toast(html), say(who, lines, done), hush(on), dress(date, light, weather),
   //        walkIn(seconds), figure(look, at) -> { x, y, z, face(x, y), animate(dt), remove() },
+  //        guide(spec) -> a companion (companion.js: place, lead, go, leave, tick, x, y, z, state, ready) or null,
   //        beacon(at | null): a light standing at [x, y] (none: taken away), screen(at) -> { x, y, front, dist } where
   //        [x, y, z] is in the frame (0..1), aim(at) -> degrees between the lens and it, snap() -> the frame as a data URL,
   //        again(), free(): the episode once more; the map without its story }
@@ -115,7 +121,7 @@ window.OEStory = (function () {
     shutter.type = 'button';
     goalEl.setAttribute('role', 'status'); goalEl.setAttribute('aria-live', 'polite');
     const pulse = () => { flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on'); };
-    const st = { ep: null, phase: 'idle', beat: '', t: 0, left: S.frames || 7, ghost: null, target: null, print: null, moved: 0, from: null, late: false, miss: 0 };
+    const st = { ep: null, phase: 'idle', beat: '', t: 0, left: S.frames || 7, ghost: null, dog: null, target: null, print: null, moved: 0, from: null, late: false, miss: 0 };
     const timers = [];
     const later = (ms, fn) => timers.push(setTimeout(fn, ms));
     const show = () => { frames.querySelector('b').textContent = String(st.left); };
@@ -134,7 +140,8 @@ window.OEStory = (function () {
     }
     const clockOf = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
     // where the goal is: the light in the world, and its mark in the frame (held at the edge on the side it lies)
-    function aimAt(at) { st.target = at; ctx.beacon(at); if (!at) mark.classList.remove('on'); }
+    let lit = false, markName = '';
+    function aimAt(at, light = true, name = '') { st.target = at; markName = name; if (at ? light || lit : lit) ctx.beacon(at && light ? at : null); lit = !!(at && light); if (!at) mark.classList.remove('on'); }
     function markTick() {
       if (!st.target) return;
       const q = ctx.screen(st.target), W = ctx.stage.clientWidth, H = ctx.stage.clientHeight, m = 46;
@@ -143,7 +150,7 @@ window.OEStory = (function () {
       const off = !q.front || x < m || x > W - m || y < m || y > H - m;
       x = Math.max(m, Math.min(W - m, x)); y = Math.max(m + 40, Math.min(H - m, y));
       mark.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
-      mark.querySelector('b').textContent = `${Math.max(1, Math.round(q.dist))} m${off ? (q.front ? '' : ' · behind you') : ''}`;
+      mark.querySelector('b').textContent = `${markName ? `${markName} · ` : ''}${Math.max(1, Math.round(q.dist))} m${off ? (q.front ? '' : ' · behind you') : ''}`;
       mark.classList.toggle('on', q.dist > 4);
     }
     const KEYS = ctx.touch ? '<span>Left thumb · walk</span><span>Drag · look</span>' : '<span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>walk</span><span><kbd>Shift</kbd>run</span><span>Mouse · look</span>';
@@ -172,13 +179,17 @@ window.OEStory = (function () {
       ctx.hush(true);
       pulse();
       if (ep.afterimage) { st.ghost = ctx.figure(ep.afterimage, ep.afterimage.at); st.ghost.face(ctx.player.x, ctx.player.y); }
+      // the guide, where it waits: it is there from the first stopped frame, and moves when the goal is given
+      const gd = ep.guide;
+      if (gd && ctx.guide) { st.dog = ctx.guide(gd); if (st.dog) { const f = gd.facing || [ctx.player.x, ctx.player.y]; st.dog.place(gd.from[0], gd.from[1], Math.atan2(f[1] - gd.from[1], f[0] - gd.from[0])); } }
       // the world holds a breath, the title falls on it, and then the one thing to do
       later(900, () => title(`${S.title || ''}${ep.no ? ` · Episode ${ep.no}` : ''}`, ep.title || '', 3.0));
       later(4300, () => {
         if (st.phase !== 'stop' || st.beat !== 'still') return;
         st.beat = 'seek'; st.from = [ctx.player.x, ctx.player.y]; st.moved = 0;
         show(); frames.classList.add('on');
-        goal(G.seek || 'Someone is still moving. Go to them.');
+        if (st.dog && st.ghost) { st.dog.lead([st.ghost.x, st.ghost.y], Math.max(1.6, (ep.afterimage.reach_m || 3.2) - 1)); if (gd.line) later(600, () => ctx.toast(esc(gd.line))); }
+        goal(st.dog ? G.follow || G.seek || 'Follow the one who is still moving.' : G.seek || 'Someone is still moving. Go to them.');
         if (st.ghost) aimAt([st.ghost.x, st.ghost.y, st.ghost.z + 1.2]);
         hint(true);
       });
@@ -189,6 +200,7 @@ window.OEStory = (function () {
       if (!T) { resume(); return; }
       st.beat = 'shoot';
       aimAt(T.subject || null);
+      if (st.dog && T.stand) st.dog.go(T.stand, T.subject || null); // (the guide sits where the picture is taken from, looking at it)
       goal(G.shoot || 'Raise the camera and take the picture.');
       shutter.classList.add('on'); finder.classList.add('on');
     }
@@ -214,6 +226,7 @@ window.OEStory = (function () {
       ctx.hush(false);
       pulse();
       if (st.ghost) { st.ghost.remove(); st.ghost = null; }
+      if (st.dog) { const d = st.dog; d.leave((ep.guide || {}).from || [d.x, d.y], () => d.remove()); } // (back to where it waits, and gone before it gets there)
       (late ? ep.late || [] : ep.after || []).forEach((line, i) => later(1400 + i * 4200, () => ctx.toast(esc(line))));
     }
     // the episode's last card: the print, what it was, what comes next, and two ways on
@@ -239,12 +252,15 @@ ${(late ? E.late_line : E.line) ? `<p>${esc(late ? E.late_line : E.line)}</p>` :
       const ep = st.ep;
       if (!ep || st.phase === 'idle' || st.phase === 'dressed' || st.phase === 'done') return;
       st.t += dt;
+      if (st.dog) st.dog.tick(dt);
       if (st.phase === 'lead') { if (st.t >= (ep.lead_s ?? 1)) stop(); }
       else if (st.phase === 'stop') {
         const g = st.ghost, a = ep.afterimage, leftS = Math.max(0, (ep.stop_s || 540) - st.t);
         goalEl.querySelector('small').textContent = `The Stop · ${clockOf(leftS)}`;
         if (g) { g.animate(dt); g.face(ctx.player.x, ctx.player.y); }
         if (st.beat === 'seek') {
+          // the mark follows the guide while it leads; the light stands on her once it has sat down by her (or where no guide came)
+          if (g) { const d = st.dog, lead = d && d.ready && d.state !== 'sit' && d.state !== 'away'; aimAt(lead ? [d.x, d.y, d.z + 0.7] : [g.x, g.y, g.z + 1.2], !lead, lead ? (ep.guide || {}).name || '' : ''); }
           // the keys are put away once they have been used
           if (st.from && Math.hypot(ctx.player.x - st.from[0], ctx.player.y - st.from[1]) > 3) { st.from = null; hint(false); }
           if (g && Math.hypot(g.x - ctx.player.x, g.y - ctx.player.y) < (a.reach_m || 3.2)) {
@@ -272,6 +288,7 @@ ${(late ? E.late_line : E.line) ? `<p>${esc(late ? E.late_line : E.line)}</p>` :
         ctx.stage.classList.remove('story-on', 'story-stop');
         for (const e of [frames, card, veil, flash, goalEl, mark, keys, finder, shutter, endEl]) e.remove();
         if (st.ghost) st.ghost.remove();
+        if (st.dog) st.dog.remove();
       },
     };
   }

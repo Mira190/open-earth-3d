@@ -163,7 +163,7 @@ else
       tools/governor_unit.js) voice=1 ;;   # the governor's modelled devices, in the static checks
       web/world.js|web/glcare.js|web/mirror.js|web/water.js|web/surface.js|web/lens.js|web/game/atmosphere.js|web/game/ao.js|web/game/weather.js) shared_change; gl=1 ;;   # what draws into a target of its own: the passes a device's governor turns on and off
       tools/gl_error_probe.js|tools/sampler_probe.js) gl=1 ;;
-      web/game/story.js|tools/story_shot.js) shared_change; story=1 ;;   # a map's story and the Stop (tools/story_shot.js plays the first episode)
+      web/game/story.js|web/game/companion.js|web/assets/animals/*|tools/story_shot.js) shared_change; story=1 ;;   # a map's story and the Stop (tools/story_shot.js plays the first episode)
       web/night.js|web/neon.js) shared_change; gl=1 ;;   # what adds a texture to the shared shaders (the units check)
       web/game/fishing.js|tools/fishing_*|pipeline/fishing.py)   # the cities with fishing spots only (docs/FISHING.md)
         if [ "$TIER" = full ]; then for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && add_city "$id"; done; else fish=1; fi ;;
