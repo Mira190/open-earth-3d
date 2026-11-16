@@ -85,7 +85,6 @@ def _load(name):
 
 
 RAIL = _load("rail")   # Circular Quay Station and the City Circle's trains (cities/sydney/rail.py)
-WALKS = _load("walks")   # the Bridge Stairs and the Cahill Walk's lift (cities/sydney/walks.py)
 
 OPERA = "Sydney Opera House"
 PYLONS = ("Sydney Harbour Bridge - South Pylons", "Sydney Harbour Bridge - North Pylons")
@@ -570,7 +569,7 @@ def game_surfaces(scene):
                     "mesh": f"opera_steps_{hall}"})
     if o.get("halls"):
         out += opera_rooms(o)["surfaces"]
-    return out + RAIL.surfaces() + WALKS.surfaces(RAIL.layout())   # and Circular Quay's platforms and stairs (cities/sydney/rail.py), the Bridge Stairs (walks.py)
+    return out + RAIL.surfaces()   # and Circular Quay's platforms and stairs (cities/sydney/rail.py)
 
 
 def game_ground(grid, gx, gy, water, scene):
@@ -751,7 +750,7 @@ def bridge_trains(h, tr):
 
 def landmark_demolished(scene):
     """Circular Quay Station's box, which the station built in its place stands in for (cities/sydney/rail.py)."""
-    return RAIL.demolished() + WALKS.demolished()   # (and the mapped lift building, which the Cahill Walk's shaft stands in for)
+    return RAIL.demolished()
 
 
 def landmark_assets(out_dir, scene):
@@ -763,7 +762,7 @@ def landmark_glows(scene):
     """The pools of light the Lower Concourse's downlights throw on its flags (web/night.js), from
     the downlights landmark_meshes laid."""
     R, hexc, k = DOWNLIGHT_POOL
-    return [[x, y, R, hexc, k] for x, y in DOWNLIGHTS] + RAIL.glows() + WALKS.glows(RAIL.layout())
+    return [[x, y, R, hexc, k] for x, y in DOWNLIGHTS] + RAIL.glows()
 
 
 def museum_hall():
@@ -823,9 +822,7 @@ def landmark_meshes(scene):
     meshes += museum_hall()
     rm, rmesh = RAIL.meshes(Mesh)   # Circular Quay Station on its viaduct (cities/sydney/rail.py)
     mats.update({k: dict(v) for k, v in rm.items()})
-    wm, wmesh = WALKS.meshes(Mesh, RAIL.layout())   # the Bridge Stairs at Cumberland Street, the Cahill Walk's lift and walk (cities/sydney/walks.py)
-    mats.update({k: dict(v) for k, v in wm.items()})
-    return mats, meshes + rmesh + wmesh, extra
+    return mats, meshes + rmesh, extra
 
 
 # ---------------------------------------------------------------- Opera House
