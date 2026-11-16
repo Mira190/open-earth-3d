@@ -3167,6 +3167,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const j = junctions.J.find(q => q.scramble && Math.hypot(q.x - player.x, q.y - player.y) < 80);
       if (j) { junctions.walkIn(j, secs); cars.clearBox(j.x, j.y, 45); musterScramble(); }
     },
+    // a guide (companion.js): an animal that goes ahead of you to where the story wants you
+    guide: g => (window.OECompanion && g.model ? OECompanion.create({ url: g.model, world, W, ground: (x, y) => Math.max(0, nav.terrain(x, y)), player, height: g.scale || 1,
+      people: (x, y, r) => { const out = []; if (crowd && crowd.P) for (let i = 0, n = Math.min(crowd.active, crowd.P.length); i < n; i++) { const q = crowd.P[i]; if (q.line >= 0 && Math.abs(q.x - x) < r && Math.abs(q.y - y) < r) out.push([q.x, q.y]); } return out; } }) : null),
     // an afterimage: someone of another year, pale and half there, who alone moves in the stopped world
     figure: (a, at) => {
       const rig = makeRig({ character: a.character, scale: 1 }), z = Math.max(0, nav.terrain(at[0], at[1]));
