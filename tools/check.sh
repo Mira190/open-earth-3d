@@ -16,6 +16,7 @@
 #     occluder raster (vis.bin, pipeline/visibility.py) is made from its buildings as they are (with the packs);
 #   - checks that every live city's building solids are valid polygons on their decimetre grid (pipeline/solid_rings.py --check);
 #   - checks that every shared model in web/assets is meshopt-compressed (pipeline/meshopt_glb.mjs --check);
+#   - checks that each traffic model shows its outside from every side at each distance (tools/car_shell.js);
 #   - checks each fishing water's data against its city.json and plays its fights for balance
 #     (pipeline/fishing.py --check, tools/fishing_sim.js; the game check fishes each spot);
 #   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
@@ -436,6 +437,10 @@ EOF
     && for p in "$OUT"/parts/*.glb; do cmp -s "$p" "web/assets/$(case $(basename "$p") in cars*) echo vehicles;; *) echo trees;; esac)/$(basename "$p")" || { echo "FAIL $(basename "$p") is not its model's part: python3 pipeline/meshopt.py split web/assets/*/<model>.glb" >>"$OUT/parts.log"; false; }; done; then
     echo "ok   parts  $(ls "$OUT"/parts/*.glb | wc -l) parts of the shared models up to date"
   else echo "FAIL parts  $(grep '^FAIL' "$OUT/parts.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/parts.log)"; fi
+  # each traffic model closed from every side at each of its distances (tools/car_shell.js, issue 525): a decimated
+  # copy with a pane or a lamp turned inside out shows the near black the traffic paints a car's inside
+  if node tools/car_shell.js >"$OUT/car_shell.log" 2>&1; then echo "ok   car shells  $(tail -1 "$OUT/car_shell.log")"
+  else echo "FAIL car shells  $(grep '^FAIL' "$OUT/car_shell.log" | head -3 | cut -c6-21 | paste -sd ';' -): $(tail -1 "$OUT/car_shell.log" | cut -c1-90)   (see $OUT/car_shell.log)"; fi
   # signs that read mirrored, in the built landmarks of the cities checked (tools/sign_check.py): every live city's
   # when no city is named (the static checks alone)
   signs=("${cities[@]}"); [ ${#signs[@]} -eq 0 ] && signs=($CITIES)

@@ -5550,6 +5550,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
     if (titleOn && titleYaw != null && !simHold) { titleT += dt; titleYaw = openingHere() ? openingView().yaw + OPENING.sway * Math.sin(titleT * 0.06) : DISTRICT ? titleYaw0 + 0.3 * Math.sin(titleT * 0.05) : titleYaw + dt * 0.05; }
     if (simHold) { /* (held by a harness: the camera too, which the traffic reads, what is in view; advance() moves it) */ } else if (photo.on) photoCamera(dt); else if (closeup && !titleOn) closeupCamera(dt); else updateCamera(dt, titleOn);
+    if (paused && !simHold && cars.review) cars.review(); // (the world held and the camera free: each car's mesh for its distance from it now, actors.js, #525)
     placeNightFill();
     stage.classList.toggle('cine', cine.active && (cine.label !== 'crane' || cine.k < 0.5));
     // world clocks and fades
