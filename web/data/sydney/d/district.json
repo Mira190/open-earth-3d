@@ -15,9 +15,9 @@
   "buildings": 3254,
   "solids": 3522,
   "skyline": 293,
-  "meshes": 277,
+  "meshes": 290,
   "skyline_meshes": 0,
-  "materials": 130,
+  "materials": 143,
   "quests": [
    "quay",
    "shells",
@@ -46,15 +46,15 @@
  },
  "files": {
   "buildings.bin": 295053,
-  "game.bin": 212642,
-  "landmarks.bin": 391207,
+  "game.bin": 213304,
+  "landmarks.bin": 398438,
   "places.bin": 92437,
   "scene.bin": 58492,
   "shore.png": 94645,
-  "vis.bin": 76220,
+  "vis.bin": 76212,
   "woods.webp": 232350
  },
- "bytes": 1453046,
- "whole_bytes": 1829289,
- "sha256": "68653d1b900b4fa42992d90adf6fdcdb41e4f95ac4f3f40370eaa69674c046e4"
+ "bytes": 1460931,
+ "whole_bytes": 1837121,
+ "sha256": "e9bd1e9e47836001b381ad40655b2201e28fd41d31b13191d434841187ce73bb"
 }

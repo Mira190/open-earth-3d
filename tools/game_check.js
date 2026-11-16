@@ -1507,19 +1507,21 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
       if (n) T.push({ name: `${q.id}'s giver ${n.name}`, x: n.x, y: n.y, z: n.z });
       (q.steps || []).forEach((st, k) => { const m = st.npc && g.npcs.find(o => o.id === st.npc), at = m ? [m.x, m.y, m.z] : st.at; if (at) T.push({ name: `${q.id} step ${k + 1}`, x: at[0], y: at[1], z: at[2] ?? null }); });
     }
-    for (const t of G.travel || []) if (t.at) T.push({ name: `travel ${t.id}`, x: t.at[0], y: t.at[1], z: t.at[2] ?? null });
+    // (travel[].walk_m: a place whose real way on foot is known to be long, and how long at most: Sydney's lookout on
+    // the station's roof, 140 m from the start and reached by the lift at the station's far end)
+    for (const t of G.travel || []) if (t.at) T.push({ name: `travel ${t.id}`, x: t.at[0], y: t.at[1], z: t.at[2] ?? null, far: t.walk_m || 0 });
     const seen = new Set();
     for (const t of T) {
       const k = `${Math.round(t.x)},${Math.round(t.y)}`;
       if (seen.has(k)) continue;
       seen.add(k);
       const r = ways.walk(a, t), d = Math.hypot(t.x - a.x, t.y - a.y);
-      out.push({ name: t.name, d, len: r ? r.len : null });
+      out.push({ name: t.name, d, len: r ? r.len : null, far: t.far || 0 });
     }
     return out;
   });
   if (reach) {
-    const none = reach.filter(r => r.len == null), far = reach.filter(r => r.len != null && r.d > 50 && r.len > 3 * r.d);
+    const none = reach.filter(r => r.len == null), far = reach.filter(r => r.len != null && r.d > 50 && r.len > Math.max(3 * r.d, r.far));
     check(!none.length, `every quest and travel place is reached on foot from the start (${reach.length - none.length} of ${reach.length}${none.length ? `; none to ${none.map(r => r.name).join(', ')}` : ''})`);
     check(!far.length, `no walk to them goes more than three times the straight line${far.length ? ` (${far.map(r => `${r.name} ${Math.round(r.len)} m for ${Math.round(r.d)}`).join(', ')})` : ''}`);
   }

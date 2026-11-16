@@ -544,6 +544,59 @@ What could not be checked: the paver's exact size and colours, the kerb's width,
 casting (read from two distant photographs), the lamp posts' height, the Mordant Wing's storey heights and
 setbacks (stacked after photographs 4 and 5 on the measured plan), the ovoid's dimensions, and the palms'
 heights (11 to 15.5 m by a seeded draw).
+### The ways up from the quay and The Rocks (`cities/sydney/walks.py`, issue 523)
+
+Two ways up were first put where the game needed them, without a map or a photograph. Both are now where
+OpenStreetMap has them, and built.
+
+**The Cahill Walk's lift** stands at the station's east end, at East Circular Quay, not the west: the node
+`highway=elevator` in the middle of the building way 1241003116, with the walk's footbridge (way 151429617) from it to
+the walk (way 207664252), which passes 4 m south of it.
+
+| | Built |
+|---|---|
+| The shaft | on the mapped building's place (its solid comes down): glass in a dark steel frame from the quay to 3.3 m over the walk, a louvred panel high on its east face, a doorway to the quay on the north and to the walk on the south |
+| The landing | a short bridge to the walk under a flat glass canopy on two steel beams, a strip of light under it after dark |
+| The walk | 92 m of it, from the station's roof east to 5.5 m past the lift: an asphalt-topped slab 3 m wide at the roof's level, bracketed off the viaduct's north side and on two columns past the viaduct's end, a balustrade of upright steel flats either side. East of there the real walk goes on to Macquarie Street: not built, the walk ends at a balustrade |
+| In the game | the lift's two stops (`walks.lift_stops`), the walk and the landing as strips; the lookout on the roof is now 600 m on foot from the start for 140 m in a straight line, as it is in the city, and says so (`travel[].walk_m`, which the game check's walk step reads) |
+
+**The Bridge Stairs** are on Cumberland Street just south of the Argyle Cut (the node "The Bridge Stairs" and the
+steps way 431130980: 32 steps west from the street to a turn, then north onto the walkway beside the Bradfield
+Highway), 230 m south-west of where the game had a climb. They are concrete finished in cement render, as the
+approach's other structures are, not dressed sandstone.
+
+| | Built |
+|---|---|
+| The flight | 4.2 m wide between rendered flank walls, two flights of 18 risers of 170 mm with a landing between, from the street's level to the walkway's (the game's ground at both: 6.1 m, where 32 real steps climb about 5.5 m) |
+| The flank walls | raked a metre over the nosings with a coping and a string under it, a panelled pier at the foot and one at the head carrying a lamp standard, an iron handrail on each |
+| The covered landing | two bays of round arches a side and one wide arch at the flight's head, iron railings in the arches that are not ways through, a flat roof with a cornice, a lantern hung in each bay; its back wall stands where the bank behind begins |
+| The way on | eight steps down from the landing's north-west arch to the walkway's ground. From there the real walkway runs north over the Argyle Cut onto the bridge's east footway. The model's approach comes down to the ground at 5 %, five metres under the real highway there, so that stretch is not built: the game carries you along it at a walk (`game.lifts` `bridge-stairs`, "Walk on to", `walks.walkway_hop`), from the stairs' head to the deck's footway 16 m from its south end |
+
+The plan of the landing (two bays by one) and every height not read off the photographs are this model's own. The
+1932 photographs are captioned "Sydney Harbour Bridge stairs" and "Bridge Stairs" without a side of the harbour:
+the bridge has stairs of the same design at Milsons Point, and the detail here (flank walls, piers, lamp standards,
+arches, railings, lanterns) is taken as common to both.
+
+Still short of the bar round them, and not this work's: Cumberland Street and the highway's ramps there are drawn
+as slabs with white sides, and the ground between them is the photograph.
+
+Sources: OpenStreetMap (c) OpenStreetMap contributors, ODbL (`cities/sydney/bridge_stairs_osm.json`,
+`cities/sydney/quay_station_osm.json`, by `pipeline/hero_osm.py`). No official drawing of the stairs was found
+that could be opened from the build machine; none is used. Photographs looked at (Wikimedia Commons; none
+reproduced, no texture taken):
+
+| File | Author | Licence | Used for |
+|---|---|---|---|
+| Sydney Harbour Bridge stairs (5578135858).jpg | State Records NSW (Photographic Collection from Australia) | CC BY 2.0 | the flight's width, the flank wall's rake and string, the pier and lamp standard at the head |
+| Sydney Harbour Bridge stairs (5577548717).jpg | State Records NSW | CC BY 2.0 | the pier at the foot, its sunk panel and cap |
+| Arched Openings on Landing - Bridge Stairs (5889052155).jpg | State Records NSW, 14 April 1932 | CC BY 2.0 | the covered landing: round arches, the iron railings, the hanging lanterns, the ceiling |
+| AUS Sydney, Central Business District, Cahill Walk 004.jpg | -wuppertaler | CC BY 4.0 | the Cahill Walk's lift: the glass shaft and its head over the walk, the louvres, the canopy, the balustrade, the walk's surface |
+| AUS Sydney, Central Business District, Cahill Walk 013.jpg | -wuppertaler | CC BY 4.0 | the same kind of lift at Cumberland Street, and the approach's rendered arches behind it |
+| Cahill Expressway from East.jpg | Ajayvius | public domain | the walk beside the expressway, its rail and fence |
+
+Stills: `tools/scramble_shot.js sydney tools/views/sydney-walks.json` (the lift from the quay, at its foot, from the
+walk and the air; the walk; the stairs from the street, on the flight, in the landing and from the air).
+
 ## Only what the first frame sees (issue 358)
 
 The levels by a map's spawn (Kamakura's first) apply issue 358's rule to detail: memory and shading go to

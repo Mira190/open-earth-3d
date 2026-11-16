@@ -2767,10 +2767,12 @@ drop or into the water.
     where no walk reaches that (Circular Quay Station's roof over its platforms, a
     viaduct over the street a place is meant on), at the floor a walker on the ground
     there stands on;
-  - a climb the game does not draw is a lift in game.json `lifts` with its own verb
-    (`verb`: "Climb the stairs to"): Sydney's Bridge Stairs from Cumberland Street up to
-    the Harbour Bridge's footway, and the Cahill Walk's lift from the quay. Every quest
-    and travel place in the live maps is reached on foot (`tools/game_check.js`);
+  - a way the game does not draw is a lift in game.json `lifts` with its own verb
+    (`verb`: "Walk on to"): the walkway from the head of Sydney's Bridge Stairs to the
+    Harbour Bridge's footway (the stairs themselves are built and climbed, and so is the
+    Cahill Walk's lift at East Circular Quay: docs/HERO.md). Every quest and travel place
+    in the live maps is reached on foot (`tools/game_check.js`); one whose real way is
+    long says how long (`travel[].walk_m`);
   - from where you stand onto the network, and from it to the target, an A*
     search over a 1.25 m grid of the ground, walked as the walker walks (no step
     higher than a kerb, no drop either way). A target inside a building is reached

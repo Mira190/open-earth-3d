@@ -421,7 +421,7 @@
       "helicopter": {"livery": "survey"},
       "cars": {"taxi": {"colours": ["#f3f3f0", "#c9ccd0", "#1c1d1f", "#e8e6df"], "share": 0.1}, "bus": {"colour": "#eef0ef", "band": "#2a5caa"}, "note": "Sydney's taxis come in any colour, mostly white, silver or black, with a roof sign; the buses are white with a blue band (approximate)."}
     },
-    "travel": [{"id": "jacaranda-lookout", "name": "Jacaranda lookout, Circular Quay", "at": [-160, 86, 17.8], "look": [-120, 1000], "pitch": 0.05, "best": {"from": [10, 13], "to": [11, 30], "date": [11, 8], "what": "The jacarandas"}, "note": "Above Circular Quay station, where the Cahill Walk looks over the quay: First Fleet Park's jacarandas below, the Harbour Bridge ahead and the Opera House across the water, the view of the postcards (sydney.com, 'Where to see jacarandas in Sydney'). Out of season, arriving moves the date into the bloom."}, {"id": "jacaranda-walk", "name": "Jacaranda walk, by the MCA", "at": [-178, 232], "look": [150, 760], "pitch": 0.06, "best": {"from": [10, 13], "to": [11, 30], "date": [11, 8], "what": "The jacarandas"}, "note": "Under the jacarandas on Circular Quay West, outside the Museum of Contemporary Art, looking across the quay to the Opera House."}],
+    "travel": [{"id": "jacaranda-lookout", "name": "Jacaranda lookout, Circular Quay", "at": [-160, 86, 17.8], "look": [-120, 1000], "pitch": 0.05, "best": {"from": [10, 13], "to": [11, 30], "date": [11, 8], "what": "The jacarandas"}, "note": "Above Circular Quay station, where the Cahill Walk looks over the quay: First Fleet Park's jacarandas below, the Harbour Bridge ahead and the Opera House across the water, the view of the postcards (sydney.com, 'Where to see jacarandas in Sydney'). Out of season, arriving moves the date into the bloom.", "walk_m": 700}, {"id": "jacaranda-walk", "name": "Jacaranda walk, by the MCA", "at": [-178, 232], "look": [150, 760], "pitch": 0.06, "best": {"from": [10, 13], "to": [11, 30], "date": [11, 8], "what": "The jacarandas"}, "note": "Under the jacarandas on Circular Quay West, outside the Museum of Contemporary Art, looking across the quay to the Opera House."}],
     "viewpoints": [
       {"id": "bridge-arch", "name": "Harbour Bridge, mid-arch", "at": [-76.2, 1077.8]},
       {"id": "observatory-hill", "name": "Observatory Hill", "at": [-546.2, 307.6]},
@@ -576,14 +576,8 @@
       }
     ],
     "lifts": [
-      {"id": "bridge-stairs", "name": "Bridge Stairs", "line": "The Bridge Stairs · Cumberland Street → the Harbour Bridge footway", "verb": "Climb the stairs to", "m_per_min": 18.0,
-       "note": "The eastern footway of the Harbour Bridge comes down to Cumberland Street in The Rocks by the Bridge Stairs, beside the approach span (OpenStreetMap: the footway on the deck ends over Cumberland Street, 14 m up)",
-       "stops": [{"name": "Cumberland Street, The Rocks", "at": [-331.0, 536.0, 24.12], "face": [-0.4636, -0.886]},
-                 {"name": "the Harbour Bridge footway", "at": [-334.0, 541.0, 38.36], "face": [0.4636, 0.886]}]},
-      {"id": "cahill-walk", "name": "Cahill Walk lift", "line": "The Cahill Walk · Circular Quay → over the station", "m_per_min": 60.0,
-       "note": "The Cahill Walk runs along the Cahill Expressway over Circular Quay Station; a lift and stairs at the station's west end take people up to it from the quay",
-       "stops": [{"name": "Circular Quay, by the station", "at": [-172.0, 85.0, 2.62], "face": [0.99, -0.11]},
-                 {"name": "the Cahill Walk", "at": [-156.0, 80.0, 17.8], "face": [0.0, 1.0]}]}
+      {"id": "bridge-stairs", "name": "Bridge Stairs", "line": "The Cahill Walk · the Bridge Stairs → the Harbour Bridge footway", "verb": "Walk on to", "m_per_min": 80.0, "note": "The Bridge Stairs climb from Cumberland Street, just south of the Argyle Cut, to the walkway beside the Bradfield Highway (cities/sydney/walks.py: the flight is built and walked). From their head the real walkway runs north over the Argyle Cut onto the bridge's east footway; the model's approach comes down to the ground at 5 %, five metres under the real highway there, so that stretch is not built and this carries you along it at a walk. The stops are walks.py walkway_hop()", "stops": [{"name": "the Bridge Stairs, Cumberland Street", "at": [-436.06, 332.2, 32.04], "face": [-0.3, -0.96]}, {"name": "the Harbour Bridge footway", "at": [-403.23, 406.46, 30.8], "face": [0.46, 0.89]}]},
+      {"id": "cahill-walk", "name": "Cahill Walk lift", "line": "The Cahill Walk · East Circular Quay → over the station", "m_per_min": 60.0, "note": "The Cahill Walk runs along the Cahill Expressway over Circular Quay Station; its glass lift stands at the station's east end, at East Circular Quay (OpenStreetMap: the node highway=elevator in the building way 1241003116), with a short bridge onto the walk. The stops are cities/sydney/walks.py lift_stops()", "stops": [{"name": "East Circular Quay, by the station", "at": [91.32, 69.58, 2.81], "face": [0.09, 1.0]}, {"name": "the Cahill Walk", "at": [90.75, 63.61, 17.8], "face": [-0.09, -1.0]}]}
     ],
     "quests": [
       {
