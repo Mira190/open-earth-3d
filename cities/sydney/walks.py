@@ -53,7 +53,7 @@ BS_PIER = 0.6
 
 MATERIALS = {
     # cement render on concrete, as the approach's walls: one pale warm tone, smooth
-    "bs_render": {"color": "#cdc4b1", "roughness": 0.92, "metalness": 0.0, "street_lit": True},
+    "bs_render": {"color": "#cdc4b1", "roughness": 0.92, "metalness": 0.0},
     "bs_step": {"color": "#bcb5a6", "roughness": 0.9, "metalness": 0.0, "street_lit": True},
     "bs_soffit": {"color": "#c4bcaa", "roughness": 0.95, "metalness": 0.0, "solid": False, "emissive": "#ffd8a8", "glow": 0.16},
     "bs_iron": {"color": "#23262a", "roughness": 0.6, "metalness": 0.5},
