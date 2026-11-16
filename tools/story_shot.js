@@ -19,7 +19,7 @@ const [,, city = 'shibuya', out = '/tmp/story', size = '1440x900'] = process.arg
   const errors = [];
   p.on('pageerror', e => { errors.push(String(e).slice(0, 300)); console.log('pageerror:', String(e).slice(0, 300), (e.stack || '').split('\n').slice(1, 4).join(' | ').slice(0, 400)); });
   require('fs').mkdirSync(out, { recursive: true });
-  const state = () => p.evaluate(() => { const g = window.__game, s = g.story && g.story.state; return s ? { phase: s.phase, beat: s.beat, t: +s.t.toFixed(1), left: s.left, ghost: !!s.ghost, player: [+g.player.x.toFixed(1), +g.player.y.toFixed(1)], mode: g.player.mode } : null; });
+  const state = () => p.evaluate(() => { const g = window.__game, s = g.story && g.story.state; return s ? { phase: s.phase, beat: s.beat, t: +s.t.toFixed(1), left: s.left, ghost: !!s.ghost, dog: s.dog ? `${s.dog.state} ${s.dog.clip} ${s.dog.x.toFixed(1)},${s.dog.y.toFixed(1)}` : null, player: [+g.player.x.toFixed(1), +g.player.y.toFixed(1)], mode: g.player.mode } : null; });
   const until = async (what, fn, arg, timeout = 900000) => { try { await p.waitForFunction(fn, arg, { timeout, polling: 500 }); return true; } catch (e) { console.log(`FAIL ${what}: not reached`, JSON.stringify(await state())); return false; } };
   // (a software renderer can take longer over one frame of an overture than a screenshot waits: a still missed is said, not fatal)
   const snap = async name => { try { await p.screenshot({ path: `${out}/${name}.png`, timeout: 150000 }); return true; } catch (e) { console.log(`(no still ${name}: ${String(e.message).split('\n')[0]})`); return false; } };
@@ -55,8 +55,27 @@ const [,, city = 'shibuya', out = '/tmp/story', size = '1440x900'] = process.arg
   ok = await until('the goal is on screen', () => window.__game.story.state.beat === 'seek' && document.querySelector('#g-story-goal.on span').textContent.length > 8 && document.querySelector('#g-story-keys.on')) && ok;
   await p.waitForTimeout(1500);
   await shot('2-goal');
-  // walk up to her: a few metres off first, then within reach
   const near = d => p.evaluate(d => { const g = window.__game, gh = g.story.state.ghost, pl = g.player; if (!gh) return false; const dx = pl.x - gh.x, dy = pl.y - gh.y, l = Math.hypot(dx, dy) || 1; pl.x = gh.x + dx / l * d; pl.y = gh.y + dy / l * d; pl.h = Math.atan2(-dx, -dy); if (g.cam) g.cam.yaw = pl.h; return true; }, d);
+  // the guide: it waits where the data stands it, comes to you, then goes ahead of you to her and sits there
+  // (its seconds are given to it here: a software renderer's frames are too few to wait for a dog to cross a square)
+  const run = secs => p.evaluate(n => { const st = window.__game.story; for (let i = 0; i < n; i++) st.tick(0.1); }, Math.round(secs * 10));
+  const dogIs = () => p.evaluate(() => { const g = window.__game, s = g.story.state, d = s.dog, gh = s.ghost, T = g.G.story.episodes[0].task; return d ? { state: d.state, clip: d.clip, toYou: Math.hypot(d.x - g.player.x, d.y - g.player.y), toHer: gh ? Math.hypot(d.x - gh.x, d.y - gh.y) : -1, youToHer: gh ? Math.hypot(g.player.x - gh.x, g.player.y - gh.y) : -1, toStand: T.stand ? Math.hypot(d.x - T.stand[0], d.y - T.stand[1]) : -1 } : null; });
+  const guided = await p.evaluate(() => !!window.__game.G.story.episodes[0].guide);
+  if (guided) {
+    ok = await until('the guide is there', () => { const d = window.__game.story.state.dog; return d && d.ready; }, null, 240000) && ok;
+    await run(16);
+    let d = await dogIs();
+    if (!(d.toYou < 9 && /lead|wait/.test(d.state))) { console.log('FAIL the guide did not come to the player', JSON.stringify(d)); ok = false; }
+    await p.waitForTimeout(4000); await shot('2b-guide');
+    await near(14); await run(5);
+    d = await dogIs();
+    if (!(d.toHer < d.youToHer)) { console.log('FAIL the guide is not ahead of the player on the way', JSON.stringify(d)); ok = false; }
+    await p.waitForTimeout(4000); await shot('2c-led');
+    await near(7); await run(9);
+    d = await dogIs();
+    if (!(d.state === 'sit' && d.toHer < 4)) { console.log('FAIL the guide did not sit down by her', JSON.stringify(d)); ok = false; }
+  }
+  // walk up to her: a few metres off first, then within reach
   if (await near(6.5)) { await p.waitForTimeout(5000); await shot('3-afterimage'); }
   await near(2.4);
   ok = await until('she speaks', () => { const d = document.getElementById('gd'); return d && !d.hidden; }, null, 180000) && ok;
@@ -73,6 +92,7 @@ const [,, city = 'shibuya', out = '/tmp/story', size = '1440x900'] = process.arg
   await face(true);
   ok = await until('the lens on the subject', () => !!document.querySelector('#g-story-shutter.ready'), null, 240000) && ok;
   await p.waitForTimeout(3000); // (the line about turning has gone)
+  if (guided) { await run(8); const d = await dogIs(); if (!(d.state === 'sit' && d.toStand < 1)) { console.log('FAIL the guide did not go to sit where the picture is taken from', JSON.stringify(d)); ok = false; } await p.waitForTimeout(3000); }
   await shot('5-finder');
   await p.keyboard.press('KeyF');
   ok = await until('the frame is spent', () => window.__game.story.state.left === 6 && !!window.__game.story.state.print, null, 60000) && ok;
@@ -80,6 +100,7 @@ const [,, city = 'shibuya', out = '/tmp/story', size = '1440x900'] = process.arg
   ok = await until('the world runs on', () => window.__game.story.state.phase !== 'stop', null, 120000) && ok;
   await p.waitForTimeout(6000);
   await shot('6-after');
+  if (guided) { await run(8); const d = await dogIs(); if (d.state !== 'away') { console.log('FAIL the guide is still there after the world runs on', JSON.stringify(d)); ok = false; } }
   await p.evaluate(() => window.__game.story.tick(12)); // (the seconds before the last card: a software renderer's are minutes)
   ok = await until('the last card, with two ways on', () => document.querySelectorAll('#g-story-end.on button[data-do]').length === 2, null, 240000) && ok;
   await p.waitForTimeout(2500);

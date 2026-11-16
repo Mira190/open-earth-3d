@@ -831,8 +831,10 @@
     "triangles": 8438,
     "cities": [
      "hong-kong",
+     "sydney",
      "tokyo"
-    ]
+    ],
+    "mask": 0.514
    },
    "R_Business_Female_04_f003": {
     "file": "R_Business_Female_04_f003.glb",
@@ -843,8 +845,10 @@
     "height_m": 1.739,
     "triangles": 8202,
     "cities": [
-     "shibuya"
-    ]
+     "shibuya",
+     "tokyo"
+    ],
+    "mask": 0.0482
    },
    "R_Business_Female_04_f011": {
     "file": "R_Business_Female_04_f011.glb",
@@ -856,7 +860,8 @@
     "triangles": 8288,
     "cities": [
      "sydney"
-    ]
+    ],
+    "mask": 0.0482
    },
    "R_Business_Male_02": {
     "file": "R_Business_Male_02.glb",
@@ -870,7 +875,8 @@
      "kyoto",
      "osaka",
      "tokyo"
-    ]
+    ],
+    "mask": 0.0453
    },
    "R_Business_Male_03": {
     "file": "R_Business_Male_03.glb",
@@ -882,7 +888,8 @@
     "triangles": 7810,
     "cities": [
      "sydney"
-    ]
+    ],
+    "mask": 0.0419
    },
    "R_Business_Male_05_m017": {
     "file": "R_Business_Male_05_m017.glb",
@@ -918,8 +925,10 @@
     "triangles": 7532,
     "cities": [
      "osaka",
+     "shibuya",
      "tokyo"
-    ]
+    ],
+    "mask": 0.0419
    },
    "R_Business_Male_06_m024": {
     "file": "R_Business_Male_06_m024.glb",
@@ -982,8 +991,10 @@
     "height_m": 1.731,
     "triangles": 8940,
     "cities": [
-     "melbourne-bayside"
-    ]
+     "melbourne-bayside",
+     "sydney"
+    ],
+    "mask": 0.1272
    },
    "R_Female_Adult_03": {
     "file": "R_Female_Adult_03.glb",
@@ -1022,8 +1033,11 @@
     "triangles": 8664,
     "cities": [
      "hong-kong",
-     "kyoto"
-    ]
+     "kyoto",
+     "shibuya",
+     "tsukishima"
+    ],
+    "mask": 0.0959
    },
    "R_Female_Adult_06": {
     "file": "R_Female_Adult_06.glb",
@@ -1046,8 +1060,10 @@
     "height_m": 1.739,
     "triangles": 8352,
     "cities": [
-     "osaka"
-    ]
+     "osaka",
+     "shibuya"
+    ],
+    "mask": 0.0467
    },
    "R_Female_Adult_08": {
     "file": "R_Female_Adult_08.glb",
@@ -1058,8 +1074,28 @@
     "height_m": 1.735,
     "triangles": 8276,
     "cities": [
-     "sydney"
-    ]
+     "jinbocho",
+     "queenstown",
+     "shibuya",
+     "sydney",
+     "tokyo"
+    ],
+    "mask": 0.1339
+   },
+   "R_Female_Adult_08_f016": {
+    "file": "R_Female_Adult_08_f016.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_08",
+    "head": "Professions/Business_Female_03",
+    "tags": [],
+    "height_m": 1.743,
+    "triangles": 7510,
+    "cities": [
+     "shibuya",
+     "sydney",
+     "tokyo"
+    ],
+    "mask": 0.1339
    },
    "R_Female_Adult_08_mariniere": {
     "file": "R_Female_Adult_08_mariniere.glb",
@@ -1086,10 +1122,17 @@
     "height_m": 1.736,
     "triangles": 9236,
     "cities": [
+     "asakusa",
+     "fushimi-inari",
      "hong-kong",
      "kyoto",
-     "tokyo"
-    ]
+     "queenstown",
+     "shibuya",
+     "shinjuku",
+     "tokyo",
+     "ueno"
+    ],
+    "mask": 0.07
    },
    "R_Female_Adult_09_f011_grey_leopard": {
     "file": "R_Female_Adult_09_f011_grey_leopard.glb",
@@ -1116,8 +1159,12 @@
     "triangles": 8896,
     "cities": [
      "amsterdam",
-     "paris"
-    ]
+     "paris",
+     "shibuya",
+     "tokyo",
+     "tsukishima"
+    ],
+    "mask": 0.1365
    },
    "R_Female_Adult_12": {
     "file": "R_Female_Adult_12.glb",
@@ -1153,8 +1200,10 @@
     "triangles": 8708,
     "cities": [
      "amsterdam",
+     "shinagawa",
      "sydney"
-    ]
+    ],
+    "mask": 0.1307
    },
    "R_Female_Adult_13_f003_brown": {
     "file": "R_Female_Adult_13_f003_brown.glb",
@@ -1167,8 +1216,13 @@
     "height_m": 1.739,
     "triangles": 8612,
     "cities": [
-     "shibuya"
-    ]
+     "ikebukuro",
+     "shibuya",
+     "shinjuku",
+     "sydney",
+     "tokyo"
+    ],
+    "mask": 0.1307
    },
    "R_Female_Adult_14": {
     "file": "R_Female_Adult_14.glb",
@@ -1179,8 +1233,12 @@
     "height_m": 1.739,
     "triangles": 8724,
     "cities": [
-     "melbourne"
-    ]
+     "melbourne",
+     "queenstown",
+     "reef",
+     "sydney"
+    ],
+    "mask": 0.046
    },
    "R_Female_Adult_14_f016": {
     "file": "R_Female_Adult_14_f016.glb",
@@ -1191,8 +1249,11 @@
     "height_m": 1.743,
     "triangles": 8058,
     "cities": [
+     "akihabara",
+     "ikebukuro",
      "shibuya"
-    ]
+    ],
+    "mask": 0.046
    },
    "R_Female_Adult_15": {
     "file": "R_Female_Adult_15.glb",
@@ -1206,6 +1267,23 @@
      "amsterdam"
     ]
    },
+   "R_Female_Adult_15_f011_brown": {
+    "file": "R_Female_Adult_15_f011_brown.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_15",
+    "head": "Adults/Female_Adult_11",
+    "tags": [
+     "brown"
+    ],
+    "height_m": 1.736,
+    "triangles": 8630,
+    "cities": [
+     "shibuya",
+     "sydney",
+     "tokyo"
+    ],
+    "mask": 0.0821
+   },
    "R_Female_Adult_15_f013": {
     "file": "R_Female_Adult_15_f013.glb",
     "sex": "f",
@@ -1215,10 +1293,17 @@
     "height_m": 1.733,
     "triangles": 8492,
     "cities": [
+     "asakusa",
+     "higashiyama",
      "kyoto",
+     "roppongi",
      "shibuya",
+     "shinjuku",
+     "sydney",
+     "tetsugaku",
      "tokyo"
-    ]
+    ],
+    "mask": 0.0821
    },
    "R_Female_Adult_17": {
     "file": "R_Female_Adult_17.glb",
@@ -1244,8 +1329,13 @@
     "height_m": 1.736,
     "triangles": 8600,
     "cities": [
-     "shibuya"
-    ]
+     "jinbocho",
+     "kamakura",
+     "shibuya",
+     "shinjuku",
+     "tokyo"
+    ],
+    "mask": 0.1292
    },
    "R_Female_Party_02": {
     "file": "R_Female_Party_02.glb",
@@ -1257,7 +1347,8 @@
     "triangles": 9874,
     "cities": [
      "sydney"
-    ]
+    ],
+    "mask": 0.2628
    },
    "R_Gardener_Male_01": {
     "file": "R_Gardener_Male_01.glb",
@@ -1306,8 +1397,14 @@
     "height_m": 1.822,
     "triangles": 7086,
     "cities": [
-     "shibuya"
-    ]
+     "higashiyama",
+     "shibuya",
+     "shinjuku",
+     "tetsugaku",
+     "tsukishima",
+     "ueno"
+    ],
+    "mask": 0.0368
    },
    "R_Male_Adult_05": {
     "file": "R_Male_Adult_05.glb",
@@ -1321,8 +1418,10 @@
      "paris",
      "queenstown",
      "reef",
-     "sydney"
-    ]
+     "sydney",
+     "tokyo"
+    ],
+    "mask": 0.261
    },
    "R_Male_Adult_05_m024": {
     "file": "R_Male_Adult_05_m024.glb",
@@ -1333,8 +1432,13 @@
     "height_m": 1.829,
     "triangles": 7606,
     "cities": [
-     "shibuya"
-    ]
+     "fushimi-inari",
+     "shibuya",
+     "shinjuku",
+     "sydney",
+     "ueno"
+    ],
+    "mask": 0.261
    },
    "R_Male_Adult_06": {
     "file": "R_Male_Adult_06.glb",
@@ -1345,8 +1449,12 @@
     "height_m": 1.831,
     "triangles": 7456,
     "cities": [
-     "melbourne-bayside"
-    ]
+     "melbourne-bayside",
+     "queenstown",
+     "shinjuku",
+     "sydney"
+    ],
+    "mask": 0.0611
    },
    "R_Male_Adult_06_m024_brown": {
     "file": "R_Male_Adult_06_m024_brown.glb",
@@ -1359,8 +1467,12 @@
     "height_m": 1.829,
     "triangles": 6952,
     "cities": [
+     "akihabara",
+     "ikebukuro",
+     "shibuya",
      "tokyo"
-    ]
+    ],
+    "mask": 0.0611
    },
    "R_Male_Adult_08_m024": {
     "file": "R_Male_Adult_08_m024.glb",
@@ -1371,8 +1483,10 @@
     "height_m": 1.829,
     "triangles": 7254,
     "cities": [
-     "osaka"
-    ]
+     "osaka",
+     "shibuya"
+    ],
+    "mask": 0.0824
    },
    "R_Male_Adult_09": {
     "file": "R_Male_Adult_09.glb",
@@ -1408,8 +1522,25 @@
     "height_m": 1.802,
     "triangles": 6740,
     "cities": [
+     "shibuya",
      "sydney"
-    ]
+    ],
+    "mask": 0.151
+   },
+   "R_Male_Adult_11_m017": {
+    "file": "R_Male_Adult_11_m017.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_11",
+    "head": "Adults/Male_Adult_09",
+    "tags": [],
+    "height_m": 1.821,
+    "triangles": 7377,
+    "cities": [
+     "shibuya",
+     "sydney",
+     "tokyo"
+    ],
+    "mask": 0.151
    },
    "R_Male_Adult_13": {
     "file": "R_Male_Adult_13.glb",
@@ -1420,8 +1551,30 @@
     "height_m": 1.805,
     "triangles": 6710,
     "cities": [
-     "melbourne"
-    ]
+     "melbourne",
+     "reef",
+     "shibuya",
+     "sydney",
+     "tokyo"
+    ],
+    "mask": 0.0612
+   },
+   "R_Male_Adult_13_m008_grey": {
+    "file": "R_Male_Adult_13_m008_grey.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_13",
+    "head": "Professions/Business_Male_02",
+    "tags": [
+     "grey"
+    ],
+    "height_m": 1.822,
+    "triangles": 6928,
+    "cities": [
+     "shibuya",
+     "sydney",
+     "tokyo"
+    ],
+    "mask": 0.0612
    },
    "R_Male_Adult_13_m017_grey": {
     "file": "R_Male_Adult_13_m017_grey.glb",
@@ -1460,8 +1613,12 @@
     "height_m": 1.821,
     "triangles": 7398,
     "cities": [
-     "shibuya"
-    ]
+     "odaiba",
+     "shibuya",
+     "sydney",
+     "tokyo"
+    ],
+    "mask": 0.2252
    },
    "R_Male_Adult_15_m024_dark": {
     "file": "R_Male_Adult_15_m024_dark.glb",
@@ -1474,8 +1631,11 @@
     "height_m": 1.829,
     "triangles": 7382,
     "cities": [
-     "kyoto"
-    ]
+     "higashiyama",
+     "kyoto",
+     "shibuya"
+    ],
+    "mask": 0.0532
    },
    "R_Male_Adult_20_m008": {
     "file": "R_Male_Adult_20_m008.glb",
@@ -1486,8 +1646,11 @@
     "height_m": 1.822,
     "triangles": 7236,
     "cities": [
-     "shibuya"
-    ]
+     "shibuya",
+     "sydney",
+     "tokyo"
+    ],
+    "mask": 0.1693
    },
    "R_Male_Adult_20_m024": {
     "file": "R_Male_Adult_20_m024.glb",
@@ -1741,7 +1904,8 @@
      "reef",
      "tokyo",
      "tsukishima"
-    ]
+    ],
+    "mask": 0.3306
    },
    "R_Wood_Male_01": {
     "file": "R_Wood_Male_01.glb",
@@ -1797,6 +1961,10 @@
     "triangles": 1406,
     "height_m": 1.734
    },
+   "R_Female_Adult_08_f016": {
+    "triangles": 1288,
+    "height_m": 1.737
+   },
    "R_Female_Adult_09_f011_grey": {
     "triangles": 1210,
     "height_m": 1.735
@@ -1816,6 +1984,10 @@
    "R_Female_Adult_14_f016": {
     "triangles": 1296,
     "height_m": 1.737
+   },
+   "R_Female_Adult_15_f011_brown": {
+    "triangles": 1208,
+    "height_m": 1.735
    },
    "R_Female_Adult_15_f013": {
     "triangles": 1358,
@@ -1849,9 +2021,17 @@
     "triangles": 1000,
     "height_m": 1.801
    },
+   "R_Male_Adult_11_m017": {
+    "triangles": 1069,
+    "height_m": 1.814
+   },
    "R_Male_Adult_13": {
     "triangles": 1000,
     "height_m": 1.804
+   },
+   "R_Male_Adult_13_m008_grey": {
+    "triangles": 1168,
+    "height_m": 1.818
    },
    "R_Male_Adult_14_m017_grey": {
     "triangles": 1070,

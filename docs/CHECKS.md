@@ -62,6 +62,17 @@ Main can therefore be red for half an hour where it could not before. That is th
 finding a break moved from every landing (two hours, always) to the landings that break something
 (an issue, sometimes).
 
+### The streets' ground
+
+`python pipeline/street_ground.py --live --check` runs with the static checks (a minute, no browser; also on a change
+to `pipeline/street_ground.py` alone). Per live map it fails when the game's ground was not written by the grading
+method as it is now (`terrain.levelled`), when the survey it is graded from is missing
+(`cities/<id>/ground_survey.json`), when more than 1.6 % of the roads' length tilts over 15 % across or more than
+0.25 % creases over 15 % (map-wide; 1 % across within 300 m of the start), when the roads are less even than the
+survey's, or when a graded hero level's drawn floor tilts (the Scramble, issue 522). What it measures is what
+`--measure` prints; `tools/street_ground_probe.js <city>` measures the same in the game, on what feet and wheels
+follow.
+
 ## Unsteady steps
 
 A change that breaks something breaks the same step every time. So when a city's game or clip check

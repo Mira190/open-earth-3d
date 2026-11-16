@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.join(ROOT, "blender"))
 MIN_M = 0.5        # a piece smaller than this in every direction is not reported
 TOUCH = 0.35       # two pieces whose bounds come this close hold each other
 REACH = 0.8        # a piece this near a solid's wall or roof is fixed to it
+RAIL_BAR, RAIL_M = 0.15, 1.3   # a bar this thin, no higher than this over the ground, is a handrail's
 
 
 def pieces(m):
@@ -75,6 +76,11 @@ def main():
         g = min(T(x, y) for x in (lo[i, 0], hi[i, 0], cx) for y in (lo[i, 1], hi[i, 1], cy))
         top = g
         if lo[i, 2] <= g + 0.6:
+            held[i] = True
+        # a handrail's bar: long, thin and level, at a rail's height over the ground (its posts are under MIN_M, or
+        # not modelled: the rail through the underpass north of Shibuya Station stands 1.1 m over the road there)
+        size = hi[i] - lo[i]
+        if size[2] <= RAIL_BAR and min(size[0], size[1]) <= RAIL_BAR and max(size[0], size[1]) >= 2.0 and lo[i, 2] <= g + RAIL_M:
             held[i] = True
         for k in tree.query(rect[i], predicate="intersects"):
             s = solids[k]
