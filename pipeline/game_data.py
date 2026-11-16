@@ -748,6 +748,12 @@ def main():
     print(f"{walls.mark(C.out, C.id)} precinct walls drawn as walls (buildings.json)")  # pipeline/walls.py
     if os.path.exists(os.path.join(C.raw, "overture_land_use.parquet")):
         woods.build(C)  # the trees from the woods' and parks' canopy, and the ground under it (pipeline/woods.py)
+    # the streets graded on the grid just written: each carriageway level across and smooth along, so that everything
+    # read from game.json's terrain after this (the walls' feet, the surface model, the walking cells, a phone's
+    # district) is read from the graded ground (pipeline/street_ground.py keeps the survey in cities/<id>/ground_survey.json)
+    import street_ground
+    rep = street_ground.run(C.id)
+    print(f"streets graded: {rep.get('nodes', 0)} nodes moved, {'kept as surveyed' if rep.get('kept_as_surveyed') else rep.get('map')}")
     write_index()
 
 
