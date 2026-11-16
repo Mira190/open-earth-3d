@@ -230,6 +230,12 @@ of motion interrupted, at every depth, that the viewer then moves through. So (`
 - the first time, the view turns once round you through all of it while the title falls;
 - when time is let go, everything that hung falls.
 
+**Between places, the city is shown.** A frame can be reached by air (`flight` on the frame: an overture's
+spec played by `web/game/overture.js`, with the helicopter as its guide). After the roof, the helicopter
+lifts off the pad on SHIBUYA SKY, goes once round over the Scramble with every screen lit, and sets the
+player down on the open ground north-east of the station, by the street the river runs under. Any key
+ends it at once, on the ground. Not yet: a ride by car between two frames.
+
 **In the world, not in menus.** The map's old instruments are gone from the story. People are
 solid: in the Stop nobody can make way, so the crowd on the crossing is something to thread, and
 the afterimage is the one figure in it that turns its head.

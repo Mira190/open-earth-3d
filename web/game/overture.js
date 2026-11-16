@@ -570,6 +570,7 @@ window.OEOverture = (function () {
       if (Math.abs(lap - lapsed) > 0.05) { lapsed = lap; ctx.setClock(ctx.clock.y, ctx.clock.m, ctx.clock.d, clock0 + lap); }
       for (const q of shots) for (const [ck, name] of q.cues || []) { const id = `${q.id}:${ck}:${name}`; if (t >= q.t0 + ck * q.dur && !fired.has(id)) { fired.add(id); signal(name); } }
       const g = shotPose(s, k);
+      if (ctx.guideAt) ctx.guideAt(g, s, k); // (a film whose guide is a thing of the game's: a helicopter the camera flies with)
       // the guide: placed and turning, lit from behind when the sun is low (its edge glows)
       if (hero || glow) {
         const show = !!g && !(s.type === 'land' && k > 0.93);
@@ -782,6 +783,7 @@ window.OEOverture = (function () {
     function finish(skipped) {
       if (!active) return;
       active = false;
+      if (ctx.guideAt) ctx.guideAt(null);
       stageUnset();
       if (!skipped) fadeScore(3);
       ctx.clock.frozen = wasFrozen;

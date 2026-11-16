@@ -56,6 +56,7 @@ const [,, out = '/tmp/story-play', size = '1440x900'] = process.argv;
       await p.waitForTimeout(1500); await mark(s, 'aimed');
       await p.evaluate(() => window.__game.story.shoot());
     } else if (s.phase === 'stop' && s.beat === 'meeting') await mark(s, 'meeting');
+    else if (s.phase === 'go' && s.beat === 'flight') await mark(s, 'flight'); // (a frame reached by air: its film plays itself out)
     else if (s.phase === 'after') await mark(s, 'after');
     await p.waitForTimeout(500);
   }

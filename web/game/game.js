@@ -3129,6 +3129,26 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     say: (who, lines, done) => dlg.show(Object.assign({ color: who.alive ? '#ffcf8a' : '#9fc4ff' }, who), lines.map(l => fill(l)), null, done),
     hush: on => { if (A.hush) A.hush(on); },
     // time held and let go: what was falling or flying hangs where it was (stopfx.js)
+    // a flight between two places (a frame's `flight`: an overture's spec, its shots, captions and where you stand at the end):
+    // the helicopter is the film's guide, the camera flies with it, and a key sets you down at once
+    film: (spec, then) => {
+      const was = overture, st = heli.st, pad = [st.x, st.y, st.z, st.h];
+      let last = null;
+      const fly = g => {
+        if (!g) { st.on = false; st.rotor = 0; st.landed = true; [st.x, st.y, st.z, st.h] = pad; st.pitch = st.roll = 0; heli.update(1e-4, {}, []); heli.group.visible = false; return; }
+        const x = g.x, y = -g.z, z = g.y;
+        if (last) { const dx = x - last[0], dy = y - last[1], d = Math.hypot(dx, dy); if (d > 0.02) { const h = Math.atan2(dx, dy) + (spec.heading_offset || 0); st.h += angDiff(h, st.h) * 0.12; st.pitch = Math.min(0.22, d * 0.5); } }
+        last = [x, y, z];
+        st.x = x; st.y = y; st.z = z; st.vx = st.vy = st.vz = 0; st.yawRate = 0; st.on = true; st.landed = false; st.rotor = 1;
+        if (!heli.loaded()) { heli.want(); heli.show(); }
+        heli.update(1e-4, {}, []); heli.group.visible = true;
+      };
+      const f = makeFilm && !reduced ? makeFilm(Object.assign({}, G.overture, G.story.episodes[0].overture || {}, spec, { night: null }), fly) : null;
+      const done = () => { overture = was; then(); };
+      if (f) { overture = f; if (f.play(done)) return; overture = was; }
+      if (spec.end && spec.end.at) spawn(spec.end.at.slice(0, 2), undefined, spec.end.facing);
+      then();
+    },
     hold: on => { if (!stopFx) return; if (on) stopFx.start(W(player.x, player.y, player.z), { rain: !!(weather && weather.state && weather.state.rain > 0.15) }); else stopFx.release(); },
     ask: (who, lines, choices, done) => dlg.show(Object.assign({ color: who.alive ? '#ffcf8a' : '#9fc4ff' }, who), lines.map(l => fill(l)), choices, done), // (a question: the lines, then answers to pick from)
     dress: (date, light, wx) => {
@@ -3437,6 +3457,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const cam = { yaw: 0, pitch: 0.36, tilt: 0, dist: 7.5, distTo: 0, yawTo: null, lastInput: -10, mode: 'chase', birdAlt: 320, lookYaw: 0, lookPitch: -0.1, lift: 0, liftHold: 0, pull: 1, floor: null, snap: false };
   const cine = OECine.director({ reduced }); // camera shots, on the game clock (clockT)
   let overture = null; // the map's opening film (overture.js), made once the player is placed
+  let makeFilm = null; // (overture.js's films, made on this map)
   let joy = { x: 0, y: 0 }, touchLift = 0, uiOpen = () => (window.OEMetro && OEMetro.isOpen()) || !$('#g-menu').hidden || !$('#g-bigmap').hidden || !$('#g-pass').hidden || !$('#g-title').hidden || !!(life && life.open) || !!(fish && fish.api && fish.api.logOpen());
   const k = c => keys.has(c);
   on(window, 'keydown', e => {
@@ -5267,9 +5288,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (a story's first episode opens on its own overture, laid over the map's: its shots, score and grade, and no night
   // variant to be swapped for as the sun goes down)
   const epOv = story && G.story.episodes && G.story.episodes[0] && G.story.episodes[0].overture;
-  overture = window.OEOverture && (G.overture || epOv) ? OEOverture.create({ G: epOv ? Object.assign({}, G, { overture: Object.assign({}, G.overture, epOv, { night: null }) }) : G, scene, CITY, W, world, camera, stage, cine, get live() { return live; }, handOver: (k, f) => handOver(k, f),
+  // (a film: the overture, or a flight a story plays between two places; `guideAt` is given the film's guide each frame)
+  makeFilm = (ov, guideAt = null) => OEOverture.create({ G: Object.assign({}, G, { overture: ov }), guideAt, scene, CITY, W, world, camera, stage, cine, get live() { return live; }, handOver: (k, f) => handOver(k, f),
     junctions, crowd, footNet, crowdNet, nav, clock, setClock: (y, m, d, min) => setClock(y, m, d, min, !clock.own), player, spawn, tier: QC.name, reduced, sun: () => sun, U, DSM, Wd, weather, show, get atmos() { return atmos; },
-    walkIn: (j, inS) => { junctions.walkIn(j, inS); if (inS > 0) { cars.clearBox(j.x, j.y, 45); musterScramble(); } } }) : null;
+    walkIn: (j, inS) => { junctions.walkIn(j, inS); if (inS > 0) { cars.clearBox(j.x, j.y, 45); musterScramble(); } } });
+  overture = window.OEOverture && (G.overture || epOv) ? makeFilm(epOv ? Object.assign({}, G.overture, epOv, { night: null }) : G.overture) : null;
   if (overture && (story || OEOverture.due(CITY.id))) overture.prepareScore();
   if (overture) $('#gm-overture').hidden = false;
   fillTimes($('#gt-timechoice'));
@@ -5596,7 +5619,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
     if (life && !simHold) life.tick(dt, paused, titleOn); // (held by a harness: the day moves on only with advance())
     if (story && !paused) { story.tick(dt); if (stopFx) stopFx.tick(dt, story.scale, W(player.x, player.y, player.z)); if (story.orbit && player.mode === 'foot') cam.yaw += story.orbit * dt; } // (and what hangs in the stopped air; the first Stop turns the view round you once)
-    if (story && heli.group) heli.group.visible = false; // (the story has no helicopter: none stands on the roof it climbs to)
+    if (story && heli.group && !heli.st.on) heli.group.visible = false; // (the story's helicopter is seen only in the flight it plays: story ctx film)
     if (storyBeacon && storyBeacon.visible) storyBeacon.userData.col.material.uniforms.uT.value = performance.now() / 1000;
     if (!simHold) dlg.tick(dt); // (held by a harness: a conversation goes on only as it asks, dlg.tick, so that one closing on the real clock starts nothing at another step of its run)
     // HUD

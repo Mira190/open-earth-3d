@@ -183,8 +183,14 @@ window.OEStory = (function () {
       st.fi = i; st.fr = fr; st.phase = 'go'; st.t = 0; st.late = false; st.asked = 0;
       if (fr.weather) ctx.weather(fr.weather);
       keep();
-      if (fr.meet) { st.beat = 'meet'; goal(fr.meet.goal || ''); const m = living(fr.meet); if (m) aimAt(spot([m.x, m.y, m.z])); }
-      else approach();
+      const go = () => {
+        if (st.fr !== fr) return;
+        if (fr.meet) { st.beat = 'meet'; goal(fr.meet.goal || ''); const m = living(fr.meet); if (m) aimAt(spot([m.x, m.y, m.z])); }
+        else approach();
+      };
+      // a frame reached by air: the flight to it first (ctx.film: the helicopter, the city under it, and the place it sets you down)
+      if (fr.flight && ctx.film) { st.beat = 'flight'; goal(''); aimAt(null); frames.classList.remove('on'); ctx.film(fr.flight, () => { frames.classList.add('on'); go(); }); }
+      else go();
     }
     const living = m => (m.cast ? st.cast[m.cast] : ctx.person(m.npc));
     function approach() {
