@@ -549,11 +549,17 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         gather(x, y, p, true, tmp.z);
         if (blocked(x, y) > 0 || (wall && wall(x, y, tmp.z)) || crowded(x, y, p, CLOSE + 0.1)) continue;
         p.line = line; p.s = s; p.dir = dir;
+        // (known to those placed after it in this step: when the whole crowd is put out at once, the opening or a cut to
+        // another hour, each was tested against a street still empty, and two could be put inside each other)
+        if (p.hashed !== stepNo) {
+          const i = P.indexOf(p);
+          if (i >= 0) { p.x = x; p.y = y; p.z = tmp.z; const k = bucket(Math.floor(x / CELL), Math.floor(y / CELL)); chain[i] = head[k]; head[k] = i; p.hashed = stepNo; }
+        }
         return true;
       }
       return false;
     }
-    let opened = false; // (has the crowd taken its first step: update)
+    let opened = false, stepNo = 0; // (stepNo: the update under way, for the neighbours' hash) // (has the crowd taken its first step: update)
     const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, kerbWaits: [], fresh: 0, hot: null, plazas: null, muster };
     // where footway li steps off the kerb onto a road with no crossing marked there, each way along it
     // ({ s, dir, x, y }): found the first time a walker is on it, a metre at a time (crossings.road, from
@@ -1155,12 +1161,12 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       frame++;
       if (api.plazas && (frame % 15 === 1 || t < 1)) plazas(t, cx, cy);
       if (api.plazas) for (const pz of api.plazas) if (pz.j) { pz.j.busy = pz.busy || 0; pz.busy = 0; } // (who was out on its road last step: the signals wait for them)
-      head.fill(-1);
+      head.fill(-1); stepNo++;
       for (let i = 0; i < api.active; i++) {
         const q = P[i];
         if (q.line < 0) continue;
         const k = bucket(Math.floor(q.x / CELL), Math.floor(q.y / CELL));
-        chain[i] = head[k]; head[k] = i;
+        chain[i] = head[k]; head[k] = i; q.hashed = stepNo;
       }
       // (api.fresh: the hour was set, not reached: those who come out with it are put anywhere, near the player too, as
       // when the game opens. A cut to lunchtime that put the lunch crowd only out of sight left the player's square empty)
