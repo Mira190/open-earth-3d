@@ -441,7 +441,7 @@ def _exit_strip(L):
     return [{"name": "The Bridge Stairs, the steps to the walkway", "type": "strip", "origin": [round(float(c[0]), 2), round(float(c[1]), 2)],
              "axis": [round(float(out[0]), 5), round(float(out[1]), 5)], "half_width": round(X["w"] / 2 - 0.1, 2),
              "profile": [[-1.0, L["z1"]], [0.0, L["z1"]], [round(X["run"] + 0.32, 2), round(zg, 2)], [round(X["run"] + 1.0, 2), round(zg, 2)]],
-             "thickness": 0.8, "mesh": "bs_steps", "mapped": False, "label": "the Bridge Stairs"}]
+             "thickness": 0.8, "mesh": "bs_steps", "mapped": False, "check": True, "label": "the Bridge Stairs"}]
 
 
 def walkway_hop(deck):
