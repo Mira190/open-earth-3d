@@ -25,6 +25,9 @@
 #g-story-goal { position: absolute; left: 50%; top: 0; transform: translateX(-50%); z-index: 6; width: min(100%, 760px); padding: max(26px, env(safe-area-inset-top)) 24px 46px; text-align: center; pointer-events: none;
   opacity: 0; transition: opacity 0.7s ease; color: var(--paper); background: radial-gradient(ellipse 60% 100% at 50% 0, var(--night), transparent 100%); }
 #g-story-goal.on { opacity: 1; }
+/* a new goal is announced: large, in the middle of the frame, long enough to be read, and then up to its line */
+#g-story-goal.new { animation: g-story-goal-in 5.6s cubic-bezier(0.6, 0, 0.2, 1) both; }
+@keyframes g-story-goal-in { 0% { opacity: 0; transform: translateX(-50%) translateY(34vh) scale(1.7); } 8%, 76% { opacity: 1; transform: translateX(-50%) translateY(34vh) scale(1.7); } 100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); } }
 #g-story-goal small { display: block; font: 400 10px/1 var(--f-mono); letter-spacing: 0.34em; text-transform: uppercase; color: var(--amber); font-variant-numeric: tabular-nums; }
 #g-story-goal small::after { content: ""; display: block; width: 28px; height: 1px; margin: 12px auto 13px; background: rgba(255, 207, 138, 0.6); }
 #g-story-goal span { font: 300 clamp(17px, 2.2vw, 22px)/1.3 var(--f-body); letter-spacing: 0.01em; text-shadow: 0 1px 18px rgba(0, 0, 0, 0.9); }
@@ -32,9 +35,12 @@
 /* ---- where it is: a bright-line mark on the place, held at the frame's edge on the side it lies */
 #g-story-mark { position: absolute; left: 0; top: 0; z-index: 5; pointer-events: none; opacity: 0; transition: opacity 0.5s ease; will-change: transform; }
 #g-story-mark.on { opacity: 1; }
-#g-story-mark i { display: block; width: 18px; height: 18px; margin: -9px 0 0 -9px; border: 1px solid var(--paper); border-radius: 50%; box-shadow: 0 0 0 1px rgba(4, 8, 18, 0.5), 0 0 16px 2px rgba(159, 196, 255, 0.6); animation: g-story-beat 1.8s ease-in-out infinite; }
-#g-story-mark i::after { content: ""; position: absolute; left: -1.5px; top: -1.5px; width: 3px; height: 3px; border-radius: 50%; background: var(--paper); }
-#g-story-mark b { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); white-space: nowrap; font: 400 10px/1 var(--f-mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--paper); text-shadow: 0 1px 8px #000, 0 0 2px #000; font-variant-numeric: tabular-nums; }
+#g-story-mark i { position: relative; display: block; width: 26px; height: 26px; margin: -13px 0 0 -13px; border: 1px solid var(--paper); border-radius: 50%; box-shadow: 0 0 0 1px rgba(4, 8, 18, 0.5), 0 0 16px 2px rgba(159, 196, 255, 0.6); animation: g-story-beat 1.8s ease-in-out infinite; }
+#g-story-mark i::after { content: ""; position: absolute; left: 50%; top: 50%; margin: -2px 0 0 -2px; width: 4px; height: 4px; border-radius: 50%; background: var(--paper); }
+/* (and a ring running out from it, so that the eye finds it in a busy street) */
+#g-story-mark i::before { content: ""; position: absolute; inset: -1px; border: 1px solid var(--amber); border-radius: 50%; animation: g-story-ping 1.8s ease-out infinite; }
+@keyframes g-story-ping { from { transform: scale(1); opacity: 0.9; } to { transform: scale(3.2); opacity: 0; } }
+#g-story-mark b { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); white-space: nowrap; font: 400 10px/1 var(--f-mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--paper); text-shadow: 0 1px 8px #000, 0 0 2px #000; font-variant-numeric: tabular-nums; }
 @keyframes g-story-beat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
 
 /* ---- the keys, the first time they are needed */
@@ -149,7 +155,8 @@
   .game-stage.story .g-title { padding-left: 20px; padding-right: 20px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #g-story-mark i { animation: none; }
+  #g-story-mark i, #g-story-mark i::before { animation: none; }
+  #g-story-goal.new { animation: none; }
   #g-story-goal, #g-story-keys, #g-story-end, #g-story-frames, #g-story-card, #g-story-veil, .game-stage #game-gl { transition: none; }
   #g-story-flash.on { animation: none; }
 }

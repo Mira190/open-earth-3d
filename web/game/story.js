@@ -91,9 +91,11 @@ window.OEStory = (function () {
     // the goal: one line, under the Stop's minutes or the frame the case is at
     let goalText = '';
     function goal(text) {
+      const fresh = !goalText; // (a goal where there was none is announced: it arrives large in the middle of the frame, then goes up to its line)
       goalText = text || '';
-      if (!goalText) { goalEl.classList.remove('on'); return; }
+      if (!goalText) { goalEl.classList.remove('on', 'new'); return; }
       goalEl.querySelector('span').textContent = goalText;
+      if (fresh) { goalEl.classList.remove('new'); void goalEl.offsetWidth; goalEl.classList.add('new'); }
       goalEl.classList.add('on');
     }
     const clockOf = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
