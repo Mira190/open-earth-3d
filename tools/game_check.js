@@ -29,10 +29,10 @@ const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', outDir = '.'] = process.argv;
-// places where a line of the crowd's meets a wall inside a hero level, known and listed in issue 496 (the hero step below):
-// Shibuya's, where a footway goes down a subway stair. (Tokyo's seven are gone: its footways bend round the plaza's posts
-// and benches and stop at the viaduct's walls, pipeline/game_extras.py bend_round and clip_closed)
-const BARRED_KNOWN = { shibuya: 3 };
+// places where a line of the crowd's meets a wall inside a hero level and is allowed to: none. (Issue 496: each map's
+// builder names what stands on the footways, and pipeline/game_extras.py bends the lines round posts and stops them at
+// walls in the data: Tokyo's plaza and viaduct, Sydney's quay, Shibuya's subway entrances and station wall)
+const BARRED_KNOWN = {};
 // whether the city's game has a pilgrimage's stamped spots (the step for them, below), read before anything runs
 const STAMPED = (() => { try { return (JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'web', 'data', city, 'game.json'), 'utf8')).spots || []).some(sp => sp.stamp); } catch (e) { return false; } })();
 const { pinClock } = require('./pin_clock');

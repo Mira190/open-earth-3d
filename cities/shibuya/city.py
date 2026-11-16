@@ -4303,6 +4303,24 @@ def sky_extras(s, spots, chatter):
                          ["Visitor", "Wait for the lights to come on. That blue only lasts ten minutes."]], 10))
 
 
+SCRAMBLE_POSTS = [[285.5, -1006.7, 0.2]]   # the signal post on Dogenzaka's north footway, which the map's line runs through
+
+
+def scramble_walls(lm):
+    """What stands on the crowd's footways at the Scramble (pipeline/game_extras.py: the lines stop at "closed" rings
+    and bend round "posts"; issue 496): the subway entrances' enclosures, whose stair wells the crowd keeps out of
+    while the station below is not built (the map's footways go down them, through the glass); the station building
+    south-east of the crossing, whose hoarding a footway ran along the inside of; and a signal post."""
+    sb = scramble_build(lm)
+    if not sb:
+        return {}
+    import archkit as ak
+    wells = [Polygon(c["ring"]).buffer(0.6, join_style=2) for c in sb.meshes()[2] if c.get("well") and len(c["ring"]) > 2]
+    station = [Polygon(q["ring"]).buffer(0) for q in ak.load_solids(CITY) if q["osm"] == scramble.STATION["osm"] and len(q["ring"]) > 2]
+    closed = [[[round(x, 2), round(y, 2)] for x, y in g.exterior.coords] for g in wells + station if not g.is_empty]
+    return {"closed": closed, "posts": SCRAMBLE_POSTS}
+
+
 def game_extras(scene):
     """What the landmarks add to the game: SHIBUYA SKY's lift (SKY GATE: street to the 46F gallery, at the
     real lifts' 360 m a minute) and its roof to travel to from the start; spots to look at closely and
@@ -4313,6 +4331,7 @@ def game_extras(scene):
         suga_extras(lm["suga"], spots, chatter, close)
     districts_extras(lm, spots, chatter, close)
     out = {"spots": spots, "chatter": chatter, "close": close}
+    out.update(scramble_walls(lm))
     tr = yamanote.trains() if CITY == "shibuya" else None   # the Yamanote Line's trains (cities/shibuya/rail.py)
     if tr:
         out["trains"] = tr
