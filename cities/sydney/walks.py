@@ -83,6 +83,30 @@ MATERIALS.update({
 _S = {}
 
 
+class _Ground:
+    """The ground the game draws and walks: game.json's 5 m grid, each cell split from its north-east to its south-west
+    corner (web/game/nav.js; pipeline/street_ground.py Ground). The builders' ak.Terrain is the 10 m survey, and on the
+    bank under the bridge's approach the two differ by up to three metres: stairs levelled on the survey had the
+    game's ground through their covered landing and their last steps in the air."""
+
+    def __init__(self, city):
+        import base64
+        import json
+        root = os.path.join(os.path.dirname(os.path.dirname(HERE)), "web", "data", city)
+        S, t = json.load(open(os.path.join(root, "scene.json"))), json.load(open(os.path.join(root, "game.json")))["terrain"]
+        self.x0, self.y1, self.cell = S["frame"]["x"][0], S["frame"]["y"][1], t["cell"]
+        self.T = (np.frombuffer(base64.b64decode(t["data"]), dtype="<i2").astype(float) * t["scale"]).reshape(t["ny"], t["nx"])
+
+    def __call__(self, x, y):
+        T = self.T
+        c = min(max((x - self.x0) / self.cell, 0), T.shape[1] - 1.001)
+        r = min(max((self.y1 - y) / self.cell, 0), T.shape[0] - 1.001)
+        c0, r0 = int(c), int(r)
+        fc, fr = c - c0, r - r0
+        a, b, d, e = T[r0, c0], T[r0, c0 + 1], T[r0 + 1, c0], T[r0 + 1, c0 + 1]
+        return float(a + fc * (b - a) + fr * (d - a) if fc + fr <= 1 else e + (1 - fc) * (d - e) + (1 - fr) * (b - e))
+
+
 def layout():
     """The stairs' frame and levels, worked out once: {o (the foot), d (up the flight), n (to its left), z0, z1, n_risers,
     riser, u (where along d each part starts)}."""
@@ -91,7 +115,7 @@ def layout():
     import sys
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(HERE)), "pipeline"))
     import archkit as ak
-    T = ak.Terrain("sydney")
+    T = _Ground("sydney")
     o, turn = np.array(BS_FOOT), np.array(BS_TURN)
     d = (turn - o) / np.linalg.norm(turn - o)
     n = np.array([-d[1], d[0]])
@@ -99,9 +123,10 @@ def layout():
     hall = BS_BAY * BS_BAYS
     u_hall = run - 0.3 - hall                      # the covered landing's east edge: its back wall at the turn, where the bank behind it begins
     z0 = float(T(*(o + d * BS_SET)))
-    # the landing's floor: over the ground everywhere under it, and no lower than the walkway it opens onto
-    under = [float(T(*(o + d * u + n * v))) for u in np.linspace(u_hall, u_hall + hall, 7) for v in (-BS_W / 2, 0.0, BS_W / 2)]
-    z1 = round(max(max(under), float(T(*BS_HEAD))) + 0.06, 2)
+    # the landing's floor: level with the ground at the stairs' head, where the map's path leaves them. The bank behind
+    # is higher (the landing is cut into it: clip() and patch() take the game's ground out of it), and the walkway's
+    # ground north of it lower (the way out goes down to it: _exit)
+    z1 = round(float(T(*BS_HEAD)) + 0.06, 2)
     going = u_hall - BS_SET - BS_LAND
     n_r = int(math.ceil((z1 - z0) / 0.172 / 2)) * 2   # risers of 172 mm at most, an even number: two equal flights
     tread = going / n_r
@@ -122,10 +147,66 @@ def _exit(L):
     while True:   # as many steps of 170 mm as the ground at their foot is below the landing
         run = 0.32 * k
         drop = L["z1"] - float(L["T"](*(c + n * side * (run + 0.5))))
-        if drop <= 0.17 * (k + 1) or k > 14:
+        if drop <= 0.17 * (k + 1) or k > 24:
             break
         k += 1
     return {"c": c, "out": n * side, "side": side, "w": BS_BAY - BS_PIER, "drop": max(0.0, drop), "steps": k, "run": 0.32 * k}
+
+
+def _footprint(L):
+    """The stairs' plan: the flights and the covered landing between the flank walls' outer faces, and the way out's steps."""
+    from shapely.geometry import Polygon as Pg
+    from shapely.ops import unary_union
+    o, d, n = L["o"], L["d"], L["n"]
+    hw = BS_W / 2 + BS_WALL
+    X = _exit(L)
+    P = lambda u, v: tuple(o + d * u + n * v)
+    main = Pg([P(BS_SET - 0.3, -hw), P(L["u_hall"] + L["hall"] + BS_WALL, -hw), P(L["u_hall"] + L["hall"] + BS_WALL, hw), P(BS_SET - 0.3, hw)])
+    c, out = X["c"], X["out"]
+    t = np.array([-out[1], out[0]])
+    w = X["w"] / 2 + 0.3
+    way = Pg([tuple(c - t * w - out * 0.5), tuple(c + t * w - out * 0.5), tuple(c + t * w + out * (X["run"] + 1.0)), tuple(c - t * w + out * (X["run"] + 1.0))])
+    return main, way, unary_union([main, way])
+
+
+def clip():
+    """Where the game's ground is not drawn (landmarks.json "clip"): the stairs' plan, the bank that would stand in the
+    covered landing and over the upper flight."""
+    L = layout()
+    U = _footprint(L)[2].buffer(-0.05)
+    return [{"ring": [[round(x, 2), round(y, 2)] for x, y in U.exterior.coords], "holes": []}]
+
+
+def patch():
+    """The level walked inside the stairs' plan (game.json "patches", every half metre): the treads' and the landing's
+    own, never the bank's, which the game's 5 m ground would put a walker on a metre and more over the floor."""
+    import base64
+    from shapely import contains_xy
+    L = layout()
+    T, o, d, n = L["T"], L["o"], L["d"], L["n"]
+    main, way, U = _footprint(L)
+    X = _exit(L)
+    zg = L["z1"] - X["drop"]
+    cell = 0.5
+    x0, y0, x1, y1 = U.bounds
+    x0, y0 = math.floor(x0 / cell) * cell - cell, math.floor(y0 / cell) * cell - cell
+    nx, ny = int(math.ceil((x1 - x0) / cell)) + 2, int(math.ceil((y1 - y0) / cell)) + 2
+    Z = np.full((ny, nx), -32768, dtype="<i2")
+    for r in range(ny):
+        for c in range(nx):
+            x, y = x0 + (c + 0.5) * cell, y0 + (r + 0.5) * cell
+            q = np.array([x, y])
+            if contains_xy(main, x, y):
+                u = float(np.dot(q - o, d))
+                lvl = L["z1"] if u >= L["u_hall"] else _zat(L, u)
+            elif contains_xy(way, x, y):
+                a = float(np.dot(q - X["c"], X["out"]))
+                lvl = float(np.interp(a, [0.0, X["run"] + 0.32], [L["z1"], zg]))
+            else:
+                continue
+            Z[r, c] = int(round(min(T(x, y), lvl - 0.02) * 100))
+    return {"id": "bridge-stairs", "x0": round(x0, 2), "y0": round(y0, 2), "cell": cell, "nx": nx, "ny": ny,
+            "encoding": "int16le-base64 cm, rows from y0 north, -32768 none", "data": base64.b64encode(Z.tobytes()).decode()}
 
 
 def _zat(L, u):

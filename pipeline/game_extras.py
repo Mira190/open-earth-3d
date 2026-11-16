@@ -49,6 +49,10 @@ def apply(C, scene, out):
             clip_closed(out, extras["closed"])
         own_foot(out, extras.get("foot", []))
         bend_round(out, extras.get("posts", []))
+        # a builder's own fine walking levels (game.json "patches", each with an "id"): laid in place of the one of that id
+        if extras.get("patches"):
+            ids = {p["id"] for p in extras["patches"]}
+            out["patches"] = [p for p in out.get("patches", []) if p.get("id") not in ids] + extras["patches"]
         for k, v in extras.items():
             if k in KEYS:
                 out[k] = out.get(k, []) + v

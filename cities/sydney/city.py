@@ -606,7 +606,7 @@ def game_patches(scene):
     """Fine walking levels over the 5 m grid (pipeline/game_data.py, web/game/nav.js): the paving
     round the Lower Concourse, with its walls and steps, every half metre."""
     b = scene["landmarks"].get("bennelong") or {}
-    return [b["patch"]] if b.get("patch") else []
+    return ([b["patch"]] if b.get("patch") else []) + [WALKS.patch()]   # (and the Bridge Stairs' own levels, cut into the bank)
 
 
 def xy(p):
@@ -709,6 +709,7 @@ def game_extras(scene):
     # (pipeline/game_extras.py bend_round); city.json game.hero[].posts makes the same list solid)
     import json
     import os
+    out["patches"] = [WALKS.patch()]      # (laid by game_extras.py too, by its id: no need to make the game's data again)
     hp_ = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hero_posts.json")
     if os.path.exists(hp_):
         out["posts"] = json.load(open(hp_, encoding="utf8"))
@@ -832,6 +833,7 @@ def landmark_meshes(scene):
     mats.update({k: dict(v) for k, v in rm.items()})
     wm, wmesh = WALKS.meshes(Mesh, RAIL.layout())   # the Bridge Stairs at Cumberland Street, the Cahill Walk's lift and walk (cities/sydney/walks.py)
     mats.update({k: dict(v) for k, v in wm.items()})
+    extra = dict(extra, clip=list(extra.get("clip", [])) + WALKS.clip())   # (the bank is not drawn inside the Bridge Stairs)
     return mats, meshes + rmesh + wmesh, extra
 
 

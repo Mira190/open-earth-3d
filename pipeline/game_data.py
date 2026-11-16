@@ -721,7 +721,7 @@ def main():
     if C.hook("game_extras"):
         extras = C.hook("game_extras")(scene)
         for k, v in extras.items():
-            if k not in ("foot", "closed", "posts"):   # (those two change the footways: below)
+            if k not in ("foot", "closed", "posts", "patches"):   # (those change the footways, below; the patches are game_patches')
                 out[k] = out.get(k, []) + v if isinstance(v, list) else v
     import game_extras
     if C.hook("game_extras"):
