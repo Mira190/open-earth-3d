@@ -58,6 +58,15 @@ KERB, KUP = 1.0, 0.16            # the quay's kerb stone, which the balustrade s
 MORDANT = {"entrance": (81.6, 95.0, 20.8), "north": (112.7, 14.9), "glass_top": ZF + 7.2, "hall_back": 9.5}
 
 
+POSTS = []                        # what the level stands on its paving, as the builder places it: [x, y, radius]
+#                                   (build() writes them to hero_posts.json; city.py makes them solid and bends the
+#                                   crowd's lines round them, docs/HERO.md "One plan for what is drawn and what is solid")
+
+
+def _post(x, y, r):
+    POSTS.append([round(float(x), 2), round(float(y), 2), r])
+
+
 def materials(K):
     import hero_tex
     for key, (make, rep) in hero_tex.SETS.items():
@@ -963,6 +972,7 @@ class Level:
         of fan leaves, the oldest hanging brown against the trunk. Built here because the map's shared palm is a
         date palm scaled to the tree's height, a metre thick at 14 m (city.py clears the map's from this ground)."""
         geo = self.geo
+        _post(x, y, 0.2)
         lean = np.array([rng.normal(0, 0.012), rng.normal(0, 0.012), 0.0])
         n = 9
         pts = [np.array([x, y, z]) + lean * (h * t) ** 1.5 + [0, 0, h * t] for t in np.linspace(0, 1, n)]
@@ -1032,6 +1042,7 @@ class Level:
     def globe(self, x, y, z):
         """One of the quay's ball lights: a white globe on a slender dark post."""
         geo = self.geo
+        _post(x, y, 0.12)
         c = np.array([x, y, z])
         geo.lathe("metal_pole", c, [(0.1, 0.0), (0.1, 0.08), (0.06, 0.14), (0.045, 3.3), (0.07, 3.34), (0.11, 3.4), (0.11, 3.44)], segs=8)
         H, R = 3.44 + 0.22, 0.25
@@ -1046,6 +1057,7 @@ class Level:
     def banner_pole(self, x, y, z, hd, i):
         """A white flagpole with a tall banner flown from a top arm and held at its foot (the quay's are 10 m)."""
         geo, A = self.geo, self.A
+        _post(x, y, 0.12)
         c = np.array([x, y, z])
         geo.lathe("paint_white", c, [(0.11, 0.0), (0.11, 0.3), (0.085, 0.36), (0.05, 10.2), (0.0, 10.3)], segs=8)
         s = np.array([math.cos(hd), math.sin(hd), 0.0])
@@ -1082,25 +1094,33 @@ class Level:
             if i in (1, 4, 6):
                 b = c - n * 2.0 + t * 3.0
                 hp.bin_(geo, (b[0], b[1]), self.gz(*b))
+                _post(b[0], b[1], 0.3)
         # the lawn side: globes along the seat wall's foot, facing the others
         for y in np.arange(WALL[0][1] + 9.0, WALL[1][1] - 4, 22.0):
             x = self.wall_x(y) + 1.6
             self.globe(x, y, G.z(x, y) + 0.03)
         hd0 = lambda y: math.atan2(self.edge_frame(y)[2][1], self.edge_frame(y)[2][0])
+
+        def seat(x, y, hd):       # (a bench is two discs along its seat, which runs across the way it faces)
+            for o in (-0.45, 0.45):
+                _post(x - math.sin(hd) * o, y + math.cos(hd) * o, 0.4)
         for nd in self.nodes(amenity="bench"):
             x, y = nd["xy"]
             if Y0 < y < self.YN - 4:
                 x = min(x, self.edge(y) - 2.5)
                 hp.bench(geo, (x, y), hd0(y), self.gz(x, y) + 0.04, metal="metal_rail")
+                seat(x, y, hd0(y))
         for y in (190.5, 192.9, 241.0, 243.4, 263.5):       # more of them, facing the water (not mapped: placed)
             x = self.edge(y) - 2.5
             hp.bench(geo, (x, y), hd0(y), self.gz(x, y) + 0.04, metal="metal_rail")
+            seat(x, y, hd0(y))
         from shapely.geometry import Point, Polygon
         inner = self.site.buffer(-0.3)
         for nd in self.nodes(barrier="bollard"):
             x, y = nd["xy"]
             if Y0 < y < Y1 - 0.5 and inner.contains(Point(x, y)):
                 hp.bollard(geo, (x, y), G.z(x, y) + 0.03, band="paint_white")
+                _post(x, y, 0.15)
         # the cafe under the wings' canopies: round tables with three chairs each (seen from the lawn as a row of legs
         # and backs, so in the fine model)
         F, fine = self.F, geo.fine
@@ -1111,6 +1131,7 @@ class Level:
                     c = F.P(u + crng.normal(0, 0.15), o + crng.normal(0, 0.1), 0)
                     z = G.z(c[0], c[1]) + 0.04
                     c = np.array([c[0], c[1], z])
+                    _post(c[0], c[1], 0.75)       # (a table and its three chairs)
                     fine.lathe("metal_steel", c, [(0.22, 0.0), (0.22, 0.02), (0.03, 0.04), (0.03, 0.7), (0.36, 0.7), (0.36, 0.73), (0.0, 0.73)], segs=10)
                     a0 = crng.random() * 6.28
                     for k in range(3):
@@ -1126,6 +1147,7 @@ class Level:
             c = np.array([x, y, G.z(x, y) + 0.03])
             f = np.array([math.cos(hd), math.sin(hd), 0.0]); s = np.array([-f[1], f[0], 0.0])
             geo.box("metal_dark", c, (s, f), (0.62, 0.14, 2.3))
+            _post(x, y, 0.32)
             for sg in (1, -1):
                 q = c + f * sg * 0.073
                 a, b = (q - s * 0.29, q + s * 0.29) if sg > 0 else (q + s * 0.29, q - s * 0.29)
@@ -1133,6 +1155,7 @@ class Level:
         # Lindy Lee's ovoid on the wing's forecourt: mirror steel, pierced, lit from inside after dark
         art = next((n["xy"] for n in self.nodes(tourism="artwork") if "Starlight" in n["tags"].get("name", "")), (-188.3, 259.7))
         c = np.array([art[0], art[1], G.z(*art) + 2.25])
+        _post(art[0], art[1], 0.7)        # (the ovoid stands on its narrow foot: what a walker meets at shin to chest)
         P, N, U, tri = [], [], [], []
         nu, nv = 28, 18
         (ua, va), (ub, _), (_, vb), _ = A.uv("ember")
@@ -1183,8 +1206,11 @@ class Level:
 def build(K):
     """(geo, atlas, materials, meta) for blender/build_hero.py."""
     mats = materials(K)          # (first: it registers the level's own drawn surfaces with the kit)
+    del POSTS[:]
     L = Level(K)
     geo, atlas = L.build()
+    with open(os.path.join(HERE, "hero_posts.json"), "w", encoding="utf8") as f:
+        json.dump(sorted(POSTS), f, separators=(",", ":"))
     meta = {"id": ID, "at": [-195.0, 230.0], "r": 85.0, "z": 4.0, "glb": f"hero/{ID}.glb", "fine": f"hero/{ID}_fine.glb",
             "cell": 44.0, "fine_cell": 22.0, "bake_gain": 0.6, "sky_rays": 24, "sky_reach": 5.0, "sky_strength": 1.0}
     return geo, atlas, mats, meta

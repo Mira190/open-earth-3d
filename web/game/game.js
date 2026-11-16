@@ -537,8 +537,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (let i = 0; i < L.length; i += 3) posts.add(L[i] / 10, L[i + 1] / 10, L[i + 2] / 10, 0.12, 'lamp');
     for (let i = 0; i < NP.length; i += 3) posts.add(NP[i], NP[i + 1], NP[i + 2], 0.12, 'lamp');
     for (let i = 0; i < TR.length; i += 4) posts.add(TR[i], TR[i + 1], TR[i + 2], TR[i + 3], 'tree'); }
-  // (and a hero level's own lamp posts, hero[].posts: drawn by its model, solid here)
-  for (const h of G.hero || []) for (const [x, y] of h.posts || []) posts.add(x, y, nav.terrain(x, y), 0.14, 'lamp');
+  // (and what a hero level's model stands on its paving, hero[].posts [x, y(, radius)]: lamp posts, and in Sydney the
+  // lawn's palms, the flagpoles, benches and bollards, as the level's builder placed them; drawn by its model, solid here)
+  for (const h of G.hero || []) for (const [x, y, r] of h.posts || []) posts.add(x, y, nav.terrain(x, y), r || 0.14, 'lamp');
   nav.posts = posts;
   // where someone or a car beside a mapped line stands: its deck, the surface the line is on (a pier, a
   // bridge's walkway, a flight of steps: not the ground under it), or the ground drawn there (null on the bank of the water)

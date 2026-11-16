@@ -705,6 +705,13 @@ def game_extras(scene):
     if tr and "harbour_bridge" in lm:
         bridge_trains(lm["harbour_bridge"], tr)
     out = {"close": close, **({"trains": tr, "travel": RAIL.travel()} if tr else {})}
+    # (what the quay's hero level stands on its paving, as its builder placed it: the crowd's lines bend round them
+    # (pipeline/game_extras.py bend_round); city.json game.hero[].posts makes the same list solid)
+    import json
+    import os
+    hp_ = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hero_posts.json")
+    if os.path.exists(hp_):
+        out["posts"] = json.load(open(hp_, encoding="utf8"))
     if o:  # the rooms inside the Opera House, their doors, the seats you can take and the evening's performance
         r = opera_rooms(o)
         out.update(doors=r["doors"], interiors=r["rooms"], seats=r["seats"], shows=r["shows"])
