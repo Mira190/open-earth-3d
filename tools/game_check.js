@@ -30,8 +30,9 @@ const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', outDir = '.'] = process.argv;
 // places where a line of the crowd's meets a wall inside a hero level, known and listed in issue 496 (the hero step below):
-// Tokyo's seven single points north and south of the station square, Shibuya's two where a footway goes down a subway stair
-const BARRED_KNOWN = { tokyo: 7, shibuya: 3 };
+// Shibuya's, where a footway goes down a subway stair. (Tokyo's seven are gone: its footways bend round the plaza's posts
+// and benches and stop at the viaduct's walls, pipeline/game_extras.py bend_round and clip_closed)
+const BARRED_KNOWN = { shibuya: 3 };
 // whether the city's game has a pilgrimage's stamped spots (the step for them, below), read before anything runs
 const STAMPED = (() => { try { return (JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'web', 'data', city, 'game.json'), 'utf8')).spots || []).some(sp => sp.stamp); } catch (e) { return false; } })();
 const { pinClock } = require('./pin_clock');
@@ -1483,8 +1484,8 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
 
   // every quest giver and quest step's place, and every place on the travel map, reached by the gold line on foot from the
   // start (route.js walk; a place across the water by the ferry's wharf instead), no more than three times the straight
-  // line, and 150 m more to a place on another floor (a platform, a deck: a walk there goes by the flights where they
-  // are, round a station's building to its passage) (tools/route_quality.js has the detail)
+  // line, a platform or a deck on another floor included: a walk there goes by the flights where they are, and through
+  // a station's hall to its passage (Tokyo Station's platforms 5 and 6: 205 m for 140) (tools/route_quality.js has the detail)
   const reach = await p.evaluate(async () => {
     const g = window.__game, G = g.G, ways = g.ways, out = [];
     for (let i = 0; i < 600 && !ways.ready; i++) await new Promise(r => setTimeout(r, 500));
@@ -1502,15 +1503,15 @@ const { camRun, jumps: camJumps, SHORT: CAM_WALK } = require('./cam_jumps');
       const k = `${Math.round(t.x)},${Math.round(t.y)}`;
       if (seen.has(k)) continue;
       seen.add(k);
-      const r = ways.walk(a, t), d = Math.hypot(t.x - a.x, t.y - a.y), end = r && r.pts.length ? r.pts[r.pts.length - 1] : null;
-      out.push({ name: t.name, d, len: r ? r.len : null, up: end ? Math.abs(end[2] - a.z) > 3 : false });
+      const r = ways.walk(a, t), d = Math.hypot(t.x - a.x, t.y - a.y);
+      out.push({ name: t.name, d, len: r ? r.len : null });
     }
     return out;
   });
   if (reach) {
-    const none = reach.filter(r => r.len == null), far = reach.filter(r => r.len != null && r.d > 50 && r.len > 3 * r.d + (r.up ? 150 : 0));
+    const none = reach.filter(r => r.len == null), far = reach.filter(r => r.len != null && r.d > 50 && r.len > 3 * r.d);
     check(!none.length, `every quest and travel place is reached on foot from the start (${reach.length - none.length} of ${reach.length}${none.length ? `; none to ${none.map(r => r.name).join(', ')}` : ''})`);
-    check(!far.length, `no walk to them goes more than three times the straight line (and 150 m more to another floor)${far.length ? ` (${far.map(r => `${r.name} ${Math.round(r.len)} m for ${Math.round(r.d)}`).join(', ')})` : ''}`);
+    check(!far.length, `no walk to them goes more than three times the straight line${far.length ? ` (${far.map(r => `${r.name} ${Math.round(r.len)} m for ${Math.round(r.d)}`).join(', ')})` : ''}`);
   }
 
   // a taxi: a hand up at the kerb, the nearest one pulls in, in the back, the driver asks where to,

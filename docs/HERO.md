@@ -397,7 +397,21 @@ landmarks' meshes, which went on being solid and being stood on where they had b
   with a wall on one of the crowd's lines or a floor off its lift. Sydney's level had no unseen wall and no
   barred footway; its floor was 4.5 cm under its paving (now `lift` 0.045; at the quay's edge, where the paving
   climbs to the coping, it is still up to 14 cm under). Tokyo's stands on its paving; seven single points of its
-  crowd's lines meet a wall, and Shibuya's meet one where two footways go down a subway stair (issue 496).
+  crowd's lines met a wall, and Shibuya's meet one where two footways go down a subway stair (issue 496).
+- Tokyo's seven were the map's footways against what the level stands on its paving: the pent roofs' and the
+  stands' canopies' iron posts, the stands' poles and benches, three trunks, and under the tracks the viaduct's
+  closed bays and the new stair wells. A builder now names them (`game_extras` hook: `posts` [x, y, radius],
+  `closed` rings with holes) and the footways are changed in the data, once, not at play: bent round each post
+  0.75 m clear, all to the side the line already passes on and past the next row it would be moved into
+  (`pipeline/game_extras.py` `bend_round`), cut back where one ends at a post, and stopped at a wall
+  (`clip_closed`). Run twice it changes nothing more; a way that stops under the tracks has its bay a metre
+  longer than itself (`rail.py`), or each run cut it shorter. The plaza's four three-lamp posts are solid
+  (`game.hero[].posts`), and no generated lamp post stands on a footway line (`web/night.js` `onFoot`: a few
+  metres along, or on the way's other side). Tokyo: no unseen wall, no barred footway, nothing walked through.
+- The audit's "walked through" list was mostly its own noise: the crowd (sent away before it reads the scene),
+  cars (the shared models' parts and your own parked car are not read), the cell beside a solid post, and places
+  no walker reaches (the inside of the block behind the station: a flood from the level's middle decides). What
+  it lists now it names by mesh, and each barred point by what stands there and which line it is on.
 
 ## Circular Quay West (Sydney)
 
@@ -1031,6 +1045,32 @@ passage, the concourse, a platform and the air; day, dusk and night).
 Short of the bar still: the ground storey's six side bays are plain glazed fronts (the real hall has the ticket
 gates, the ticket office and the hotel's and gallery's doors there: issue 480); the zodiac animals, the helmets and
 the capitals are not carved; the plaster is a colour, not a scanned surface.
+
+### The central passage and the walk to the platforms (`rail.py`, issue 527)
+
+The central passage under the tracks (中央通路) had no flights, and the gold line from the spawn to platforms 5 and
+6 went round the building's north end to the north passage: 442 m for 140 m in a straight line.
+
+| | Now |
+|---|---|
+| Where it crosses | 768 m along the reference track, where OpenStreetMap maps the passage's footway (it was drawn 8 m south of that) |
+| Flights | on each of the four island platforms a flight and an up escalator down to the passage from the north and another from the south, their feet at the passage: sixteen strips, each climbed by `tools/game_check.js` (`check`) |
+| Floor | every concourse under the tracks has its own floor now, pale granite in 0.6 m slabs laid on the ground's levels (`rail_floor`): the street's paint and the photograph had shown through as patches |
+| Lamps | no street lamp of the map's stands in a concourse (`rail.bare`, landmarks.json `bare`) |
+| The walk | 205 m: through the south dome's middle doorway, its hall and passage, and up the south passage's flight. The map has no footway through that hall, so the builder lays one (`rail.foot`, `station.ways_in`, game.json `paths.foot` rows with `own`; `pipeline/game_extras.py` `own_foot`), which the crowd walks too. A pent-roof post stood in the middle doorway's line: the posts before the three doorways now stand on the piers between them |
+| The check | the walk step in `tools/game_check.js` no longer gives a place on another floor 150 m more: every quest and travel place in Shibuya, Tokyo and Sydney is within three times the straight line (worst 2.3) |
+
+Checked against: OpenStreetMap's indoor mapping of the station (© OpenStreetMap contributors, ODbL;
+`cities/tokyo/hero_osm.json`), which draws on platforms 3/4, 5/6 and 7/8 a flight north and a flight south from one
+point on the passage's line. JR East's station map (構内図) could not be opened from the build machine (the site
+refuses it), so the escalators' sides and the lifts are not taken from it: each flight has its escalator on the same
+side as the north and south passages' flights, and no lift is built.
+
+Not built: the Marunouchi Central Gate. The passage is open to the Yaesu side and closed on the west by the block
+under the Chuo Line (`station.py` `chuo`); the real one runs on through the building to a gate between the domes.
+
+Stills: `tools/scramble_shot.js tokyo tools/views/tokyo-central-passage.json` (the passage both ways, a flight from
+its foot and its head, platforms 3/4 and 5/6; day, dusk and night).
 
 **Traced occlusion.** The level's occlusion is now ray-cast (`hero_kit.sky_occlusion`, `sky_rays` 12 over 4 m), with
 the generator's marks kept where it knows better (a reveal at the glass).

@@ -719,9 +719,16 @@ def main():
     out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks", "areas", "spots", "chatter", "close", "metro", "regulars", "signals", "scrambles", "overture") if k in gcfg}
     # what the city's landmarks add to the game (lifts, places to travel to on a roof): city.py game_extras(scene)
     if C.hook("game_extras"):
-        for k, v in C.hook("game_extras")(scene).items():
-            out[k] = out.get(k, []) + v if isinstance(v, list) else v
+        extras = C.hook("game_extras")(scene)
+        for k, v in extras.items():
+            if k not in ("foot", "closed", "posts"):   # (those two change the footways: below)
+                out[k] = out.get(k, []) + v if isinstance(v, list) else v
     import game_extras
+    if C.hook("game_extras"):
+        if extras.get("closed"):
+            game_extras.clip_closed(out, extras["closed"])
+        game_extras.own_foot(out, extras.get("foot", []))
+        game_extras.bend_round(out, extras.get("posts", []))
     game_extras.drop_kept_off(out)
     import outposts
     import fishing

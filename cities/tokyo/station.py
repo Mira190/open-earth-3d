@@ -691,8 +691,16 @@ def pavilion(K, S, body, c, R, phase, g, out, axis, T=None):
             Lo = float(np.linalg.norm(o1 - o0))
             tt = (o1 - o0) / Lo
             nn = np.array([tt[1], -tt[0]])
-            for s in np.arange(1.8, Lo - 0.9, 3.6):
+            at = [float(v) for v in np.arange(1.8, Lo - 0.9, 3.6)]
+            if T is not None and abs(float(np.dot(tt, t))) > 0.99:
+                # (before the three doorways the posts stand on the piers between them, never in a doorway's line: one
+                # stood in the middle door's, where the way into the hall runs)
+                sm = float(np.dot(mid - o0, tt))
+                piers = [sm - 3.0, sm - 1.0, sm + 1.0, sm + 3.0]
+                at = sorted({round(min(piers, key=lambda v: abs(v - x)), 3) if any(abs(x - (sm + dx)) < 0.9 for dx in (-2.0, 0.0, 2.0)) else round(x, 3) for x in at})
+            for s in at:
                 q = o0 + tt * s - nn * 0.25
+                POSTS.append([round(float(q[0]), 2), round(float(q[1]), 2), 0.1])
                 K["tks_iron"].box((*q, g), (*q, zo - 0.1), 0.14, 0.14)
                 K["tks_iron_fine"].box((*q, zo - 0.75), (*(q - nn * 0.7), zo - 0.16), 0.05, 0.08)
             slen += Lj
@@ -719,6 +727,8 @@ LAMPS = []       # (x, y, z, power): the halls' lights, for the level's baked ni
 GLOWS = []       # [x, y, radius, colour, strength]: their light on the floor after dark (landmarks.json "glows")
 DEMOLISHED = []  # the city's solids the halls and the passages stand in the place of
 BARE = []        # the halls' and passages' floors, where no lamp or bench of the map's stands (landmarks.json "treeless")
+WAYS_IN = []     # each hall's way in from the plaza: points [x, y] before its middle doorway, in it, in the vestibule, at its centre
+POSTS = []       # [x, y, radius]: the pent roofs' and canopies' posts, the stands' poles and benches, the bollards, the trees' trunks: what the crowd's footways bend round (game_extras "posts")
 WALLED = []      # the building's and the block's footprints: but for BARE, walls stand there (closed() below)
 
 
@@ -977,6 +987,8 @@ def hall(K, c, R, g, e, t, w_door, d_front, d_back, Z):
         LAMPS.append((*c, g + z, power))
     GLOWS.append([round(float(c[0]), 1), round(float(c[1]), 1), round(apo + 2, 1), "#ffe2b4", 0.6])
     BARE.append(shapely.union_all([octo.buffer(0.7), box_(uf - 0.8, u_end, hw + 0.5)]))
+    # (the doorways stand on the front's middle, which is not always the dome's axis: w_door off it)
+    WAYS_IN.append([[round(float(v), 2) for v in W(u, w)] for u, w in ((-d_front - 4.0, w_door), (-d_front + 0.4, w_door), (uf + 2.2, w_door * 0.5), (-apo + 1.5, 0.0), (0.0, 0.0))])
     return BARE[-1], box_(d_back - 0.5, u_end + 2.0, hw), u_end   # (the way through the block behind, to past the viaduct's face)
 
 
@@ -991,6 +1003,20 @@ def closed():
     # that runs within their reach is across them too)
     area = shapely.union_all(WALLED).buffer(1.4).difference(shapely.union_all(BARE).buffer(-0.4)).buffer(0)
     return [[[round(float(x), 2), round(float(y), 2)] for x, y in p.exterior.coords] for p in getattr(area, "geoms", [area]) if p.geom_type == "Polygon" and p.area > 1]
+
+
+def posts():
+    """What stands on the plaza's paving, [[x, y, radius], ...] (POSTS)."""
+    if not WALLED:
+        meshes()
+    return [list(q) for q in POSTS]
+
+
+def ways_in():
+    """Each hall's way in from the plaza, through its middle doorway to its centre: [[x, y], ...] (WAYS_IN)."""
+    if not WAYS_IN:
+        meshes()
+    return [list(w) for w in WAYS_IN]
 
 
 def chuo(K, g, solids, station, ways, T):
@@ -1067,7 +1093,7 @@ def building(K, S):
     # the halls under the domes are walked through: their blocks' solids come down (the walls drawn here are what a
     # walker meets), and so does the block behind them, redrawn with the halls' passages through it
     T = Ground("tokyo")
-    del DEMOLISHED[:], LAMPS[:], GLOWS[:], BARE[:], WALLED[:]
+    del DEMOLISHED[:], LAMPS[:], GLOWS[:], BARE[:], WALLED[:], WAYS_IN[:], POSTS[:]
     WALLED.append(union(solids))
     feet = []
     for c, R, ph in octs:
@@ -1327,6 +1353,7 @@ def plaza(K, g, octs, axis):
     for r, lay in roofs:
         canopy(K, r, Z, 5.4 if lay >= 2 and r.area > 100 else 3.3)
     STOPS[:] = [(p.x, p.y, Z(p.x, p.y)) for p in O.get("stop", []) if area.buffer(3).contains(p)]
+    POSTS.extend([round(float(x), 2), round(float(y), 2), 0.3] for x, y, _z in STOPS)
     # the trees OpenStreetMap maps, lamps along the rows that edge the pedestrian plaza, bollards at the street
     trees, lamps, bollards = [], [], []
     rows = {}
@@ -1356,6 +1383,8 @@ def plaza(K, g, octs, axis):
             if granite.contains(Point(x, y)):
                 bollards.append([round(float(x), 2), round(float(y), 2), round(Z(x, y) + 0.05, 2), round(head, 3)])
         s += 3.0
+    POSTS.extend([q[0], q[1], 0.25] for q in lamps + bollards)
+    POSTS.extend([q[0] / 10, q[1] / 10, 0.3] for q in trees)   # (a trunk)
     props = [{"name": "tks_lamp3", "far": 260, "parts": lamp3_parts(), "at": lamps},
              {"name": "tks_bollard", "far": 140, "parts": bollard_parts(), "at": bollards}]
     return trees, props, hidden
@@ -1451,6 +1480,7 @@ def canopy(K, poly, Z, h):
         for sb in np.arange(3.5, L - 2.5, 5.5):
             qb = o + t * sb + n * (W / 2 + 0.55)
             BENCHES.append((float(qb[0]), float(qb[1]), Z(*qb), math.atan2(t[1], t[0])))
+            POSTS.extend([round(float(v[0]), 2), round(float(v[1]), 2), 0.4] for v in (qb - t * 0.7, qb, qb + t * 0.7))
     for vv in rowsv:
         pts = []
         for s in np.arange(1.0, L - 0.5, max(4.5, min(6.0, (L - 2.0) / max(1, round((L - 2.0) / 5.5))))):
@@ -1458,6 +1488,7 @@ def canopy(K, poly, Z, h):
             if poly.buffer(-0.2).contains(Point(*q)):
                 zz = Z(*q)
                 iron.box((*q, zz), (*q, z), 0.14, 0.14)
+                POSTS.append([round(float(q[0]), 2), round(float(q[1]), 2), 0.1])
                 pts.append(q)
         for a, b in zip(pts, pts[1:]):
             if poly.buffer(0.05).contains(Point(*((a + b) / 2))):

@@ -278,8 +278,8 @@ def landmark_treeless(scene):
 
 
 def landmark_bare(scene):
-    """And no street lamp or bench of the map's there (web/streets.js)."""
-    return landmark_treeless(scene)
+    """And no street lamp or bench of the map's there (web/streets.js), nor in a concourse under the tracks (rail.py)."""
+    return landmark_treeless(scene) + [[round(v * 10) for xy in ring for v in xy] for ring in RAIL.bare()]
 
 
 def landmark_assets(out_dir, scene):
@@ -503,4 +503,13 @@ def game_extras(scene):
         close.append(close_to("Kabuki-za, the doors under the porch", F(0, vf - 1.5, 0), g + zs, F(0, vf + 5.5, 0), 1.0, on=True))
     tr = RAIL.trains()   # the JR lines past Yurakucho, and the platform to travel to (cities/tokyo/rail.py)
     # (and where Tokyo Station's walls stand across the map's footways: cut there, pipeline/game_extras.py clip_closed)
-    return {"close": close, "closed": STATION_HERO.closed(), **({"trains": tr, "travel": RAIL.travel()} if tr else {})}
+    # a station's way in on foot, where the map has no footway: through the hall's own middle doorway (station.py) and on
+    # by the passage to the stairs (rail.py), for the crowd and the gold line (pipeline/game_extras.py own_foot)
+    foot = RAIL.foot() if tr else []
+    T = ak.Terrain("tokyo")
+    for line in foot:
+        for lead in STATION_HERO.ways_in():
+            if math.dist(lead[-1], line[1][:2]) < 2.0:   # (this hall's: its centre is the line's second point)
+                line[:2] = [[x, y, round(float(T(x, y)) + 0.05, 2)] for x, y in lead]
+    return {"close": close, "closed": STATION_HERO.closed() + RAIL.closed(), "posts": STATION_HERO.posts(),
+            **({"trains": tr, "travel": RAIL.travel(), "foot": foot} if tr else {})}

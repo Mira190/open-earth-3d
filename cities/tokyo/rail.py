@@ -56,10 +56,14 @@ STATIONS = [
      "codes": {"yamanote": "JY 29", "keihin": "JK 24", "tokaido": "JT 02"}, "prev": ("浜松町", "Hamamatsuchō"), "next": ("有楽町", "Yūrakuchō"),
      "prev_line": {"tokaido": ("品川", "Shinagawa")}, "next_line": {"tokaido": ("東京", "Tōkyō")}},
     # its passages under the tracks are on the Marunouchi building's two domes (cities/tokyo/station.py opens each dome's
-    # hall onto its passage): "passages" [(where along the reference, which way its flights climb: 1 southward)], and
-    # no fascia on the west, where the passage runs on into the building
+    # hall onto its passage): "passages" [(where along the reference, which way its flights climb: 1 southward, and a
+    # letter for a passage that is not the first to climb that way)], and no fascia on the west, where the passage runs
+    # on into the building. The central passage (中央通路) is where OpenStreetMap maps its footway under the tracks (768 m
+    # along the reference) and, on each platform, a flight down to it from the north and one from the south, their feet
+    # at the passage: as JR East's station map draws it, stairs and an escalator either side of the passage on every
+    # platform
     {"key": "tokyo", "name": "Tokyo", "native": "東京", "kana": "とうきょう", "romaji": "Tōkyō", "s": (590.0, 945.0), "refs": ("3;4", "5;6", "7;8", "9;10"),
-     "passages": [(695.0, (1,)), (776.0, ()), (889.0, (-1,))], "fascia": (1,),   # (the central passage between them: open, without stairs)
+     "passages": [(695.0, (1,)), (768.0, (-1, 1), "c"), (889.0, (-1,))], "fascia": (1,),
      # the way in on foot, for the game's check: from the plaza before the south dome's doors, through its hall and the
      # passage (station.py: the dome's centre, 26 m and 33 m along its axis either way), to the stairs to platforms 5 and 6
      "way": {"hall": (610.2, 1167.6), "axis": (0.943, -0.333), "out_m": 26.0, "in_m": 33.0, "platform": 5},
@@ -92,6 +96,8 @@ MATERIALS = {
     "rail_mast": {"color": "#6f7c7a", "roughness": 0.6, "metalness": 0.5, "solid": False},
     "rail_wire": {"color": "#3c3a36", "roughness": 0.5, "metalness": 0.7, "shadow": False, "solid": False},
     "rail_platform": {"color": "#b4aea4", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [0.3, 0.3], "street_lit": True},
+    # a concourse's floor under the tracks: pale granite in 0.6 m slabs, laid on the ground there (not solid: the ground is)
+    "rail_floor": {"lamp_lit": True, "color": "#b0aaa0", "roughness": 0.75, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.6], "solid": False},
     "rail_stairs": {"lamp_lit": True, "color": "#a9a49b", "roughness": 0.8, "metalness": 0.0},
     "rail_yellow": {"lamp_lit": True, "color": "#e8c21c", "roughness": 0.7, "metalness": 0.0, "decal": True, "solid": False},
     "rail_white": {"lamp_lit": True, "color": "#ecebe6", "roughness": 0.6, "metalness": 0.0, "decal": True, "solid": False},
@@ -290,7 +296,7 @@ def layout():
             continue
         mid = float(np.mean([f[0] for p in mine for f in p["frames"]]))
         # each concourse: where it crosses, which way its flights climb (-1 northward, 1 southward), its strip
-        concs = [(m, d, Polygon([*gate(m - 9).coords, *gate(m + 9).coords[::-1]])) for m, d in S.get("passages", [(mid, (-1, 1))])]
+        concs = [(m, d, Polygon([*gate(m - 9).coords, *gate(m + 9).coords[::-1]]), "".join(tag)) for m, d, *tag in S.get("passages", [(mid, (-1, 1))])]
         sta.append(dict(S, plats=mine, mid=mid, concs=concs, conc=shapely.union_all([c[2] for c in concs])))
     mid, conc = sta[0]["mid"], sta[0]["conc"]
     G = json.load(open(os.path.join(C.out, "game.json")))
@@ -309,7 +315,12 @@ def layout():
             part = ln.intersection(near)
             for q in getattr(part, "geoms", [part]):
                 if q.geom_type == "LineString" and q.length < 95 and q.intersects(deck):
-                    cuts.append(q.buffer(w, cap_style="flat"))
+                    # (a metre past each end: a way that stops under the tracks ends that far short of its bay's end
+                    # wall, and is not cut back by it again each time the game's footways are closed at the walls)
+                    c = np.asarray(q.coords, float)
+                    e0, e1 = c[0] - c[1], c[-1] - c[-2]
+                    c[0], c[-1] = c[0] + e0 / (np.linalg.norm(e0) or 1.0) * 1.0, c[-1] + e1 / (np.linalg.norm(e1) or 1.0) * 1.0
+                    cuts.append(LineString(c).buffer(w, cap_style="flat"))
     openings = shapely.union_all(cuts).buffer(1.5).buffer(-1.5)
     L = {"C": C, "T": T, "ref": ref, "frame": frame, "sv": sv, "gate": gate, "band": band, "tracks": tracks, "still": still, "plats": plats, "deck": deck,
          "openings": openings, "mid": mid, "conc": conc, "stops": D["stops"], "gone": gone, "stations": sta}
@@ -320,14 +331,15 @@ def layout():
 
 def stairs(L):
     """Two flights up to each platform from the concourse, one to the north and one to the south: each
-    {key, plat, a (foot), b (head), t (along, uphill), n, w, z0, z1, run}."""
+    {key, plat, up ("n" or "s": which way it climbs), of (its passage's letter, "" the first), a (foot), b (head),
+    t (along, uphill), n, w, z0, z1, run}."""
     out = []
     T = L["T"]
     concs = {S["key"]: S["concs"] for S in L["stations"]}
     for p in L["plats"]:
         fr = {round(f[0]): f for f in p["frames"]}
         ss = sorted(fr)
-        for mid, d, tag in [(m, d, "n" if d < 0 else "s") for m, dirs, _ in concs[p["station"]] for d in dirs]:   # uphill towards the north, or the south
+        for mid, d, tag, of in [(m, d, "n" if d < 0 else "s", of) for m, dirs, _, of in concs[p["station"]] for d in dirs]:   # uphill towards the north, or the south
             s0 = mid + d * 8.2    # the foot, just inside the concourse
             f0 = fr[min(ss, key=lambda s: abs(s - s0))]
             c0 = f0[1] + f0[2] * (s0 - f0[0])
@@ -338,7 +350,7 @@ def stairs(L):
             t = (c1 - c0) / np.linalg.norm(c1 - c0)
             n = np.array([-t[1], t[0]])
             c0 = c0 - n * (ESC_W + 0.15) / 2   # (the flight and the escalator beside it, together on the platform's middle)
-            out.append({"key": f"{p['key']}{tag}", "plat": p["key"], "a": c0, "b": c0 + t * run, "t": t, "n": n, "w": 3.0,
+            out.append({"key": f"{p['key']}{of}{tag}", "plat": p["key"], "up": tag, "of": of, "a": c0, "b": c0 + t * run, "t": t, "n": n, "w": 3.0,
                         "z0": z0, "z1": z1, "run": run})
     return out
 
@@ -349,6 +361,7 @@ def stair_slot(st, grow=0.0):
     return Polygon([a - n * w, b - n * w, b + n * (w + ESC_W + 0.15), a + n * (w + ESC_W + 0.15)])
 
 
+OF = {"": "the ", "c": "the central passage's "}   # a flight's passage in its name, by the passage's letter
 ESC_W = 1.45     # an escalator's width over its balustrades (a 1,000 mm step); its middle ESC_V off the flight's
 ESC_V = 1.5 + 0.15 + ESC_W / 2
 ESC_MS = 0.5     # its speed (m/s), JR East's standard
@@ -700,7 +713,7 @@ def meshes(Mesh):
         if k in K:
             K[k].weld()
     for m in L["own"]:
-        if m.name.startswith("rail_platform_"):
+        if m.name.startswith("rail_platform_") or m.name == "rail_floor_all":
             m.weld()
     out = [m for m in K.values() if m.v] + L["own"]
     return MATERIALS, out
@@ -923,11 +936,25 @@ def station(L, K, Mesh):
                 for sgn in (-1, 1):
                     q = a + t * u + n * sgn * (hw + 0.02)
                     K["rail_lamp"].box([*(q - t * 0.5), zat(u) + 2.2], [*(q + t * 0.5), zat(u) + 2.2], 0.04, 0.1)
-    # ---- each concourse under the tracks: lights on its soffit, the entrances' fascias
+    # ---- each concourse under the tracks: its floor, lights on its soffit, the entrances' fascias
     zs = RAIL_Z - SLAB
-    for S, (cmid, _dirs, conc) in [(S, c) for S in L["stations"] for c in S["concs"]]:
+    floor = Mesh("rail_floor_all", "rail_floor", False, uv=True)
+    own.append(floor)
+    for S, (cmid, _dirs, conc, _of) in [(S, c) for S in L["stations"] for c in S["concs"]]:
         conc = conc.intersection(L["deck"])
         conc = max(getattr(conc, "geoms", [conc]), key=lambda g: g.area)
+        # the floor: slabs on the ground's own levels, in 3 m squares (the street's paint and the photograph under the
+        # tracks showed through as patches of other tones)
+        x0, y0, x1, y1 = conc.bounds
+        for gx in np.arange(math.floor(x0 / 3) * 3, x1, 3.0):
+            for gy in np.arange(math.floor(y0 / 3) * 3, y1, 3.0):
+                cell = conc.intersection(shapely.box(gx, gy, gx + 3.0, gy + 3.0))
+                for g in getattr(cell, "geoms", [cell]):
+                    if g.geom_type != "Polygon" or g.area < 0.01:
+                        continue
+                    for tri in shapely.constrained_delaunay_triangles(g).geoms:
+                        c3 = list(tri.exterior.coords)[:3]
+                        floor.tri(*[[x, y, T(x, y) + 0.04] for x, y in c3], [[x, y] for x, y in c3])
         p, t, n = frame(cmid)
         s0, s1 = [sv(*c)[1] for c in (conc.exterior.interpolate(conc.exterior.project(Point(*(p - n * 80)))).coords[0], conc.exterior.interpolate(conc.exterior.project(Point(*(p + n * 80)))).coords[0])]
         for v in np.arange(s0 + 2.5, s1 - 2.0, 4.2):
@@ -945,7 +972,7 @@ def station(L, K, Mesh):
     plat_of = {p["key"]: p for p in L["plats"]}
     for st in L["stairs"]:   # over the foot of each flight: which tracks it climbs to
         p = plat_of[st["plat"]]
-        num = p["nums"][0 if st["key"][1] == "n" else 1] or p["nums"][1 if st["key"][1] == "n" else 0]
+        num = p["nums"][0 if st["up"] == "n" else 1] or p["nums"][1 if st["up"] == "n" else 0]
         sign(K, st["a"] - st["t"] * 0.2, -st["t"], 3.0, st["z0"] + 2.75, 0.47, f"dir_{p['station']}_{num}", 0.02)
 
 
@@ -1004,12 +1031,12 @@ def surfaces():
         half = (st["run"] - 1.6) / 2
         zl = (st["z0"] + st["z1"]) / 2
         c, run = st["b"], st["run"]
-        out.append({"name": f"{name[p['station']]['name']} Station, the {'north' if st['key'][1] == 'n' else 'south'} stairs to platforms {pn(p)}", "type": "strip",
+        out.append({"name": f"{name[p['station']]['name']} Station, {OF[st['of']]}{'north' if st['up'] == 'n' else 'south'} stairs to platforms {pn(p)}", "type": "strip",
                     "origin": [round(float(c[0]), 2), round(float(c[1]), 2)], "axis": [round(float(-st["t"][0]), 5), round(float(-st["t"][1]), 5)], "half_width": st["w"] / 2,
                     "profile": [[-0.5, zp], [0.0, zp], [round(half, 2), round(zl, 2)], [round(half + 1.6, 2), round(zl, 2)], [round(run, 2), round(st["z0"], 2)], [round(run + 0.6, 2), round(st["z0"], 2)]],
                     "thickness": 1.0, "mesh": f"rail_stair_{st['key']}", "mapped": False, "check": True, "label": "the stairs to the platforms"})
         E = escalator(st)   # and the escalator up beside it, from its foot (its axis up the incline: it carries you up)
-        out.append({"name": f"{name[p['station']]['name']} Station, the {'north' if st['key'][1] == 'n' else 'south'} escalator to platforms {pn(p)}", "type": "strip",
+        out.append({"name": f"{name[p['station']]['name']} Station, {OF[st['of']]}{'north' if st['up'] == 'n' else 'south'} escalator to platforms {pn(p)}", "type": "strip",
                     "origin": [round(float(E["a"][0]), 2), round(float(E["a"][1]), 2)], "axis": [round(float(E["t"][0]), 5), round(float(E["t"][1]), 5)], "half_width": 0.45,
                     "profile": [[-0.6, round(E["z0"], 2)], [round(E["u0"], 2), round(E["z0"], 2)], [round(E["u1"], 2), round(E["z1"], 2)], [round(E["L"] + 0.5, 2), round(E["z1"], 2)]],
                     "thickness": 1.0, "mesh": f"rail_esc_{st['key']}", "mapped": False, "moving_ms": ESC_MS, "moving_u": [0.4, round(E["L"] - 0.4, 2)],
@@ -1099,6 +1126,51 @@ SERVICES = [
     {"track": "shinkansen-s", "stock": "hayate", "cars": 16, "every_s": 118, "offset_s": 24, "stops": False, "v_ms": 29,
      "line": {"ja": "東海道新幹線", "en": "Tokaido Shinkansen"}},
 ]
+
+
+def foot():
+    """The ways in on foot the map has no line for (game_extras "foot"): a station's "way" from the plaza through its
+    hall and along the passage under the tracks to the foot of its platform's flight, at the ground."""
+    L = layout()
+    if not L:
+        return []
+    out = []
+    for S in L["stations"]:
+        if S.get("way"):
+            w = S["way"]
+            h, e = np.array(w["hall"]), np.array(w["axis"])
+            st = min((q for q in L["stairs"] if any(p["key"] == q["plat"] and w["platform"] in p["nums"] for p in S["plats"])),
+                     key=lambda q: float(np.linalg.norm(q["a"] - h)))
+            pts = [h - e * w["out_m"], h, h + e * w["in_m"], st["a"] - st["t"] * 1.6]   # (to the foot of the platform's flight, across the passage's own footway)
+            out.append([[round(float(q[0]), 1), round(float(q[1]), 1), round(float(L["T"](*q)) + 0.05, 2)] for q in pts])
+    return out
+
+
+def closed():
+    """Where the viaduct stands across the map's footways, as rings [[x, y], ...] (game_extras "closed"): its closed
+    bays under the deck, which a footway mapped along under the tracks ran through, and each stair and escalator
+    well (the map's footways under a platform run on to where the real flights are, into the wells' walls: they stop
+    there, and the flights' own strips are walked instead)."""
+    L = layout()
+    if not L:
+        return []
+    area = shapely.union_all([L["deck"].difference(L["openings"]).buffer(0.6)] + [stair_slot(st).buffer(1.0, join_style="mitre") for st in L["stairs"]])   # (a metre round each well: its walls, and a walker's shoulder)
+    R = lambda ring: [[round(float(x), 2), round(float(y), 2)] for x, y in ring.coords]
+    return [{"ring": R(g.exterior), "holes": [R(h) for h in g.interiors]} for g in getattr(area, "geoms", [area]) if g.geom_type == "Polygon" and g.area > 1]
+
+
+def bare():
+    """Each concourse under the tracks, as rings [[x, y], ...]: no street lamp or bench of the map's stands in it
+    (landmarks.json "bare"; a lamp post mapped on the street stood up through the soffit)."""
+    L = layout()
+    if not L:
+        return []
+    out = []
+    for S in L["stations"]:
+        for _m, _d, conc, _of in S["concs"]:
+            g = conc.intersection(L["deck"]).buffer(1.0)
+            out += [list(q.exterior.coords) for q in getattr(g, "geoms", [g]) if q.geom_type == "Polygon"]
+    return out
 
 
 def travel():
