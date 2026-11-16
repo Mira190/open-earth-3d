@@ -68,7 +68,7 @@ window.OEStory = (function () {
     }
     const el = (id, html, tag = 'div') => { const e = document.createElement(tag); e.id = id; e.innerHTML = html; ctx.stage.appendChild(e); return e; };
     const frames = el('g-story-frames', `<span><b></b>frames left</span><span class="strip">${'<i></i>'.repeat(N)}</span><em>${ctx.touch ? 'Tap' : '<kbd>Tab</kbd>'} · the roll</em>`, 'button'), card = el('g-story-card', '<div><small></small><span></span></div>'), veil = el('g-story-veil', ''), flash = el('g-story-flash', '');
-    const goalEl = el('g-story-goal', '<small></small><span></span>'), mark = el('g-story-mark', '<i></i><b></b>'), keys = el('g-story-keys', ''), finder = el('g-story-finder', '');
+    const goalEl = el('g-story-goal', '<small></small><span></span><em></em>'), mark = el('g-story-mark', '<u></u><i></i><b></b>'), keys = el('g-story-keys', ''), finder = el('g-story-finder', '');
     const shutter = el('g-story-shutter', `<i></i>Take the picture${ctx.touch ? '' : ' <kbd>F</kbd> · wheel: the lens'}`, 'button'), endEl = el('g-story-end', '');
     shutter.type = 'button';
     // a print's postmark: struck on it when it is taken, as a letter's stamp is cancelled; the place round the top,
@@ -103,6 +103,7 @@ window.OEStory = (function () {
       if (on) { albumDraw(-1); if (document.exitPointerLock) document.exitPointerLock(); }
     }
     // the whole roll as one picture, to keep: the frames in a strip of film, numbered and stamped
+    const PAST = 'grayscale(1) sepia(0.5) contrast(1.2) brightness(1.08)'; // (story.css: the finder's and the prints' look)
     function saveSheet() {
       const P = st.prints, w = 560, h = 374, pad = 28, cols = 4, rows = Math.ceil(N / cols), c = document.createElement('canvas'), x = c.getContext('2d');
       c.width = pad + cols * (w + pad); c.height = 150 + rows * (h + 74) + 40;
@@ -113,7 +114,9 @@ window.OEStory = (function () {
         for (let i = 0; i < N; i++) {
           const X = pad + (i % cols) * (w + pad), Y = 150 + Math.floor(i / cols) * (h + 74), im = ims[i];
           x.fillStyle = '#05060a'; x.fillRect(X, Y, w, h);
+          x.filter = PAST; // (as the prints are shown: the year the camera sees; a browser without canvas filters keeps the colour)
           if (im) { const k = Math.max(w / im.width, h / im.height), sw = w / k, sh = h / k; x.drawImage(im, (im.width - sw) / 2, (im.height - sh) / 2, sw, sh, X, Y, w, h); }
+          x.filter = 'none';
           x.strokeStyle = 'rgba(244,239,230,0.25)'; x.strokeRect(X + 0.5, Y + 0.5, w - 1, h - 1);
           x.fillStyle = '#ffcf8a'; x.font = '20px monospace'; x.fillText(`${i + 1}${P[i] ? ` · ${P[i].stamp}` : ''}`.toUpperCase().slice(0, 44), X, Y + h + 14);
         }
@@ -158,7 +161,7 @@ window.OEStory = (function () {
     const spot = p => { const z = p[2] != null ? p[2] : ctx.floor(p[0], p[1]); return [p[0], p[1], z + 1.2, z]; };
     const near = (p, r) => Math.hypot(p[0] - ctx.player.x, p[1] - ctx.player.y) < r && (p[2] == null || Math.abs(p[2] - ctx.player.z) < 4);
     // where the goal is: the light in the world, and its mark in the frame (held at the edge on the side it lies)
-    function aimAt(at) { st.target = at; ctx.beacon(at); if (!at) mark.classList.remove('on'); }
+    function aimAt(at, turn) { st.target = at; ctx.beacon(at); if (!at) mark.classList.remove('on'); else if (turn && ctx.look) ctx.look(at); } // (turn: the view is brought round to it, so that a new goal is in front of you)
     function markTick() {
       if (!st.target) return;
       const q = ctx.screen(st.target), W = ctx.stage.clientWidth, H = ctx.stage.clientHeight, m = 46;
@@ -168,7 +171,8 @@ window.OEStory = (function () {
       x = Math.max(m, Math.min(W - m, x)); y = Math.max(m + 70, Math.min(H - m, y));
       mark.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
       mark.querySelector('b').textContent = `${Math.max(1, Math.round(q.dist))} m${off ? (q.front ? '' : ' · behind you') : ''}`;
-      mark.classList.toggle('on', q.dist > 4);
+      mark.classList.toggle('on', q.dist > 4); mark.classList.toggle('off', off);
+      if (off) mark.style.setProperty('--a', `${Math.atan2(y - H / 2, x - W / 2).toFixed(3)}rad`); // (its arrow points the way to turn)
     }
     const KEYS = ctx.touch ? '<span>Left thumb · walk</span><span>Drag · look</span>' : '<span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>walk</span><span><kbd>Shift</kbd>run</span><span>Mouse · look</span>';
     function hint(on) { if (on) keys.innerHTML = KEYS; keys.classList.toggle('on', on); }
@@ -209,7 +213,7 @@ window.OEStory = (function () {
         // (or where you walk to: nobody has to take it)
         if (fr.ride && ctx.ride && !st.rode && ctx.ride(fr.ride)) { st.rode = true; st.beat = 'ride'; st.rideGo = go; goal(fr.ride.line || 'A car is coming for you.'); return; }
         st.rode = false;
-        if (fr.meet) { st.beat = 'meet'; goal(fr.meet.goal || ''); const m = living(fr.meet); if (m) aimAt(spot([m.x, m.y, m.z])); }
+        if (fr.meet) { st.beat = 'meet'; goal(fr.meet.goal || ''); const m = living(fr.meet); if (m) aimAt(spot([m.x, m.y, m.z]), true); }
         else approach();
       };
       // a frame reached by air: the flight to it first (ctx.film: the helicopter, the city under it, and the place it sets you down)
@@ -221,7 +225,7 @@ window.OEStory = (function () {
       const fr = st.fr, a = fr.afterimage;
       st.beat = 'approach'; st.t = 0;
       goal(fr.goal || '');
-      aimAt(fr.lead_s != null || !(fr.stop_at || a) ? null : spot(fr.stop_at || a.at));
+      aimAt(fr.lead_s != null || !(fr.stop_at || a) ? null : spot(fr.stop_at || a.at), true);
     }
     // what the living ask: each question until it is answered rightly (a wrong answer costs nothing but the look they give you)
     function ask(m, w, done) {
@@ -249,7 +253,7 @@ window.OEStory = (function () {
         if (!a || !(a.lines || []).length) return task();
         st.beat = 'seek'; st.from = [ctx.player.x, ctx.player.y];
         goal(a.seek || 'Someone is still moving. Go to them.');
-        aimAt(spot([st.ghost.x, st.ghost.y, st.ghost.z]));
+        aimAt(spot([st.ghost.x, st.ghost.y, st.ghost.z]), true);
         if (!st.hinted) { st.hinted = true; hint(true); }
       });
     }
@@ -257,6 +261,7 @@ window.OEStory = (function () {
     function task() {
       if (!st.fr.task) { resume(); return; }
       st.beat = 'shoot'; goalText = '';
+      finder.dataset.year = (st.fr.afterimage && st.fr.afterimage.year) || ''; // (the year the finder shows: the camera sees the evening it was loaded for)
       shutter.classList.add('on'); finder.classList.add('on');
     }
     // where the frame stands: in place, and on its subject
@@ -334,6 +339,12 @@ ${E.line ? `<p>${esc(E.line)}</p>` : ''}${E.next ? `<p class="next">${esc(E.next
     function tick(dt) {
       const ep = st.ep, fr = st.fr;
       if (!ep || st.phase === 'idle' || st.phase === 'dressed' || st.phase === 'done') return;
+      { // under the goal, how: one plain line for whoever has not played a game like this (and the first frame says the keys)
+        const K = ctx.touch ? 'Left thumb walks, drag to look.' : 'W A S D walk · mouse looks · Shift runs.', f = st.beat === 'shoot' && fr.task ? framed() : null;
+        const how = !goalText ? '' : st.beat === 'meet' ? 'Walk up to them: they speak when you are close.' : st.beat === 'approach' ? `Follow the ring. ${st.fi === 0 ? K : ''}` : st.beat === 'seek' ? `Walk to the ring: the pale figure. ${st.fi === 0 ? K : ''}`
+          : st.beat === 'ride' ? 'Walk to the car and press E to get in. Or walk the whole way.' : f ? (!f.placed ? 'Stand in the light on the ground.' : !f.aimed ? 'Turn until it is inside the frame lines.' : ctx.touch ? 'Tap the shutter.' : 'Press F, or click the shutter.') : '';
+        if (how !== st.how) { st.how = how; goalEl.querySelector('em').textContent = how; }
+      }
       if (st.phase === 'go' && st.beat === 'ride') { // the car: its mark on it as it comes and waits; gone from the frame while you ride; on when you are out, or have walked there
         const r = ctx.rideNow(), R = fr.ride, there = near(R.to, 45);
         if (r && r.state !== 'in') { if (!st.target || Math.hypot(st.target[0] - r.at[0], st.target[1] - r.at[1]) > 1.5) aimAt(spot(r.at)); const text = r.state === 'coming' ? R.line || 'A car is coming for you.' : R.board || 'Your car is here. Get in.'; if (text !== goalText) goal(text); st.inCar = false; }
