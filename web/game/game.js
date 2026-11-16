@@ -3190,7 +3190,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // someone the story places: an afterimage (someone of another year, pale and half there, who moves in the stopped
     // world) or, with a.alive, a living person of this evening. Stood where there is room near `at`, or at at[2] exactly
     figure: (a, at) => {
-      const rig = makeRig({ character: a.character, scale: 1 });
+      // (someone old, a.age: a head shorter than the model was made, and bent a little at the back and the neck)
+      const old = a.alive && a.age >= 70, bend = [];
+      const rig = makeRig({ character: a.character, scale: old ? 0.93 : 1 });
+      if (old) rig.root.traverse(o => { if (o.isBone && /Spine1$|Spine2$|Neck$/.test(o.name)) bend.push(o); });
       const p = at[2] != null ? { x: at[0], y: at[1], z: at[2] } : npcSpot({ id: `story-${a.name || a.character}`, r: 0.3 }, at);
       if (!a.alive) {
         const tint = new THREE.Color(0x9fc4ff);
@@ -3217,7 +3220,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
           if (d < 0.25) f.to = null;
           else { v = f.to[2]; const k = Math.min(1, v * dt / d); f.face(f.to[0], f.to[1]); f.x += dx * k; f.y += dy * k; f.z = Math.max(0, nav.terrain(f.x, f.y)); put(); }
         }
+        // (the bend is laid over the clip's pose, and taken off again before the clip is asked for the next: with time
+        // held the clip does not move the bones, and a bend added every frame turned her round and round)
+        for (const b of bend) if (b.userData.bent && b.quaternion.equals(b.userData.bent)) b.quaternion.copy(b.userData.raw);
         rig.animate(dt, v, 'ground', t);
+        for (const b of bend) { b.userData.raw = (b.userData.raw || new THREE.Quaternion()).copy(b.quaternion); b.rotation.z -= 0.14; b.userData.bent = (b.userData.bent || new THREE.Quaternion()).copy(b.quaternion); }
       };
       f.remove = () => world.remove(rig.root);
       return f;
@@ -5758,7 +5765,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     weather.update(dt, clockT, W(fx, fy, fz));
     if (weather.tread && OEWeather.S.snowDepth > 0.02) weather.tread(treaders(fx, fy), dt); // tracks in the snow (weather.js)
     const wS = OEWeather.S, inside = player.mode === 'car' || player.mode === 'ride' || player.mode === 'heli';
-    if (crowdDraw && crowdDraw.setRain) crowdDraw.setRain(Math.max(wS.rain, wS.snow * 0.7)); // (umbrellas go up in the snow too)
+    if (crowdDraw && crowdDraw.setRain) { const wet = Math.max(wS.rain, wS.snow * 0.7); crowdDraw.setRain(wet < 0.4 ? 0 : wet); } // (nobody puts an umbrella up before the rain can be seen) // (umbrellas go up in the snow too)
     if (A.rain) A.rain(titleOn ? 0 : wS.rain, weather.covered() && player.mode === 'foot', inside);
     // the cicadas of a hot day: from 25 degrees up, by daylight, silent in the rain
     if (A.cicadas) A.cicadas(titleOn ? 0 : Math.max(0, Math.min(1, (wS.temp - 24.5) / 4)) * wS.day * (1 - Math.min(1, wS.rate * 4)) * (inside ? 0.2 : 1));

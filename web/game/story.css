@@ -223,3 +223,18 @@
 #g-story-mark u::before { content: ""; position: absolute; left: 0; top: -9px; border: 9px solid transparent; border-left: 15px solid var(--amber); border-right: 0; filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.9)); animation: g-story-nudge 1.1s ease-in-out infinite; }
 @keyframes g-story-nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(7px); } }
 @media (prefers-reduced-motion: reduce) { #g-story-mark u::before { animation: none; } }
+
+/* ---- the camera in the hand or at the eye: the button says which, beside the release; and a word in the middle of
+   the frame when something changes that the player did not do */
+#g-story-cam { position: absolute; left: 50%; bottom: max(150px, calc(env(safe-area-inset-bottom) + 150px)); transform: translateX(-50%); z-index: 8; display: none; align-items: center; gap: 12px; padding: 13px 20px; cursor: pointer;
+  border: 1px solid var(--amber); border-radius: 2px; background: rgba(4, 8, 18, 0.62); color: var(--amber); font: 400 11px/1 var(--f-mono); letter-spacing: 0.24em; text-transform: uppercase; }
+#g-story-cam.on { display: flex; animation: g-story-cam 1.6s ease-in-out infinite; }
+#g-story-cam.up { animation: none; border-color: rgba(244, 239, 230, 0.4); color: var(--paper); bottom: auto; top: max(108px, calc(env(safe-area-inset-top) + 108px)); left: auto; right: max(22px, env(safe-area-inset-right)); transform: none; padding: 9px 13px; font-size: 9px; }
+#g-story-cam i { width: 15px; height: 11px; border: 1.5px solid currentColor; border-radius: 2px; box-shadow: inset 0 0 0 2.5px rgba(4, 8, 18, 0.62), inset 0 0 0 5px currentColor; }
+#g-story-cam kbd { margin-left: 4px; padding: 3px 6px; border: 1px solid currentColor; border-radius: 2px; font: inherit; letter-spacing: 0.06em; }
+@keyframes g-story-cam { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 207, 138, 0.5); } 50% { box-shadow: 0 0 0 9px rgba(255, 207, 138, 0); } }
+#g-story-chip { position: absolute; left: 50%; top: 31%; transform: translateX(-50%); z-index: 8; pointer-events: none; opacity: 0; white-space: nowrap; padding: 10px 18px; border-top: 1px solid rgba(255, 207, 138, 0.6); border-bottom: 1px solid rgba(255, 207, 138, 0.6);
+  background: rgba(4, 8, 18, 0.55); color: var(--paper); font: 400 11px/1 var(--f-mono); letter-spacing: 0.4em; text-transform: uppercase; }
+#g-story-chip.on { animation: g-story-chip 2.6s ease both; }
+@keyframes g-story-chip { 0% { opacity: 0; letter-spacing: 0.7em; } 14%, 72% { opacity: 1; letter-spacing: 0.4em; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { #g-story-cam.on { animation: none; } }

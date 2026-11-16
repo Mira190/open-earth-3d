@@ -54,6 +54,7 @@ const [,, out = '/tmp/story-play', size = '1440x900'] = process.argv;
       if (T.stand) await goTo(T.stand, 0.6);
       if (T.both) { const m = [(T.a[0] + T.b[0]) / 2, (T.a[1] + T.b[1]) / 2], n = [-(T.b[1] - T.a[1]), T.b[0] - T.a[0]], l = Math.hypot(...n); await goTo([m[0] + n[0] / l * 30, m[1] + n[1] / l * 30], 0); await face(m); }
       else if (T.subject) await face(T.subject);
+      await snap(`${s.fi + 1}-cam-down`); await p.evaluate(() => window.__game.story.raise(true)); // (the camera to the eye: R)
       await p.waitForTimeout(1500); await mark(s, 'aimed');
       await p.evaluate(() => window.__game.story.shoot());
       await p.waitForTimeout(1500); await snap(`${s.fi + 1}-print`); // (the print in the hand, its postmark struck)

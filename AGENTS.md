@@ -193,6 +193,19 @@ The owner should not be the one who finds the bug.
   `tools/story_play.js` does. Stills force the desktop tier; a software renderer picks the low
   one for itself.
 - Say what you could not check: a real GPU, WebGPU, Safari or iOS.
+- Scripted edits land whole or are seen to fail. Several times a batch of exact-string replacements was run from one
+  script that asserted every anchor: one anchor was wrong (typed from memory with the wrong indentation, or made stale
+  by an edit earlier in the same batch, or a pair that changed nothing), the assert stopped the script before it
+  wrote, and so none of the batch landed; the commands after it in the same shell line ran anyway, against the file
+  as it was. So:
+  - copy an anchor from the file as it is now (`grep -n`, `sed -n`), never from memory, and leave out pairs that change
+    nothing;
+  - make one change with the editor's own edit, which says at once when it does not apply; keep a script for
+    changes that have to be made together, check every anchor before writing any file, and print the one that failed;
+  - chain what depends on the edit with `&&`, and after a batch look for one of its own new lines (`grep -c`) before
+    running, packing or filming anything on top of it;
+  - a pass that only looked right because the edit never landed is the worst outcome: when a still shows no change,
+    check that the change is in the file before believing the still.
 
 # Session setup
 
