@@ -1465,6 +1465,15 @@ The budget is lowered to hold it: **270 MB of peak GPU memory and 400 MB of sett
 `tools/mem_check.js`), and the memory check now also fails a map whose district is not loaded on the phone tier,
 names something outside it, or lets a walker out of it.
 
+**The memory check's clock is pinned** (issue 516). It played at the real date and hour, and the weather is a hash
+of the date: the same code measured Tokyo at 263 MB one morning and at 283 the next, in the rain, and failed on
+main on a wet night (273). `tools/mem_check.js` now pins the clock as the game check does (`GAME_TIME`,
+2026-11-02T10:00 in the city's zone unless given), then asks for the heaviest hour instead of waiting for it,
+rain at ten at night held twelve seconds, and says which part of the run the peak fell in. Pinned, 16 November
+2026: Tokyo 270 MB (the peak as the map changes over to the far corner; 263 once loaded, 265 in the rain at
+night), Shibuya 228 (in the rain), Sydney 239 (in the rain). Tokyo is at the ceiling, not a tenth under it: the
+phone's sharper canvas (about 12 MB of targets) and the station's halls came after the ceiling was set.
+
 **Stills** at 390 x 844, the whole map built whole beside the district: at each spawn by day, dusk and night, from
 180 to 260 m over it looking out across the far zone, and at the district's own edge on foot looking out. The
 pairs are the same pictures but for the crowd and the clouds' moment. (`tools/game_shot.js` now waits for the
